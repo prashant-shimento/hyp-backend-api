@@ -1,0 +1,40 @@
+package com.hyp.entity;
+
+import java.util.List;
+
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
+public class AddonGroup extends BaseEntity{
+    
+    private static final long serialVersionUID = 1L;
+
+	@Field("addon_group_name")
+    private String addonGroupName;
+
+    private String active;
+
+    @Field("addon_group_rank")
+    private String addonGroupRank;
+
+    @Field("addon_group_items")
+    private List<AddonItem> addonItems;
+    
+    @Field("addon_item_selection_max")
+    private String addonItemSelectionMax;
+    
+    @Field("addon_item_selection_min")
+    private String addonItemSelectionMin;
+}
+
+
