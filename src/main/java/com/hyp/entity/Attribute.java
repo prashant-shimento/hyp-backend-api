@@ -17,7 +17,7 @@ import lombok.ToString;
 public class Attribute extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-
+	
 	private String attribute;
 
 	private String active;

@@ -18,7 +18,7 @@ import lombok.ToString;
 public class Tax extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
-
+    
 	@Field("tax_name")
     private String taxName;
 

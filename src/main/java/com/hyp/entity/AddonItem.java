@@ -1,5 +1,6 @@
 package com.hyp.entity;
 
+import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import lombok.AllArgsConstructor;
@@ -13,10 +14,12 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@Document(collection = "addon_items")
+
 public class AddonItem extends BaseEntity{
     
     private static final long serialVersionUID = 1L;
-
+    
 	@Field("addon_item_name")
     private String addonItemName;
 
@@ -29,5 +32,11 @@ public class AddonItem extends BaseEntity{
 
     @Field("addon_item_rank")
     private String addonItemRank;
+    
+    @Field("addon_item_selection_min")
+    private String addonItemSelectionMin;
+    
+    @Field("addon_item_selection_max")
+    private String addonItemSelectionMax;
 }
 

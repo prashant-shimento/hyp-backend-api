@@ -18,7 +18,7 @@ import lombok.ToString;
 public class OrderType extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-
+	
 	@Field("order_type")
 	private String orderType;
 }

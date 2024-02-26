@@ -2,6 +2,7 @@ package com.hyp.entity;
 
 import java.util.List;
 
+import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import lombok.AllArgsConstructor;
@@ -15,6 +16,7 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@Document(collection = "items")
 public class Item extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
@@ -31,21 +33,21 @@ public class Item extends BaseEntity {
     @Field("variation_group_name")
     private String variationGroupName;
 
-    private List<AddonGroup> addon;
+    private List<String> addon;
 
     @Field("item_favorite")
     private String itemFavorite;
 
     @Field("item_tax")
-    private String itemTax;
+    private List<String> itemTax;
 
     @Field("in_stock")
-    private String inStock;
+    private boolean inStock;
 
     @Field("item_allow_variation")
     private String itemAllowVariation;
 
-    private List<Variation> variation;
+    private List<String> variation;
 
     @Field("item_packing_charges")
     private String itemPackingCharges;
@@ -53,12 +55,10 @@ public class Item extends BaseEntity {
     @Field("ignore_taxes")
     private String ignoreTaxes;
 
-    
-
     private String price;
 
     @Field("item_order_type")
-    private String itemOrderType;
+    private List<String> itemOrderType;
 
     @Field("minimum_preparation_time")
     private String minimumPreparationTime;

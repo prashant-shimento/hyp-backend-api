@@ -1,7 +1,10 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
+import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import lombok.AllArgsConstructor;
@@ -15,79 +18,100 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@Document(collection = "restaurants")
 public class Restaurant extends BaseEntity {
-
+	
 	private static final long serialVersionUID = 1L;
-    
-	private String active;
-    
-    @Field("currency_html")
-    private String currencyHtml;
 
-    private String country;
+	private boolean active;
 
-    @Field("minimumorderamount")
-    private String minimumOrderAmount;
+	@Field("currency_html")
+	private String currencyHtml;
 
-    @Field("restaurantname")
-    private String restaurantName;
+	private String country;
 
-    @Field("packaging_applicable_on")
-    private String packagingApplicableOn;
+	@Field("minimumorderamount")
+	private String minimumOrderAmount;
 
-    private String city;
+	@Field("restaurantname")
+	private String restaurantName;
 
-    private String latitude;
+	@Field("packaging_applicable_on")
+	private String packagingApplicableOn;
 
-    @Field("packaging_charge")
-    private String packagingCharge;
+	private String city;
 
-    @Field("calculatetaxondelivery")
-    private int calculateTaxOnDelivery;
+	@Field("packaging_charge")
+	private String packagingCharge;
 
-    @Field("packaging_charge_type")
-    private String packagingChargeType;
+	@Field("calculatetaxondelivery")
+	private int calculateTaxOnDelivery;
 
-    private String contact;
+	@Field("packaging_charge_type")
+	private String packagingChargeType;
 
-    private String state;
+	private String contact;
 
-    private String landmark;
+	private String state;
 
-    private String longitude;
+	private String landmark;
 
-    private List<String> images;
+	@Field("location")
+	private Location location;
 
-    private String address;
+	private List<String> images;
 
-    @Field("pc_taxes_id")
-    private String pcTaxesId;
+	private String address;
 
-    @Field("deliveryhoursfrom2")
-    private String deliveryHoursFrom2;
+	@Field("tax")
+	private RestaurantTax tax;
 
-    @Field("menusharingcode")
-    private String menuSharingCode;
+	@Field("menusharingcode")
+	private String menuSharingCode;
 
-    @Field("deliveryhoursfrom1")
-    private String deliveryHoursFrom1;
+	@Field("delivery_hours")
+	private List<DeliveryHours> deliveryHours;
 
-    @Field("deliveryhoursto2")
-    private String deliveryHoursTo2;
+	@Field("calculatetaxonpacking")
+	private int calculateTaxOnPacking;
 
-    @Field("deliveryhoursto1")
-    private String deliveryHoursTo1;
+	@Field("deliverycharge")
+	private String deliveryCharge;
 
-    @Field("calculatetaxonpacking")
-    private int calculateTaxOnPacking;
+	@Field("minimumdeliverytime")
+	private String minimumDeliveryTime;
 
-    @Field("dc_taxes_id")
-    private String dcTaxesId;
+	@Field("turn_on_time")
+	private LocalDateTime turnOnTime;
+	
+	@Field("status_reason")
+	private String statusReason;
+	
+	@Getter
+	@Setter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static class DeliveryHours {
+		private LocalTime from;
+		private LocalTime to;
+	}
 
-    @Field("deliverycharge")
-    private String deliveryCharge;
+	@Getter
+	@Setter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static class Location {
+		private double latitude;
+		private double longitude;
+	}
+	
+	@Getter
+	@Setter
+	@NoArgsConstructor
+	@AllArgsConstructor
+	public static class RestaurantTax {
+		private String dcTaxesId;
+		private String pcTaxesId;
+	}
 
-    @Field("minimumdeliverytime")
-    private String minimumDeliveryTime;
 }
-

@@ -3,8 +3,9 @@ package com.hyp.service;
 import org.springframework.stereotype.Service;
 
 import com.hyp.entity.Category;
+import com.hyp.repository.CategoryRepository;
 
 @Service
-public interface CategoryService extends BaseService<Category, String> {
+public class CategoryService extends BaseServiceImpl<Category, String,CategoryRepository>{
 
 }

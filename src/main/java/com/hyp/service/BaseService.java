@@ -13,6 +13,8 @@ public interface BaseService<T, ID> {
 	T save(T entity);
 
 	List<T> saveAll(List<T> entities);
+	
+	List<T> saveAll(List<T> entities, String rid);
 
 	T update(T entity);
 

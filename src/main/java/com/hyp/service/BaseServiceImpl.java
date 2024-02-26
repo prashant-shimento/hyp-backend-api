@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
+import com.hyp.entity.BaseEntity;
+
 @Service
 public abstract class BaseServiceImpl<T, ID, R extends MongoRepository<T, ID>> implements BaseService<T, ID> {
 
@@ -31,6 +33,14 @@ public abstract class BaseServiceImpl<T, ID, R extends MongoRepository<T, ID>> i
 
 	@Override
 	public List<T> saveAll(List<T> entities) {
+		return repository.saveAll(entities);
+	}
+
+	@Override
+	public List<T> saveAll(List<T> entities, String rId) {
+		for (T entity : entities) {
+			((BaseEntity) entity).setRestaurantId(rId);
+		}
 		return repository.saveAll(entities);
 	}
 
