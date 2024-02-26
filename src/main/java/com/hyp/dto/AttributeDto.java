@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class AttributeDto {
-	private String attributeid;
+	private String attributeId;
 	private String attribute;
 	private String active;
 

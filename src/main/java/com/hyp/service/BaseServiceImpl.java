@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 import com.hyp.entity.BaseEntity;
 
 @Service
-public abstract class BaseServiceImpl<T, ID, R extends MongoRepository<T, ID>> implements BaseService<T, ID> {
+public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
 	@Autowired
-	private R repository;
+	private MongoRepository<T, ID> repository;
 
 	@Override
 	public T findById(ID id) {
