@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.hyp.response.ResponseTemplate;
+import com.hyp.service.BaseService;
 import com.hyp.service.TranslationService;
 
 import java.util.Collections;
@@ -16,14 +17,14 @@ import java.util.Optional;
 public abstract class BaseController<DTO, T, ID> {
 
 	@Autowired
-	protected MongoRepository<T, ID> repository;
+	protected BaseService<T, ID> service;
 	
 	@Autowired
     protected TranslationService<DTO, T> translationService;
 
 	@GetMapping
 	public ResponseEntity<ResponseTemplate> getAll() {
-		List<T> entities = repository.findAll();
+		List<T> entities = service.findAll();
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		ResponseTemplate response = new ResponseTemplate(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);
@@ -32,11 +33,10 @@ public abstract class BaseController<DTO, T, ID> {
 	@GetMapping("/{id}")
 	public ResponseEntity<ResponseTemplate> getById(@PathVariable ID id) {
 		try {
-			Optional<T> optionalEntity = repository.findById(id);
-			if (optionalEntity.isPresent()) {
-				DTO dto = translationService.getDto(optionalEntity.get());
-				List<DTO> entity = Collections.singletonList(dto);
-				ResponseTemplate response = new ResponseTemplate(entity, false, "success");
+			T entity = service.findById(id);
+			if (entity != null) {
+				DTO dto = translationService.getDto(entity);
+				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
 				return ResponseEntity.notFound().build();
@@ -51,11 +51,10 @@ public abstract class BaseController<DTO, T, ID> {
 	public ResponseEntity<ResponseTemplate> create(@RequestBody DTO dto) {
 		try {
 			T entity = translationService.getEntity(dto);
-			T savedEntity = repository.save(entity);
+			T savedEntity = service.save(entity);
 			dto = translationService.getDto(savedEntity);
 			//Need to revisit returning list logic
-			List<DTO> saved = Collections.singletonList(dto);
-			ResponseTemplate response = new ResponseTemplate(saved, false, "success");
+			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
 			return ResponseEntity.ok(response);
 		} catch (Exception ex) {
 			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
@@ -66,13 +65,12 @@ public abstract class BaseController<DTO, T, ID> {
 	@PutMapping("/{id}")
 	public ResponseEntity<ResponseTemplate> update(@PathVariable ID id, @RequestBody DTO dto) {
 		try {
-			if (repository.existsById(id)) {
+			if (service.findById(id) != null) {
 				T entity = translationService.getEntity(dto);
-				T updatedEntity = repository.save(entity);
+				T updatedEntity = service.save(entity);
 				dto = translationService.getDto(updatedEntity);
 				//Need to revisit returning list logic
-				List<DTO> updated = Collections.singletonList(dto);
-				ResponseTemplate response = new ResponseTemplate(updated, false, "success");
+				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
 				return ResponseEntity.notFound().build();
@@ -125,8 +123,8 @@ public abstract class BaseController<DTO, T, ID> {
 	@DeleteMapping("/{id}")
 	public ResponseEntity<ResponseTemplate> delete(@PathVariable ID id) {
 		try {
-			if (repository.existsById(id)) {
-				repository.deleteById(id);
+			if (service.findById(id) != null) {
+				service.deleteById(id);
 				return ResponseEntity.ok().build();
 			} else {
 				return ResponseEntity.notFound().build();
