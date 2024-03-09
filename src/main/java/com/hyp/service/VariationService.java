@@ -8,7 +8,7 @@ import com.hyp.repository.VariationRepository;
 
 @Service
 public class VariationService extends BaseServiceImpl<Variation, String> {
+
 	@Autowired
 	VariationRepository variationRepository;
-
 }

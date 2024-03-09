@@ -18,22 +18,23 @@ import lombok.ToString;
 public class Category extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-	
-    @Field("parent_category_id")
-    private String parentCategoryId;
+//	@Field("category_id")
+//	private String categoryId;
 
-    @Field("category_image_url")
-    private String categoryImageUrl;
+	@Field("parent_category_id")
+	private String parentCategoryId;
 
-    @Field("category_timings")
-    private String categoryTimings;
+	@Field("category_image_url")
+	private String categoryImageUrl;
 
-    private String active;
+	@Field("category_timings")
+	private String categoryTimings;
 
-    @Field("category_name")
-    private String categoryName;
+	private String active;
 
-    @Field("category_rank")
-    private String categoryRank;
+	@Field("category_name")
+	private String categoryName;
+
+	@Field("category_rank")
+	private String categoryRank;
 }
-

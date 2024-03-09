@@ -20,8 +20,10 @@ import lombok.ToString;
 @NoArgsConstructor
 @Document(collection = "restaurants")
 public class Restaurant extends BaseEntity {
-	
+
 	private static final long serialVersionUID = 1L;
+
+	
 
 	private boolean active;
 
@@ -83,10 +85,10 @@ public class Restaurant extends BaseEntity {
 
 	@Field("turn_on_time")
 	private LocalDateTime turnOnTime;
-	
+
 	@Field("status_reason")
 	private String statusReason;
-	
+
 	@Getter
 	@Setter
 	@NoArgsConstructor
@@ -104,7 +106,7 @@ public class Restaurant extends BaseEntity {
 		private double latitude;
 		private double longitude;
 	}
-	
+
 	@Getter
 	@Setter
 	@NoArgsConstructor

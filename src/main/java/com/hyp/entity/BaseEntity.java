@@ -22,28 +22,22 @@ import lombok.ToString;
 @AllArgsConstructor
 @Document
 public abstract class BaseEntity implements Serializable {
-	
+
 	private static final long serialVersionUID = 1L;
-	
-//	@Id
-//	@Field("id")
-//	private String id = Utils.genId();
-	
+
 	@Id
 	@Field("id")
 	private String id;
-	
+
 	@Field("created_at")
 	@CreatedDate
 	private LocalDateTime createdAt;
-	
+
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
-	
+
 	@Field("restaurant_id")
-    private String restaurantId;
-	
-//	@Field("ext_id")
-//	private String extId;
+	private String restaurantId;
+
 }

@@ -19,17 +19,18 @@ import com.hyp.service.RestaurantService;
 @RestController
 @RequestMapping("/api/pos/status")
 public class StatusController {
-	
+
 	@Autowired
 	RestaurantService restaurantService;
-	
+
 	@PostMapping("/get")
 	public ResponseEntity<Response> getStatus(@RequestBody StatusRequest getStatus) {
 		Restaurant restaurant = restaurantService.findById(getStatus.getRestID());
-		Response response = new Response.Builder().httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
+		Response response = new Response.Builder()
+				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
 				.message(restaurant != null ? "Store Delivery Status fetched successfully" : "Restaurant Not Found")
 				.status(restaurant != null ? "success" : "failed")
-				.storeStatus(restaurant != null && restaurant.isActive() ? "1" : "0").build();
+				.storeStatus(restaurant != null && restaurant.isActive()? "1" : "0").build();
 		return ResponseEntity.ok(response);
 	}
 
@@ -50,8 +51,7 @@ public class StatusController {
 		restaurant.setStatusReason(updateStatus.getReason());
 		restaurantService.update(restaurant);
 		response = new Response.Builder().httpCode(HttpStatus.OK.value())
-				.message("Store Status updated successfully for store restID").status("success")
-				.build();
+				.message("Store Status updated successfully for store restID").status("success").build();
 		updateStatus.setMessage("Store Status updated successfully for store restID");
 		updateStatus.setStatus("success");
 		return new ResponseEntity<Response>(response, HttpStatus.OK);

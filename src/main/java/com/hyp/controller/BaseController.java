@@ -1,26 +1,29 @@
 package com.hyp.controller;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import com.hyp.response.ResponseTemplate;
 import com.hyp.service.BaseService;
 import com.hyp.service.TranslationService;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-
 public abstract class BaseController<DTO, T, ID> {
 
 	@Autowired
 	protected BaseService<T, ID> service;
-	
+
 	@Autowired
-    protected TranslationService<DTO, T> translationService;
+	protected TranslationService<DTO, T> translationService;
 
 	@GetMapping
 	public ResponseEntity<ResponseTemplate> getAll() {
@@ -53,7 +56,7 @@ public abstract class BaseController<DTO, T, ID> {
 			T entity = translationService.getEntity(dto);
 			T savedEntity = service.save(entity);
 			dto = translationService.getDto(savedEntity);
-			//Need to revisit returning list logic
+			// Need to revisit returning list logic
 			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
 			return ResponseEntity.ok(response);
 		} catch (Exception ex) {
@@ -69,7 +72,7 @@ public abstract class BaseController<DTO, T, ID> {
 				T entity = translationService.getEntity(dto);
 				T updatedEntity = service.save(entity);
 				dto = translationService.getDto(updatedEntity);
-				//Need to revisit returning list logic
+				// Need to revisit returning list logic
 				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
@@ -80,7 +83,39 @@ public abstract class BaseController<DTO, T, ID> {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+//	@PutMapping("/{id}")
+//	public ResponseEntity<ResponseTemplate> update(@PathVariable ID id, @RequestBody DTO dto) {
+//		try {
+//			// Check if the entity with the given ID exists
+//			T existingEntity = service.findById(id);
+//			if (existingEntity != null) {
+//				// Translate DTO to entity
+//				T updatedEntity = translationService.getEntity(dto);
+//
+//				// Set the ID of the existing entity to ensure the correct entity is updated
+//				updatedEntity.setId(id);
+//
+//				// Save the updated entity
+//				T savedEntity = service.save(updatedEntity);
+//
+//				// Translate the updated entity back to DTO
+//				DTO updatedDto = translationService.getDto(savedEntity);
+//
+//				// Return the updated DTO in the response
+//				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(updatedDto), false,
+//						"Success");
+//				return ResponseEntity.ok(response);
+//			} else {
+//				// If the entity with the given ID does not exist, return 404 Not Found
+//				return ResponseEntity.notFound().build();
+//			}
+//		} catch (Exception ex) {
+//			// If an exception occurs during the update process, return an error response
+//			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+//			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+//		}
+//	}
+
 //	@PatchMapping("/{id}")
 //    public ResponseEntity<ResponseTemplate> patch(@PathVariable ID id, @RequestBody DTO dto) {
 //        try {

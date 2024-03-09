@@ -37,4 +37,6 @@ public class AddonGroup extends BaseEntity {
 
 	@Field("addon_item_selection_min")
 	private String addonItemSelectionMin;
+
+	
 }
