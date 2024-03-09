@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.AttributeDto;
 import com.hyp.entity.Attribute;
-import com.hyp.service.AttributeTranslation;
+import com.hyp.translation.AttributeTranslation;
 
 @RestController
 @RequestMapping("/api/attribute")

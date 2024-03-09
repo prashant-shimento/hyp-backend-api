@@ -19,4 +19,6 @@ public interface BaseService<T, ID> {
 	T update(T entity);
 
 	void deleteById(ID id);
+	
+	public boolean isExistsById(ID id);
 }

@@ -3,14 +3,14 @@ package com.hyp.request;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@ToString
+@Data
+@NoArgsConstructor
 public class PosDataRequest {
 
 	private String success;
@@ -35,7 +35,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class RestaurantRequest {
+	public class RestaurantRequest {
 		private String restaurantid;
 		private String active;
 		private RestaurantDetails details;
@@ -45,7 +45,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class RestaurantDetails {
+	public class RestaurantDetails {
 		private String menusharingcode;
 		private String currency_html;
 		private String country;
@@ -83,7 +83,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class OrderTypeRequest {
+	public class OrderTypeRequest {
 		private int ordertypeid;
 		private String ordertype;
 
@@ -93,7 +93,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class CategoryRequest {
+	public class CategoryRequest {
 		private String categoryid;
 		private String active;
 		private String categoryrank;
@@ -108,7 +108,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class ParentCategoryRequest {
+	public class ParentCategoryRequest {
 		private String id;
 		private String name;
 		private String rank;
@@ -122,7 +122,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class ItemRequest {
+	public class ItemRequest {
 		private String itemid;
 		private String itemallowvariation;
 		private String itemrank;
@@ -156,7 +156,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class VariationRequest {
+	public class VariationRequest {
 		private String id;
 		private String name;
 		private String variationid;
@@ -175,7 +175,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class AddonGroupRequest {
+	public class AddonGroupRequest {
 		private String addongroupid;
 		private String addongroup_rank;
 		private String active;
@@ -191,7 +191,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class AddonItemRequest {
+	public class AddonItemRequest {
 		private String addonitemid;
 		private String addonitem_name;
 		private String addonitem_price;
@@ -205,7 +205,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class AttributeRequest {
+	public class AttributeRequest {
 		private String attributeid;
 		private String attribute;
 		private String active;
@@ -216,7 +216,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class DiscountRequest {
+	public class DiscountRequest {
 		private String discountid;
 		private String discountname;
 		private String discounttype;
@@ -254,7 +254,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public static class TaxRequest {
+	public class TaxRequest {
 		private String taxid;
 		private String taxname;
 		private String tax;

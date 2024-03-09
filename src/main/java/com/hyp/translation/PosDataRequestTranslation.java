@@ -39,23 +39,23 @@ import com.hyp.request.PosDataRequest.VariationRequest;
 import com.hyp.util.ValidationUtils;
 
 @Component
-public class RequestTranslation {
+public class PosDataRequestTranslation {
 
 	public static PosData getPosData(PosDataRequest posDataRequest) {
 		PosData posData = PosData.builder()
-				.restaurant(RequestTranslation.translateToRestaurant(posDataRequest.getRestaurants().get(0)))
-				.orderTypes(RequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
-				.attributes(RequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
-				.discounts(RequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
-				.categories(RequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
-				.taxes(RequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
-				.addonItems(RequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
-				.addonGroups(RequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
+				.restaurant(PosDataRequestTranslation.translateToRestaurant(posDataRequest.getRestaurants().get(0)))
+				.orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
+				.attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
+				.discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
+				.categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
+				.taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
+				.addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
+				.addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
 						posDataRequest.getItems()))
 				// Get Variations details from item
-				.variations(RequestTranslation.translateToVariationList(posDataRequest.getVariations(),
+				.variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
 						posDataRequest.getItems()))
-				.items(RequestTranslation.translateToItemList(posDataRequest.getItems(), posDataRequest)).build();
+				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems(), posDataRequest)).build();
 		return posData;
 	}
 
@@ -72,7 +72,7 @@ public class RequestTranslation {
 
 	public static List<Attribute> translateToAttributeList(List<AttributeRequest> attributeRequestList) {
 		return attributeRequestList == null ? Collections.emptyList()
-				: attributeRequestList.stream().map(RequestTranslation::translateToAttribute)
+				: attributeRequestList.stream().map(PosDataRequestTranslation::translateToAttribute)
 						.collect(Collectors.toList());
 	}
 
@@ -88,7 +88,7 @@ public class RequestTranslation {
 
 	public static List<OrderType> translateToOrderTypeList(List<OrderTypeRequest> orderTypeRequestList) {
 		return orderTypeRequestList == null ? Collections.emptyList()
-				: orderTypeRequestList.stream().map(RequestTranslation::translateToOrderType)
+				: orderTypeRequestList.stream().map(PosDataRequestTranslation::translateToOrderType)
 						.collect(Collectors.toList());
 	}
 
@@ -113,7 +113,7 @@ public class RequestTranslation {
 
 	public static List<Tax> translateToTaxList(List<TaxRequest> taxRequestList) {
 		return taxRequestList == null ? Collections.emptyList()
-				: taxRequestList.stream().map(RequestTranslation::translateToTax).collect(Collectors.toList());
+				: taxRequestList.stream().map(PosDataRequestTranslation::translateToTax).collect(Collectors.toList());
 	}
 
 	public static Variation translateToVariation(VariationRequest variationRequest) {
@@ -198,7 +198,7 @@ public class RequestTranslation {
 
 	public static List<Variation> getUniqueVariationList(List<VariationRequest> variationRequestList) {
 		return variationRequestList == null ? Collections.emptyList()
-				: variationRequestList.stream().map(RequestTranslation::translateToVariation)
+				: variationRequestList.stream().map(PosDataRequestTranslation::translateToVariation)
 						.collect(Collectors.toSet()).stream().collect(Collectors.toList());
 	}
 
@@ -252,7 +252,7 @@ public class RequestTranslation {
 
 	public static List<Restaurant> translateToRestaurantList(List<RestaurantRequest> restaurantRequestList) {
 		return restaurantRequestList == null ? Collections.emptyList()
-				: restaurantRequestList.stream().map(RequestTranslation::translateToRestaurant)
+				: restaurantRequestList.stream().map(PosDataRequestTranslation::translateToRestaurant)
 						.collect(Collectors.toList());
 	}
 
@@ -273,7 +273,7 @@ public class RequestTranslation {
 
 	public static List<Category> translateToCategoryList(List<CategoryRequest> categoryRequestList) {
 		return categoryRequestList == null ? Collections.emptyList()
-				: categoryRequestList.stream().map(RequestTranslation::translateToCategory)
+				: categoryRequestList.stream().map(PosDataRequestTranslation::translateToCategory)
 						.collect(Collectors.toList());
 	}
 
@@ -317,7 +317,7 @@ public class RequestTranslation {
 
 	public static List<Discount> translateToDiscountList(List<DiscountRequest> discountRequestList) {
 		return discountRequestList == null ? Collections.emptyList()
-				: discountRequestList.stream().map(RequestTranslation::translateToDiscount)
+				: discountRequestList.stream().map(PosDataRequestTranslation::translateToDiscount)
 						.collect(Collectors.toList());
 	}
 
@@ -338,13 +338,13 @@ public class RequestTranslation {
 
 	public static List<AddonGroup> translateToAddonGroupList(List<AddonGroupRequest> addonGroupRequestList) {
 		return addonGroupRequestList == null ? Collections.emptyList()
-				: addonGroupRequestList.stream().map(RequestTranslation::translateToAddonGroup)
+				: addonGroupRequestList.stream().map(PosDataRequestTranslation::translateToAddonGroup)
 						.collect(Collectors.toList());
 	}
 
 	public static List<AddonGroup> getUniqueAddonGroupList(List<AddonGroupRequest> addonGroupRequestList) {
 		return addonGroupRequestList == null ? Collections.emptyList()
-				: addonGroupRequestList.stream().map(RequestTranslation::translateToAddonGroup)
+				: addonGroupRequestList.stream().map(PosDataRequestTranslation::translateToAddonGroup)
 						.collect(Collectors.toSet()).stream().collect(Collectors.toList());
 	}
 
@@ -369,7 +369,7 @@ public class RequestTranslation {
 
 	public static List<AddonItem> translateToAddonItemList(List<AddonItemRequest> addonItemRequestList) {
 		return addonItemRequestList == null ? Collections.emptyList()
-				: addonItemRequestList.stream().map(RequestTranslation::translateToAddonItem)
+				: addonItemRequestList.stream().map(PosDataRequestTranslation::translateToAddonItem)
 						.collect(Collectors.toList());
 	}
 

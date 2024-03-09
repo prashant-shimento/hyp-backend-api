@@ -1,4 +1,4 @@
-package com.hyp.service;
+package com.hyp.translation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.hyp.dto.AttributeDto;
 import com.hyp.entity.Attribute;
+import com.hyp.service.TranslationService;
 import com.hyp.util.Utils;
 
 @Service

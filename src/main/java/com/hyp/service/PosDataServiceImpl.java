@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.hyp.entity.Restaurant;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
-import com.hyp.translation.RequestTranslation;
+import com.hyp.translation.PosDataRequestTranslation;
 
 @Service
 public class PosDataServiceImpl implements PosDataService {
@@ -43,7 +43,7 @@ public class PosDataServiceImpl implements PosDataService {
 	public boolean savePosData(PosDataRequest posDataRequest) {
 		try {
 
-			PosData posData = RequestTranslation.getPosData(posDataRequest);
+			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
 			Restaurant restaurant = restaurantService.save(posData.getRestaurant());
 			saveEntities(restaurant, posData);
 			return true;
