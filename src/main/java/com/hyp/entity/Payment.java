@@ -14,19 +14,16 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "order_tax")
-public class OrderTax {
+@Document(collection = "payments")
+public class Payment extends BaseEntity {
 
-	private static final long serialVersionUID = 1L;
+	@Field("order_id")
+    private String orderId;
 
-    private String title;
-	
-    private String type;
+    @Field("payment_order_id")
+    private String paymentOrderId;
 
-    private double price;
+    private String active;
 
-    private double tax;
-
-    @Field("restaurant_liable_amt")
-    private double restaurantLiableAmt;
+    private String attributes;
 }

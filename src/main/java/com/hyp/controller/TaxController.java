@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.TaxDto;
 import com.hyp.entity.Tax;
-import com.hyp.service.TaxTranslation;
+import com.hyp.translation.TaxTranslation;
 
 @RestController
 @RequestMapping("/api/tax")

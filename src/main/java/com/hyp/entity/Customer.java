@@ -10,7 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Document(collection = "customer")
+@Document(collection = "customers")
 @AllArgsConstructor
 @NoArgsConstructor
 public class Customer extends BaseEntity {

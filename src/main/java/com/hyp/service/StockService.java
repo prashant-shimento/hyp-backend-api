@@ -2,10 +2,10 @@ package com.hyp.service;
 
 import org.springframework.stereotype.Service;
 
-import com.hyp.request.StockRequest;
+import com.hyp.request.PosStockRequest;
 
 @Service
 public interface StockService {
 
-	public boolean updateStock(StockRequest stockRequest);
+	public boolean updateStock(PosStockRequest stockRequest);
 }

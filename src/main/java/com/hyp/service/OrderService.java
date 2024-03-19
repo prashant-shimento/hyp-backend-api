@@ -1,30 +1,26 @@
 package com.hyp.service;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.time.LocalDateTime;
 
+import org.json.JSONObject;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
 import com.hyp.dto.OrderDto.OrderTax;
-import com.hyp.entity.AddonItem;
-import com.hyp.entity.Discount;
-import com.hyp.entity.Item;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
-import com.hyp.entity.Tax;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.mapper.DataMapper;
 import com.hyp.repository.OrderRepository;
+import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
-import com.hyp.response.ResponseTemplate;
 import com.hyp.translation.PosOrderRequestTranslation;
-import com.hyp.util.Utils;
+import com.hyp.util.CommonUtils;
 
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
@@ -33,6 +29,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	RestaurantService restaurantService;
+
+	@Autowired
+	CustomerService customerService;
 
 	@Autowired
 	TaxService taxService;
@@ -47,34 +46,43 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	AddonItemService addonItemService;
 
 	@Autowired
-	DataMapper dataMapper;
+	VariationService variationService;
 
 	@Autowired
-	private PosOrderService posOrderService;
+	DataMapper dataMapper;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
 		}
+		if (!customerService.isExistsById(orderDto.getCustomerId())) {
+			throw new Exception("Restaurant not found " + orderDto.getCustomerId());
+		}
 		if (orderDto.getOrderDiscount() != null) {
-			if (!discountService.isExistsById(orderDto.getOrderDiscount().getDiscountId())) {
-				throw new Exception("Discount not found " + orderDto.getOrderDiscount().getDiscountId());
+			if (!discountService.isExistsById(orderDto.getOrderDiscount().getId())) {
+				throw new Exception("Discount not found " + orderDto.getOrderDiscount().getId());
 			}
 		}
 		if (orderDto.getOrderTax() != null) {
 			for (OrderTax ordertax : orderDto.getOrderTax()) {
-				if (!taxService.isExistsById(ordertax.getTaxId())) {
-					throw new Exception("Tax not found " + ordertax.getTaxId());
+				if (!taxService.isExistsById(ordertax.getId())) {
+					throw new Exception("Tax not found " + ordertax.getId());
 				}
 			}
 		}
 		for (OrderItem orderItem : orderDto.getOrderItems()) {
-			if (!itemService.isExistsById(orderItem.getItemId())) {
-				throw new Exception("Item not found " + orderItem.getItemId());
+
+			if (orderItem.getVariationId() != null) {
+				if (!variationService.isExistsById(orderItem.getId())) {
+					throw new Exception("Variation not found " + orderItem.getId());
+				}
+			} else if (!itemService.isExistsById(orderItem.getId())) {
+				throw new Exception("Item not found " + orderItem.getId());
 			}
-			if(orderItem.getOrderAddonItems() != null) {
+
+			if (orderItem.getOrderAddonItems() != null) {
 				for (OrderAddonItem orderAddonItem : orderItem.getOrderAddonItems()) {
-					if (addonItemService.isExistsById(orderAddonItem.getAddonItemId())) {
+					if (!addonItemService.isExistsById(orderAddonItem.getAddonItemId())) {
 						throw new Exception("AddonItem not found " + orderAddonItem.getAddonItemId());
 					}
 				}
@@ -82,8 +90,26 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 
 		Order order = dataMapper.toOrderEntity(orderDto);
-		order.setId(Utils.genId());
+		order.setId(CommonUtils.genId());
 		order.setStatus(OrderStatusType.CREATED);
+		order.setCreatedAt(LocalDateTime.now());
 		return this.save(order);
+	}
+
+	public Order processCallback(PosCallbackRequest posCallbackRequest) throws Exception {
+
+		Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
+		if (restaurant == null) {
+			throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
+		}
+		if (!this.isExistsById(posCallbackRequest.getOrderId())) {
+			throw new Exception("Restaurant not found " + posCallbackRequest.getOrderId());
+		}
+
+		Order order = this.findById(posCallbackRequest.getOrderId());
+		order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
+		// order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
+		// order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
+		return this.update(order);
 	}
 }

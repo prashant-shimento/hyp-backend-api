@@ -1,4 +1,4 @@
-package com.hyp.service;
+package com.hyp.translation;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.Location;
 import com.hyp.entity.Restaurant.RestaurantTax;
+import com.hyp.service.TranslationService;
 
 @Service
 

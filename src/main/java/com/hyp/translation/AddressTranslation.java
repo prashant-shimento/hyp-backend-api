@@ -1,4 +1,4 @@
-package com.hyp.service;
+package com.hyp.translation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service;
 import com.hyp.dto.AddressDto;
 import com.hyp.entity.Address;
 import com.hyp.entity.Address.Location;
-import com.hyp.util.Utils;
+import com.hyp.service.TranslationService;
+import com.hyp.util.CommonUtils;
 
 @Service
 public class AddressTranslation implements TranslationService<AddressDto, Address> {
@@ -16,7 +17,7 @@ public class AddressTranslation implements TranslationService<AddressDto, Addres
 	@Override
 	public Address getEntity(AddressDto dto) {
 		Address address = new Address();
-		address.setId(Utils.genId());
+		address.setId(CommonUtils.genId());
 		address.setAddress(dto.getAddress());
 		address.setAddressType(dto.getAddressType());
 		address.setLocation(new Location(dto.getLatitude(), dto.getLongitude()));

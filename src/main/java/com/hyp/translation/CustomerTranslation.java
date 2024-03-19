@@ -1,4 +1,4 @@
-package com.hyp.service;
+package com.hyp.translation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +8,8 @@ import org.springframework.stereotype.Service;
 
 import com.hyp.dto.CustomerDto;
 import com.hyp.entity.Customer;
-import com.hyp.util.Utils;
+import com.hyp.service.TranslationService;
+import com.hyp.util.CommonUtils;
 
 @Service
 public class CustomerTranslation implements TranslationService<CustomerDto, Customer> {
@@ -16,7 +17,7 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 	@Override
 	public Customer getEntity(CustomerDto dto) {
 		Customer customer = new Customer();
-		//customer.setId(Utils.genId());
+		dto.setId(CommonUtils.genId());
 		BeanUtils.copyProperties(dto, customer);
 		return customer;
 	}
@@ -24,7 +25,6 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 	@Override
 	public CustomerDto getDto(Customer entity) {
 		CustomerDto dto = new CustomerDto();
-		//entity.setId(Utils.genId());
 		BeanUtils.copyProperties(entity, dto);
 		return dto;
 	}
@@ -36,7 +36,7 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 
 		for (Customer customer : entities) {
 			CustomerDto dto = new CustomerDto();
-			customer.setId(Utils.genId());
+			dto.setId(customer.getId());
 			dto.setName(customer.getName());
 			dto.setMobile(customer.getMobile());
 			dto.setEmail(customer.getEmail());
@@ -54,7 +54,6 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 		}
 
 		Customer patchedEntity = new Customer();
-		existingEntity.setId(Utils.genId());
 		patchedEntity.setName(existingEntity.getName());
 		patchedEntity.setMobile(existingEntity.getMobile());
 		patchedEntity.setEmail(existingEntity.getEmail());

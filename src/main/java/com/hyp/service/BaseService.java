@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public interface BaseService<T, ID> {
+	
 	T findById(ID id);
 
 	List<T> findAll();
@@ -21,4 +22,6 @@ public interface BaseService<T, ID> {
 	void deleteById(ID id);
 	
 	public boolean isExistsById(ID id);
+	
+    public T findByField(Class<T> entityClass, String fieldName, Object value);
 }

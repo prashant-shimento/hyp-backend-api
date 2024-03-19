@@ -1,5 +1,6 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -90,5 +91,8 @@ public class Item extends BaseEntity {
 
     @Field("item_category_id")
     private String itemCategoryId;
+    
+    @Field("auto_turn_on_time")
+    private LocalDateTime autoTurnOnTime;
 }
 

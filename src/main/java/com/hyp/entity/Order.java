@@ -7,10 +7,13 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.hyp.dto.OrderDto;
+import com.hyp.dto.OrderDto.OrderItemTax;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
 
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,64 +29,163 @@ public class Order extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
 
-    @Field("customer_id")
-    private String customerId;
+	@Field("customer_id")
+	private String customerId;
 
-    @Field("order_type")
-    private int orderType;
+	@Field("order_type")
+	private String orderType;
 
-    @Field("payment_type")
-    private PaymentType paymentType;
+	@Field("payment_type")
+	private PaymentType paymentType;
 
-    @Field("discount_amount")
-    private double discountAmount;
+	@Field("discount_amount")
+	private double discountAmount;
 
-    @Field("tax_amount")
-    private double taxAmount;
+	@Field("tax_amount")
+	private double taxAmount;
 
-    @Field("total_amount")
-    private double totalAmount;
-    
-    private String description;
+	@Field("total_amount")
+	private double totalAmount;
 
-    @Field("sc_tax_amount")
-    private String scTaxAmount;
+	private String description;
 
-    @Field("dc_tax_amount")
-    private String dcTaxAmount;
+	@Field("sc_tax_amount")
+	private double scTaxAmount;
 
-    @Field("items")
-    private List<OrderItem> orderItems;
-    
-    @Field("tax")
-    private List<OrderTax> orderTax;
-    
-    @Field("discount")
-    private List<OrderDiscount> orderDiscount;
-    
-    private OrderStatusType status;
-    
-    @Field("delivery_charge")
-    private double deliveryCharge;
-    
-    @Field("service_charge")
-    private double serviceCharge;
-    
-    @Field("packaging_charge")
-    private double packagingCharge;
-    
-    @Field("expected_delivery_time")
-    private String expectedDeliveryTime;
-    
-    @Field("special_instructions")
-    private String specialInstructions;
-    
-    @Field("delivery_address")
-    private String deliveryAddress;
-    
-    @Field("order_time")
-    @CreatedDate
-    private LocalDateTime orderTime;
+	@Field("dc_tax_amount")
+	private double dcTaxAmount;
+
+	@Field("pc_tax_amount")
+	private double pcTaxAmount;
+
+	@Field("items")
+	private List<OrderItem> orderItems;
+
+	@Field("tax")
+	private List<OrderTax> orderTax;
+
+	@Field("discount")
+	private List<OrderDiscount> orderDiscount;
+
+	@Field("discount_type")
+	private String discountType;
+
+	private OrderStatusType status;
+
+	@Field("delivery_charge")
+	private double deliveryCharge;
+
+	@Field("service_charge")
+	private double serviceCharge;
+
+	@Field("packaging_charge")
+	private double packagingCharge;
+
+	@Field("expected_delivery_time")
+	private String expectedDeliveryTime;
+
+	@Field("special_instructions")
+	private String specialInstructions;
+
+	@Field("delivery_address")
+	private String deliveryAddress;
+
+	@Field("order_time")
+	@CreatedDate
+	private LocalDateTime orderTime;
+	
+	@Data
+	@NoArgsConstructor
+	public static class OrderItem {
+
+		@Field("item_id")
+		private String id;
+
+		@Field("item_name")
+		private String name;
+
+		@Field("item_discount")
+		private double itemDiscount;
+
+		private double price;
+
+		@Field("final_price")
+		private double finalPrice;
+
+		private int quantity;
+
+		@Field("variation_name")
+		private String variationName;
+
+		@Field("variation_id")
+		private String variationId;
+
+		@Field("item_tax")
+		private List<OrderItemTax> orderItemTax;
+
+		@Field("order_addon_items")
+		private List<OrderAddonItem> orderAddonItems;
+
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class OrderTax {
+
+		private String id;
+
+		private String title;
+
+		private String type;
+
+		private double price;
+
+		private double tax;
+
+		@Field("restaurant_liable_amt")
+		private double restaurantLiableAmt;
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class OrderAddonItem {
+
+		@Field("addon_item_id")
+		private String addonItemId;
+
+		@Field("addon_item_name")
+		private String addonItemName;
+
+		@Field("addon_group_name")
+		private String addonGroupName;
+
+		private double price;
+
+		@Field("addon_group_id")
+		private String addonGroupId;
+
+		private int quantity;
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class OrderDiscount {
+
+		private String id;
+		
+		private String title;
+
+		private String type;
+
+		private String price;
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class OrderItemTax {
+		private String id;
+		private String name;
+		private double amount;
+	}
 
 }
-

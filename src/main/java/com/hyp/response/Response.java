@@ -4,9 +4,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
+@ToString
 @AllArgsConstructor
 @NoArgsConstructor
 public class Response {
@@ -15,6 +17,8 @@ public class Response {
     private String message;
     private String status;
     private String store_status;
+    private String error;
+    
 
     public static class Builder {
         private Integer code;
@@ -22,6 +26,8 @@ public class Response {
         private String message;
         private String status;
         private String store_status;
+        private String error;
+
 
         public Builder code(Integer code) {
             this.code = code;
@@ -48,6 +54,11 @@ public class Response {
             return this;
         }
 
+        public Builder error(String error) {
+            this.error = error;
+            return this;
+        }
+
         public Response build() {
             Response response = new Response();
             response.code = this.code;
@@ -55,6 +66,7 @@ public class Response {
             response.message = this.message;
             response.status = this.status;
             response.store_status = this.store_status;
+            response.error = this.error;
             return response;
         }
     }

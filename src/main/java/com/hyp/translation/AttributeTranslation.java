@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.hyp.dto.AttributeDto;
 import com.hyp.entity.Attribute;
 import com.hyp.service.TranslationService;
-import com.hyp.util.Utils;
+import com.hyp.util.CommonUtils;
 
 @Service
 public class AttributeTranslation implements TranslationService<AttributeDto, Attribute> {
@@ -16,7 +16,7 @@ public class AttributeTranslation implements TranslationService<AttributeDto, At
 	@Override
 	public Attribute getEntity(AttributeDto dto) {
 		Attribute entity = new Attribute();
-		entity.setId(Utils.genId());
+		entity.setId(CommonUtils.genId());
 		entity.setAttribute(dto.getAttribute());
 		entity.setActive(dto.getActive());
 		return entity;

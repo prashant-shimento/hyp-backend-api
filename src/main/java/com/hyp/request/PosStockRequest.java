@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class StockRequest {
+public class PosStockRequest {
 
 	private String restID;
     private boolean inStock;

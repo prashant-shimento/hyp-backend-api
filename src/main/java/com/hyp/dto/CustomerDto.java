@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CustomerDto {
+public class CustomerDto extends BaseDto{
 	private String name;
 	private String mobile;
 	private String email;

@@ -5,7 +5,8 @@ import org.springframework.stereotype.Repository;
 
 import com.hyp.entity.Restaurant;
 
-@Repository
 public interface RestaurantRepository extends MongoRepository<Restaurant, String> {
+
+	Restaurant findByMenuSharingCode(String menusharingcode);
 
 }

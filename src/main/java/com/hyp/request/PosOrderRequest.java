@@ -9,15 +9,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class PosOrderRequest {
-	@JsonProperty("app_key")
-	private String appKey;
-
-	@JsonProperty("app_secret")
-	private String appSecret;
-
-	@JsonProperty("access_token")
-	private String accessToken;
+public class PosOrderRequest extends PosBaseRequest {
 
 	@JsonProperty("orderinfo")
 	private OrderInfo orderInfo;

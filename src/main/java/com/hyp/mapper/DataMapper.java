@@ -16,7 +16,7 @@ public class DataMapper {
 	public void setModelMapper(ModelMapper modelMapper) {
 		this.modelMapper = modelMapper;
 	}
-
+	
 	public OrderDto toOrderDto(Order order) {
 		return modelMapper.map(order, OrderDto.class);
 	}

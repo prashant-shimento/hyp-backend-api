@@ -35,7 +35,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class RestaurantRequest {
+	public static class RestaurantRequest {
 		private String restaurantid;
 		private String active;
 		private RestaurantDetails details;
@@ -45,7 +45,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class RestaurantDetails {
+	public static class RestaurantDetails {
 		private String menusharingcode;
 		private String currency_html;
 		private String country;
@@ -83,7 +83,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class OrderTypeRequest {
+	public static class OrderTypeRequest {
 		private int ordertypeid;
 		private String ordertype;
 
@@ -93,7 +93,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class CategoryRequest {
+	public static class CategoryRequest {
 		private String categoryid;
 		private String active;
 		private String categoryrank;
@@ -108,7 +108,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class ParentCategoryRequest {
+	public static class ParentCategoryRequest {
 		private String id;
 		private String name;
 		private String rank;
@@ -122,7 +122,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class ItemRequest {
+	public static class ItemRequest {
 		private String itemid;
 		private String itemallowvariation;
 		private String itemrank;
@@ -156,7 +156,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class VariationRequest {
+	public static class VariationRequest {
 		private String id;
 		private String name;
 		private String variationid;
@@ -175,7 +175,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class AddonGroupRequest {
+	public static class AddonGroupRequest {
 		private String addongroupid;
 		private String addongroup_rank;
 		private String active;
@@ -191,7 +191,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class AddonItemRequest {
+	public static class AddonItemRequest {
 		private String addonitemid;
 		private String addonitem_name;
 		private String addonitem_price;
@@ -205,7 +205,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class AttributeRequest {
+	public static class AttributeRequest {
 		private String attributeid;
 		private String attribute;
 		private String active;
@@ -216,7 +216,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class DiscountRequest {
+	public static class DiscountRequest {
 		private String discountid;
 		private String discountname;
 		private String discounttype;
@@ -254,7 +254,7 @@ public class PosDataRequest {
 	@Setter
 	@AllArgsConstructor
 	@ToString
-	public class TaxRequest {
+	public static class TaxRequest {
 		private String taxid;
 		private String taxname;
 		private String tax;

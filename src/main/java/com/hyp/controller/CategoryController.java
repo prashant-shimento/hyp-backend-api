@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.CategoryDto;
 import com.hyp.entity.Category;
-import com.hyp.service.CategoryTranslation;
+import com.hyp.translation.CategoryTranslation;
 
 @RestController
 @RequestMapping("/api/category")

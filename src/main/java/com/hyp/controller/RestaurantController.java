@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.RestaurantDto;
 import com.hyp.entity.Restaurant;
-import com.hyp.service.RestaurantTranslation;
+import com.hyp.translation.RestaurantTranslation;
 
 @RestController
 @RequestMapping("/api/restaurant")

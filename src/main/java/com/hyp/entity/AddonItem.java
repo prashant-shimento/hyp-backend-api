@@ -1,5 +1,7 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -38,5 +40,8 @@ public class AddonItem extends BaseEntity{
     
     @Field("addon_item_selection_max")
     private String addonItemSelectionMax;
+    
+    @Field("auto_turn_on_time")
+    private LocalDateTime autoTurnOnTime;
 }
 

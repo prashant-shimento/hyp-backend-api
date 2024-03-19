@@ -1,4 +1,4 @@
-package com.hyp.service;
+package com.hyp.translation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.hyp.dto.CategoryDto;
 import com.hyp.entity.Category;
+import com.hyp.service.TranslationService;
 
 @Service
 public class CategoryTranslation implements TranslationService<CategoryDto, Category> {

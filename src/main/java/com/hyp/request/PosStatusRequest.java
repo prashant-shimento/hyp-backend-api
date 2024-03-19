@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-public class StatusRequest {
+public class PosStatusRequest {
 
 	private String restID;
     private String status;

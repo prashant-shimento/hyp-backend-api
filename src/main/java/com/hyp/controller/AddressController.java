@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.AddressDto;
 import com.hyp.entity.Address;
-import com.hyp.service.AddressTranslation;
+import com.hyp.translation.AddressTranslation;
 
 @RestController
 @RequestMapping("/api/address")
