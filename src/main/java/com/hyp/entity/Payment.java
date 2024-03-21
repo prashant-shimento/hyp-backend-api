@@ -17,13 +17,30 @@ import lombok.ToString;
 @Document(collection = "payments")
 public class Payment extends BaseEntity {
 
+	private static final long serialVersionUID = 1L;
+
 	@Field("order_id")
     private String orderId;
 
     @Field("payment_order_id")
     private String paymentOrderId;
+    
+    @Field("payment_id")
+    private String paymentId;
 
-    private String active;
+    private String provider;
 
-    private String attributes;
+    private String status;
+    
+    private double amount;
+    
+    private String receipt;
+    
+    private String currency;
+    
+    private String signature;
+    
+    
+    
+    	
 }

@@ -51,18 +51,21 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@PostMapping()
 	public ResponseEntity<ResponseTemplate> create(@RequestBody OrderDto orderDto) {
+		ResponseTemplate response;
 		try {
 			Order createdOrder = orderService.create(orderDto);
 			OrderDto createdOrderDto = dataMapper.toOrderDto(createdOrder);
+			
 			PosOrderRequest posOrderRequest = PosOrderRequestTranslation.getPosOrderRequest(
 					restaurantService.findById(orderDto.getRestaurantId()), createdOrder,
 					customerService.findById(orderDto.getCustomerId()));
+			
 			posOrderService.createOrder(posOrderRequest);
-			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(createdOrderDto), false,
+			response = new ResponseTemplate(Collections.singletonList(createdOrderDto), false,
 					"Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			ResponseTemplate response = new ResponseTemplate(null, true, e.getMessage());
+			response = new ResponseTemplate(null, true, e.getMessage());
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
@@ -88,17 +91,18 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@PostMapping("/rider/{orderId}")
 	public ResponseEntity<ResponseTemplate> orderRiderUpdate(@PathVariable("orderId") String orderId) {
+		ResponseTemplate response;
 		try {
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
 					.getPosRiderStatusUpdateRequest(restaurant, order, RiderStatusType.rider_assigned);
 			String posResponse = posOrderService.updateRiderStatus(posRiderUpdateRequest);
-			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(posResponse), false,
+			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
 					"Rider Status Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			ResponseTemplate response = new ResponseTemplate(null, true, e.getMessage());
+			response = new ResponseTemplate(null, true, e.getMessage());
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
@@ -106,17 +110,18 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@PostMapping("/cancel/{orderId}")
 	public ResponseEntity<ResponseTemplate> orderCancel(@PathVariable("orderId") String orderId) {
+		ResponseTemplate response;
 		try {
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderUpdateRequest posOrderUpdateRequest = PosOrderRequestTranslation
 					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
 			String posResponse = posOrderService.updateOrder(posOrderUpdateRequest);
-			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(posResponse), false,
+			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
 					"Order Cancelled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			ResponseTemplate response = new ResponseTemplate(null, true, e.getMessage());
+			response = new ResponseTemplate(null, true, e.getMessage());
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
