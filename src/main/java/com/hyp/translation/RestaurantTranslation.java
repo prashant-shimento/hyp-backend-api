@@ -26,7 +26,6 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 		restaurant.setActive(restaurantDto.isActive());
 		RestaurantTax tax = new RestaurantTax();
 		List<DeliveryHours> deliveryHours = new ArrayList<>();
-		DeliveryHours hrs = new DeliveryHours();
 		Location location = new Location();
 		restaurant.setMenuSharingCode(restaurantDto.getMenuSharingCode());
 		restaurant.setCurrencyHtml(restaurantDto.getCurrencyHtml());
@@ -50,15 +49,21 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 		String deliveryHoursTo1 = restaurantDto.getDeliveryHoursTo1();
 		String deliveryHoursFrom2 = restaurantDto.getDeliveryHoursFrom2();
 		String deliveryHoursTo2 = restaurantDto.getDeliveryHoursTo2();
-		LocalTime fromTime = LocalTime.parse(deliveryHoursFrom1);
-		LocalTime parse = LocalTime.parse(deliveryHoursTo1);
-		LocalTime parse2 = LocalTime.parse(deliveryHoursFrom2);
-		LocalTime parse3 = LocalTime.parse(deliveryHoursTo2);
-		hrs.setFrom(fromTime);
-		hrs.setFrom(parse2);
-		hrs.setTo(parse);
-		hrs.setFrom(parse3);
-		deliveryHours.add(hrs);
+
+		LocalTime fromTime1 = LocalTime.parse(deliveryHoursFrom1);
+		LocalTime toTime1 = LocalTime.parse(deliveryHoursTo1);
+		LocalTime fromTime2 = LocalTime.parse(deliveryHoursFrom2);
+		LocalTime toTime2 = LocalTime.parse(deliveryHoursTo2);
+
+		DeliveryHours hrs1 = new DeliveryHours();
+		hrs1.setFrom(fromTime1);
+		hrs1.setTo(toTime1);
+		DeliveryHours hrs2 = new DeliveryHours();
+		hrs2.setFrom(fromTime2);
+		hrs2.setTo(toTime2);
+
+		deliveryHours.add(hrs1);
+		deliveryHours.add(hrs2);
 
 		restaurant.setDeliveryHours(deliveryHours);
 
@@ -102,11 +107,15 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 		r_dto.setMinimumDeliveryTime(entity.getMinimumDeliveryTime());
 
 		List<DeliveryHours> deliveryHours2 = entity.getDeliveryHours();
-		for (DeliveryHours d_hours : deliveryHours2) {
-			r_dto.setDeliveryHoursFrom1((d_hours.getFrom().toString()));
-			r_dto.setDeliveryHoursTo1(d_hours.getTo().toString());
-			r_dto.setDeliveryHoursFrom2(d_hours.getFrom().toString());
-			r_dto.setDeliveryHoursTo2(d_hours.getTo().toString());
+		for (int i = 0; i < deliveryHours2.size(); i++) {
+			DeliveryHours d_hours = deliveryHours2.get(i);
+			if (i == 0) {
+				r_dto.setDeliveryHoursFrom1(d_hours.getFrom().toString());
+				r_dto.setDeliveryHoursTo1(d_hours.getTo().toString());
+			} else if (i == 1) {
+				r_dto.setDeliveryHoursFrom2(d_hours.getFrom().toString());
+				r_dto.setDeliveryHoursTo2(d_hours.getTo().toString());
+			}
 		}
 
 		r_dto.setCalculateTaxOnPacking(entity.getCalculateTaxOnPacking());
@@ -118,15 +127,74 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 
 	@Override
 	public List<RestaurantDto> getDtoList(List<Restaurant> entities) {
-		List<RestaurantDto> dtoList = new ArrayList<>();
+//		List<RestaurantDto> dtoList = new ArrayList<>();
+//
+//		for (Restaurant entity : entities) {
+//			
+//			RestaurantDto dto = getDto(entity);
+//            
+//			dtoList.add(dto);
+//		}
+//
+//		return dtoList;
+
+		List<RestaurantDto> dtos = new ArrayList<>();
 
 		for (Restaurant entity : entities) {
-			RestaurantDto dto = getDto(entity);
+			RestaurantDto dto = new RestaurantDto();
+			dto.setRestaurantId(entity.getId()); // Assuming you have a getId() method in BaseEntity
+			dto.setActive(entity.isActive());
+			dto.setMenuSharingCode(entity.getMenuSharingCode());
+			dto.setCurrencyHtml(entity.getCurrencyHtml());
+			dto.setCountry(entity.getCountry());
+			dto.setImages(entity.getImages());
+			dto.setRestaurantName(entity.getRestaurantName());
+			dto.setAddress(entity.getAddress());
+			dto.setContact(entity.getContact());
 
-			dtoList.add(dto);
+			if (entity.getLocation() != null) {
+				dto.setLatitude(entity.getLocation().getLatitude());
+				dto.setLongitude(entity.getLocation().getLongitude());
+			}
+
+			dto.setLandmark(entity.getLandmark());
+			dto.setCity3(entity.getCity());
+			dto.setState(entity.getState());
+			dto.setMinimumOrderAmount(entity.getMinimumOrderAmount());
+			dto.setMinimumDeliveryTime(entity.getMinimumDeliveryTime());
+			dto.setDeliveryCharge(entity.getDeliveryCharge());
+
+			if (entity.getDeliveryHours() != null && entity.getDeliveryHours().size() >= 2) {
+				Restaurant.DeliveryHours deliveryHours1 = entity.getDeliveryHours().get(0);
+				Restaurant.DeliveryHours deliveryHours2 = entity.getDeliveryHours().get(1);
+
+				if (deliveryHours1 != null) {
+					dto.setDeliveryHoursFrom1(deliveryHours1.getFrom().toString());
+					dto.setDeliveryHoursTo1(deliveryHours1.getTo().toString());
+				}
+				if (deliveryHours2 != null) {
+					dto.setDeliveryHoursFrom2(deliveryHours2.getFrom().toString());
+					dto.setDeliveryHoursTo2(deliveryHours2.getTo().toString());
+				}
+			}
+
+			// Set tax details
+			if (entity.getTax() != null) {
+				dto.setScApplicableOn(entity.getTax().getDcTaxesId());
+				dto.setScType(entity.getTax().getPcTaxesId());
+			}
+
+			dto.setCalculateTaxOnPacking(entity.getCalculateTaxOnPacking());
+			dto.setPcTaxesId(entity.getTax().getPcTaxesId());
+			dto.setDcTaxesId(entity.getTax().getDcTaxesId());
+			dto.setPackagingApplicableOn(entity.getPackagingApplicableOn());
+			dto.setPackagingCharge(entity.getPackagingCharge());
+			dto.setPackagingChargeType(entity.getPackagingChargeType());
+
+			dtos.add(dto);
 		}
 
-		return dtoList;
+		return dtos;
 	}
 
 	@Override

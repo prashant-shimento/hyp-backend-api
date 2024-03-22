@@ -21,16 +21,19 @@ import com.hyp.service.PosDataService;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.StockService;
 
+import io.swagger.v3.oas.annotations.Hidden;
+
+@Hidden
 @RestController
 @RequestMapping("/api/pos")
 public class PosDataController {
 
 	@Autowired
 	PosDataService posDataService;
-	
+
 	@Autowired
 	RestaurantService restaurantService;
-	
+
 	@Autowired
 	StockService stockService;
 
@@ -45,7 +48,7 @@ public class PosDataController {
 				.status(result ? "success" : "failed").build();
 		return ResponseEntity.ok(response);
 	}
-	
+
 	@PostMapping("/status/get")
 	public ResponseEntity<Response> getStatus(@RequestBody PosStatusRequest getStatus) {
 		JSONObject jb = new JSONObject(getStatus);
@@ -55,7 +58,7 @@ public class PosDataController {
 				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
 				.message(restaurant != null ? "Store Delivery Status fetched successfully" : "Restaurant Not Found")
 				.status(restaurant != null ? "success" : "failed")
-				.storeStatus(restaurant != null && restaurant.isActive()? "1" : "0").build();
+				.storeStatus(restaurant != null && restaurant.isActive() ? "1" : "0").build();
 		return ResponseEntity.ok(response);
 	}
 
@@ -72,8 +75,9 @@ public class PosDataController {
 		}
 
 		restaurant.setActive(updateStatus.getStore_status().equalsIgnoreCase("1") ? true : false);
-		if(!restaurant.isActive()) {
-			restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurn_on_time(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+		if (!restaurant.isActive()) {
+			restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurn_on_time(),
+					DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		}
 		restaurant.setStatusReason(updateStatus.getReason());
 		restaurantService.update(restaurant);
@@ -83,7 +87,7 @@ public class PosDataController {
 		updateStatus.setStatus("success");
 		return new ResponseEntity<Response>(response, HttpStatus.OK);
 	}
-	
+
 	@PostMapping("/stock")
 	public ResponseEntity<Response> updateStock(@RequestBody PosStockRequest stockRequest) {
 		JSONObject jb = new JSONObject(stockRequest);
