@@ -11,4 +11,8 @@ public class CustomerService extends BaseServiceImpl<Customer, String> {
 
 	@Autowired
 	public CustomerRepository customerRepository;
+
+	public Customer findByMobile(String mobile) {
+		return customerRepository.findByMobile(mobile);
+	}
 }

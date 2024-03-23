@@ -43,11 +43,6 @@
 			<version>20201115</version>
 		</dependency>
 		<dependency>
-			<groupId>org.modelmapper</groupId>
-			<artifactId>modelmapper</artifactId>
-			<version>3.2.0</version>
-		</dependency>
-		<dependency>
 			<groupId>com.aventrix.jnanoid</groupId>
 			<artifactId>jnanoid</artifactId>
 			<version>2.0.0</version>
@@ -57,7 +52,6 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.modelmapper/modelmapper -->
 		<dependency>
 			<groupId>org.modelmapper</groupId>
 			<artifactId>modelmapper</artifactId>
@@ -68,14 +62,18 @@
 			<artifactId>razorpay-java</artifactId>
 			<version>1.4.4</version>
 		</dependency>
-		<!--
-		https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-ui -->
+		<!--https://mvnrepository.com/artifact/org.springdoc/springdoc-openapi-ui -->
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-ui</artifactId>
 			<version>1.8.0</version>
 		</dependency>
-
+		<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+		<dependency>
+    		<groupId>com.google.guava</groupId>
+    		<artifactId>guava</artifactId>
+    		<version>33.1.0-jre</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>

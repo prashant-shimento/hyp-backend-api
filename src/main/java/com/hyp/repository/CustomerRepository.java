@@ -6,4 +6,5 @@ import com.hyp.entity.Customer;
 
 public interface CustomerRepository extends MongoRepository<Customer, String> {
 
+	Customer findByMobile(String mobile);
 }

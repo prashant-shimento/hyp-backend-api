@@ -17,19 +17,18 @@ import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
 import com.hyp.response.Response;
-import com.hyp.service.PosDataService;
+import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.StockService;
-
 import io.swagger.v3.oas.annotations.Hidden;
 
 @Hidden
 @RestController
 @RequestMapping("/api/pos")
-public class PosDataController {
+public class PosController {
 
 	@Autowired
-	PosDataService posDataService;
+	PosService posDataService;
 
 	@Autowired
 	RestaurantService restaurantService;

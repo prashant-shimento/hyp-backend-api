@@ -26,7 +26,7 @@ import com.hyp.response.Response;
 import com.hyp.response.ResponseTemplate;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OrderService;
-import com.hyp.service.PosOrderService;
+import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.PosOrderRequestTranslation;
 
@@ -47,7 +47,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 	CustomerService customerService;
 
 	@Autowired
-	PosOrderService posOrderService;
+	PosService posService;
 
 	@PostMapping()
 	public ResponseEntity<ResponseTemplate> create(@RequestBody OrderDto orderDto) {
@@ -60,7 +60,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 					restaurantService.findById(orderDto.getRestaurantId()), createdOrder,
 					customerService.findById(orderDto.getCustomerId()));
 			
-			posOrderService.createOrder(posOrderRequest);
+			posService.createOrder(posOrderRequest);
 			response = new ResponseTemplate(Collections.singletonList(createdOrderDto), false,
 					"Order Created");
 			return ResponseEntity.ok(response);
@@ -97,7 +97,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
 					.getPosRiderStatusUpdateRequest(restaurant, order, RiderStatusType.rider_assigned);
-			String posResponse = posOrderService.updateRiderStatus(posRiderUpdateRequest);
+			String posResponse = posService.updateRiderStatus(posRiderUpdateRequest);
 			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
 					"Rider Status Updated");
 			return ResponseEntity.ok(response);
@@ -116,7 +116,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderUpdateRequest posOrderUpdateRequest = PosOrderRequestTranslation
 					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
-			String posResponse = posOrderService.updateOrder(posOrderUpdateRequest);
+			String posResponse = posService.updateOrder(posOrderUpdateRequest);
 			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
 					"Order Cancelled");
 			return ResponseEntity.ok(response);
