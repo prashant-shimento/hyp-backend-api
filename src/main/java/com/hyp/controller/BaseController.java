@@ -3,6 +3,8 @@ package com.hyp.controller;
 import java.util.Collections;
 import java.util.List;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +53,7 @@ public abstract class BaseController<DTO, T, ID> {
 	}
 
 	@PostMapping
-	public ResponseEntity<ResponseTemplate> create(@RequestBody DTO dto) {
+	public ResponseEntity<ResponseTemplate> create(@RequestBody  @Valid DTO dto) {
 		try {
 			T entity = translationService.getEntity(dto);
 			T savedEntity = service.save(entity);
