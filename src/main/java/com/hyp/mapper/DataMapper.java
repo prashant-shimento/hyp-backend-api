@@ -12,16 +12,22 @@ public class DataMapper {
 
 	@Autowired
 	ModelMapper modelMapper;
-	
+
 	public void setModelMapper(ModelMapper modelMapper) {
 		this.modelMapper = modelMapper;
 	}
-	
+
 	public OrderDto toOrderDto(Order order) {
+		OrderDto dto = new OrderDto();
+		dto.setDescription(order.getDescription());
 		return modelMapper.map(order, OrderDto.class);
 	}
 
 	public Order toOrderEntity(OrderDto orderDto) {
+		Order order = new Order();
+		order.setDescription(orderDto.getDescription());
 		return modelMapper.map(orderDto, Order.class);
 	}
+	
+	
 }

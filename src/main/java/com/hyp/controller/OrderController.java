@@ -2,6 +2,8 @@ package com.hyp.controller;
 
 import java.util.Collections;
 
+import javax.validation.Valid;
+
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -50,19 +52,18 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 	PosService posService;
 
 	@PostMapping()
-	public ResponseEntity<ResponseTemplate> create(@RequestBody OrderDto orderDto) {
+	public ResponseEntity<ResponseTemplate> create(@RequestBody @Valid OrderDto orderDto) {
 		ResponseTemplate response;
 		try {
 			Order createdOrder = orderService.create(orderDto);
 			OrderDto createdOrderDto = dataMapper.toOrderDto(createdOrder);
-			
+
 			PosOrderRequest posOrderRequest = PosOrderRequestTranslation.getPosOrderRequest(
 					restaurantService.findById(orderDto.getRestaurantId()), createdOrder,
 					customerService.findById(orderDto.getCustomerId()));
-			
+
 			posService.createOrder(posOrderRequest);
-			response = new ResponseTemplate(Collections.singletonList(createdOrderDto), false,
-					"Order Created");
+			response = new ResponseTemplate(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new ResponseTemplate(null, true, e.getMessage());
@@ -78,8 +79,8 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		Response response = null;
 		try {
 			orderService.processCallback(posCallbackRequest);
-			response = new Response.Builder().httpCode(HttpStatus.OK.value())
-					.message("Order Updated Successfully").error(null).build();
+			response = new Response.Builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
+					.error(null).build();
 			return new ResponseEntity<Response>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -98,8 +99,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
 					.getPosRiderStatusUpdateRequest(restaurant, order, RiderStatusType.rider_assigned);
 			String posResponse = posService.updateRiderStatus(posRiderUpdateRequest);
-			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
-					"Rider Status Updated");
+			response = new ResponseTemplate(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new ResponseTemplate(null, true, e.getMessage());
@@ -117,8 +117,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			PosOrderUpdateRequest posOrderUpdateRequest = PosOrderRequestTranslation
 					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
 			String posResponse = posService.updateOrder(posOrderUpdateRequest);
-			response = new ResponseTemplate(Collections.singletonList(posResponse), false,
-					"Order Cancelled");
+			response = new ResponseTemplate(Collections.singletonList(posResponse), false, "Order Cancelled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new ResponseTemplate(null, true, e.getMessage());

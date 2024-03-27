@@ -2,7 +2,12 @@ package com.hyp.dto;
 
 import java.util.List;
 
-import org.springframework.data.mongodb.core.mapping.Field;
+import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
+import javax.validation.constraints.Size;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,80 +23,124 @@ import lombok.ToString;
 @NoArgsConstructor
 public class OrderDto extends BaseDto {
 
+	@NotBlank(message = "Customer ID cannot be blank")
 	private String customerId;
+	@NotBlank(message = "Order type cannot be blank")
 	private String orderType;
+	@NotBlank(message = "Payment type cannot be blank")
 	private String paymentType;
 	private String description;
+	@Valid
+	@Size(min = 1, message = "At least one order item must be present")
 	private List<OrderItem> orderItems;
+
+	@Valid
 	private List<OrderTax> orderTax;
+
+	@NotBlank(message = "Delivery address cannot be blank")
 	private String deliveryAddress;
+	@NotBlank(message = "Special instructions cannot be blank")
 	private String specialInstructions;
+	@NotBlank(message = "Order time cannot be blank")
 	private String orderTime;
 	private String expectedDeliveryTime;
+	@NotBlank(message = "Order status cannot be blank")
 	private String status;
+	@Positive(message = "Total amount must be positive")
 	private double totalAmount;
+	@PositiveOrZero(message = "Discount amount must be non-negative")
 	private double discountAmount;
+	@PositiveOrZero(message = "Tax amount must be positive")
 	private double taxAmount;
+	@Positive(message = "Delivery charge must be positive")
 	private double deliveryCharge;
+	@PositiveOrZero(message = "Delivery charge tax amount must be positive")
 	private double dcTaxAmount;
+	@Positive(message = "Packaging charge must be positive")
 	private double packagingCharge;
+	@PositiveOrZero(message = "Packaging charge tax amount must be positive")
 	private double pcTaxAmount;
+	@Positive(message = "Service charge must be positive")
 	private double serviceCharge;
+	@PositiveOrZero(message = "Service charge tax amount must be positive")
 	private double scTaxAmount;
-	private OrderDiscount orderDiscount;
+	@Valid
+	private List<OrderDiscount> orderDiscount;
 
 	@Data
 	@NoArgsConstructor
 	public static class OrderItem {
+		@NotBlank(message = "OrderItem ID cannot be blank")
 		private String id;
+		@NotBlank(message = "OrderItem name cannot be blank")
 		private String name;
 		private String description;
+		@PositiveOrZero(message = "OrderItem discount must be positive")
 		private double itemDiscount;
+		@Positive(message = "OrderItem Final price must be positive")
 		private double finalPrice;
+		@Positive(message = "OrderItem Quantity must be positive")
 		private int quantity;
+		@NotNull(message = "OrderItem Price must be specified")
+		@Positive(message = "OrderItem Price must be positive")
 		private double price;
 		private String variationName;
 		private String variationId;
-		private List<OrderItemTax> orderItemTax;	
+		private List<OrderItemTax> orderItemTax;
 		private List<OrderAddonItem> orderAddonItems;
 	}
 
 	@Data
 	@NoArgsConstructor
 	public static class OrderAddonItem {
+		@NotBlank(message = "OrderAddonItem item ID cannot be blank")
 		private String addonItemId;
+		@NotBlank(message = "OrderAddonItem item name cannot be blank")
 		private String addonItemName;
 		private String addonGroupName;
 		private String addonGroupId;
+		@PositiveOrZero(message = " OrderAddonItem Quantity must be positive")
 		private int quantity;
+		@Positive(message = "OrderAddonItem price must be positive")
 		private double price;
-		
+
 	}
-	
+
 	@Data
 	@NoArgsConstructor
 	public static class OrderTax {
+
+		@NotNull(message = "OrderTax id title cannot be blank")
 		private String id;
+		@NotNull(message = "OrderTax title cannot be blank")
 		private String title;
-	    private String type;
-	    private double price;
-	    private double tax;
+		private String type;
+		@Positive(message = "OrderTax price must be positive")
+		private double price;
+		@PositiveOrZero(message = "OrderTax amount must be positive")
+		private double tax;
 	}
-	
+
 	@Data
 	@NoArgsConstructor
 	public static class OrderDiscount {
+		@NotBlank(message = "OrderDiscount id cannot be blank")
 		private String id;
+		@NotBlank(message = "OrderDiscount title cannot be blank")
 		private String title;
-	    private String type;
-	    private double price;
+		private String type;
+		@Positive(message = "OrderDiscount price must be positive")
+		private double price;
 	}
-	
+
 	@Data
 	@NoArgsConstructor
 	public static class OrderItemTax {
+		@NotBlank(message = "OrderItemTax ID cannot be blank")
 		private String id;
+		@NotBlank(message = "OrderItemTax name cannot be blank")
 		private String name;
-	    private double amount;
+		@PositiveOrZero(message = "OrderItemTax amount must be positive")
+		private double amount;
 	}
 }

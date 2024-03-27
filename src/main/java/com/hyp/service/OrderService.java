@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hyp.dto.BaseDto;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
@@ -58,11 +59,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		if (!customerService.isExistsById(orderDto.getCustomerId())) {
 			throw new Exception("Restaurant not found " + orderDto.getCustomerId());
 		}
+		
 		if (orderDto.getOrderDiscount() != null) {
-			if (!discountService.isExistsById(orderDto.getOrderDiscount().getId())) {
-				throw new Exception("Discount not found " + orderDto.getOrderDiscount().getId());
+			for (OrderDto.OrderDiscount discount : orderDto.getOrderDiscount()) {
+				if (!discountService.isExistsById(discount.getId())) {
+					throw new Exception("Discount not found " + discount.getId());
+				}
 			}
 		}
+
 		if (orderDto.getOrderTax() != null) {
 			for (OrderTax ordertax : orderDto.getOrderTax()) {
 				if (!taxService.isExistsById(ordertax.getId())) {
