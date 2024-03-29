@@ -44,7 +44,6 @@ public class OrderDto extends BaseDto {
 	@NotBlank(message = "Order time cannot be blank")
 	private String orderTime;
 	private String expectedDeliveryTime;
-	@NotBlank(message = "Order status cannot be blank")
 	private String status;
 	@Positive(message = "Total amount must be positive")
 	private double totalAmount;
@@ -52,20 +51,21 @@ public class OrderDto extends BaseDto {
 	private double discountAmount;
 	@PositiveOrZero(message = "Tax amount must be positive")
 	private double taxAmount;
-	@Positive(message = "Delivery charge must be positive")
+	@PositiveOrZero(message = "Delivery charge must be positive")
 	private double deliveryCharge;
 	@PositiveOrZero(message = "Delivery charge tax amount must be positive")
 	private double dcTaxAmount;
-	@Positive(message = "Packaging charge must be positive")
+	@PositiveOrZero(message = "Packaging charge must be positive")
 	private double packagingCharge;
 	@PositiveOrZero(message = "Packaging charge tax amount must be positive")
 	private double pcTaxAmount;
-	@Positive(message = "Service charge must be positive")
+	@PositiveOrZero(message = "Service charge must be positive")
 	private double serviceCharge;
 	@PositiveOrZero(message = "Service charge tax amount must be positive")
 	private double scTaxAmount;
 	@Valid
 	private List<OrderDiscount> orderDiscount;
+	private String discountType;
 
 	@Data
 	@NoArgsConstructor

@@ -2,6 +2,7 @@ package com.hyp.request;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
@@ -30,6 +31,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class OrderInfoDetails {
 		@JsonProperty("Restaurant")
 		private RestaurantOrderRequest restaurant;
@@ -69,6 +71,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class CustomerDetails {
 		private String email;
 		private String name;
@@ -79,6 +82,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class OrderRequest {
 		@JsonProperty("details")
 		private OrderDetails orderDetails;
@@ -87,6 +91,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class OrderDetails {
 		@JsonProperty("orderID")
 		private String orderId;
@@ -103,12 +108,14 @@ public class PosOrderRequest extends PosBaseRequest {
 		@JsonProperty("dc_tax_amount")
 		private String dcTaxAmount;
 		@JsonProperty("dc_gst_details")
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<GstDetails> dcGstDetails;
 		@JsonProperty("packing_charges")
 		private String packingCharges;
 		@JsonProperty("pc_tax_amount")
 		private String pcTaxAmount;
 		@JsonProperty("pc_gst_details")
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<GstDetails> pcGstDetails;
 		@JsonProperty("order_type")
 		private String orderType;
@@ -146,27 +153,34 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class OrderItemRequest {
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<OrderItemDetails> details;
 
 	}
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class TaxOrderRequest {
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<TaxDetails> details;
 
 	}
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class DiscountOrderRequest {
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<DiscountDetails> details;
 
 	}
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class RestaurantDetails {
 		@JsonProperty("res_name")
 		private String resName;
@@ -182,6 +196,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class OrderItemDetails {
 
 		private String id;
@@ -211,6 +226,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class TaxDetails {
 		private String id;
 		private String price;
@@ -223,6 +239,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class DiscountDetails {
 		private String id;
 		private String price;
@@ -232,12 +249,15 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class AddonItemOrderRequest {
+		@JsonInclude(JsonInclude.Include.NON_EMPTY)
 		private List<AddonItemDetails> details;
 	}
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class AddonItemDetails {
 		private String id;
 		private String name;
@@ -251,6 +271,7 @@ public class PosOrderRequest extends PosBaseRequest {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public static class GstDetails {
 		@JsonProperty("gst_liable")
 		private String gstLiable;

@@ -16,6 +16,7 @@ import com.hyp.dto.OrderDto.OrderTax;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.OrderType;
 import com.hyp.mapper.DataMapper;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
@@ -51,6 +52,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	DataMapper dataMapper;
+	
+	@Autowired
+	SequenceService sequenceService;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -95,7 +99,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 
 		Order order = dataMapper.toOrderEntity(orderDto);
-		order.setId(CommonUtils.genId());
+		order.setId(sequenceService.generateSequence(Order.SEQUENCE_NAME));
 		order.setStatus(OrderStatusType.CREATED);
 		order.setCreatedAt(LocalDateTime.now());
 		return this.save(order);

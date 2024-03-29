@@ -1,13 +1,21 @@
 package com.hyp.translation;
 
+import com.hyp.constants.Constants;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Order.OrderAddonItem;
+import com.hyp.entity.Order.OrderDiscount;
 import com.hyp.entity.Order.OrderItem;
 import com.hyp.entity.Order.OrderItemTax;
+import com.hyp.entity.Order.OrderTax;
+import com.hyp.enums.DiscountType;
+import com.hyp.enums.OrderType;
+import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PosOrderStatusType;
 import com.hyp.enums.RiderStatusType;
+import com.hyp.enums.TaxType;
 import com.hyp.entity.Restaurant;
+import com.hyp.entity.Tax;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderRequest.CustomerOrderRequest;
 import com.hyp.request.PosOrderRequest.CustomerDetails;
@@ -22,6 +30,7 @@ import com.hyp.request.PosOrderRequest.TaxOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
+import com.hyp.util.CommonUtils;
 import com.hyp.request.PosOrderRequest.TaxDetails;
 import com.hyp.request.PosOrderRequest.OrderRequest;
 import com.hyp.request.PosOrderRequest.DiscountOrderRequest;
@@ -39,19 +48,20 @@ import org.springframework.beans.factory.annotation.Value;
 
 public class PosOrderRequestTranslation {
 
-	//@Value("${pos.petpooja.token}")
+	// @Value("${pos.petpooja.token}")
 	private static String accessToken = "1306d6f5f3332a3e3a35c77909f8cdf77831cef3";
 
-	//@Value("${pos.petpooja.secret}")
+	// @Value("${pos.petpooja.secret}")
 	private static String appSecret = "154e9636cfb4a98a00933f6aeffbbd92c814e482";
 
-	//@Value("${pos.petpooja.key}")
+	// @Value("${pos.petpooja.key}")
 	private static String appKey = "13yrzmb9pivxscoh25gdj0t7fk48uaqw";
 
-	//@Value("${myapp.domain}")
+	// @Value("${myapp.domain}")
 	private static String domain = "https://aardvark-notable-terminally.ngrok-free.app";
 
-	public static PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order,String cancelReason) {
+	public static PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order,
+			String cancelReason) {
 		PosOrderUpdateRequest posOrderUpdateRequest = new PosOrderUpdateRequest();
 		try {
 			posOrderUpdateRequest.setAccessToken(accessToken);
@@ -112,8 +122,8 @@ public class PosOrderRequestTranslation {
 		orderInfoDetails.setCustomer(getCustomerDetails(customer));
 		orderInfoDetails.setOrder(getOrderDetails(order));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
-		orderInfoDetails.setTax(getTax());
-		orderInfoDetails.setDiscount(getDiscount());
+		orderInfoDetails.setTax(getTax(order.getOrderTax()));
+		orderInfoDetails.setDiscount(getDiscount(order.getOrderDiscount()));
 		return orderInfoDetails;
 	}
 
@@ -123,7 +133,6 @@ public class PosOrderRequestTranslation {
 		customerDetails.setLatitude("34.11752681212772");
 		customerDetails.setLongitude("74.72949172653219");
 		customerDetails.setName(customer.getName());
-		;
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();
 		customerRequest.setCustomerDetails(customerDetails);
@@ -133,27 +142,29 @@ public class PosOrderRequestTranslation {
 	public static OrderRequest getOrderDetails(Order order) {
 		OrderDetails orderDetails = new OrderDetails();
 		orderDetails.setOrderId(order.getId());
-		orderDetails.setPreOrderDate(null);
-		orderDetails.setPreOrderTime(null);
-		orderDetails.setServiceCharge(String.valueOf(order.getServiceCharge()));
-		orderDetails.setScTaxAmount(String.valueOf(order.getScTaxAmount()));
-		orderDetails.setDeliveryCharges(String.valueOf(order.getDeliveryCharge()));
-		orderDetails.setDcTaxAmount(String.valueOf(order.getDcTaxAmount()));
-		orderDetails.setPackingCharges(String.valueOf(order.getPackagingCharge()));
-		orderDetails.setPcTaxAmount(String.valueOf(order.getPcTaxAmount()));
-		orderDetails.setOrderType(order.getOrderType());
+		orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
+		orderDetails.setPreOrderDate(CommonUtils.emptyIfNullOrZeroToString(null));
+		orderDetails.setPreOrderTime(CommonUtils.emptyIfNullOrZeroToString(null));
+		orderDetails.setServiceCharge(CommonUtils.emptyIfNullOrZeroToString(order.getServiceCharge()));
+		orderDetails.setScTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getScTaxAmount()));
+		orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(order.getDeliveryCharge()));
+		orderDetails.setDcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getDcTaxAmount()));
+		orderDetails.setPackingCharges(CommonUtils.emptyIfNullOrZeroToString(order.getPackagingCharge()));
+		orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
+		orderDetails.setOrderType(OrderType.fromCode(order.getOrderType()).toString());
 		orderDetails.setAdvancedOrder("N");
 		orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
-		orderDetails.setDiscountTotal(String.valueOf(order.getDiscountAmount()));
-		orderDetails.setTaxTotal(String.valueOf(order.getTaxAmount()));
-		orderDetails.setDiscountType(order.getDiscountType());
-		orderDetails.setTotal(String.valueOf(order.getTotalAmount()));
+		orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));
+		orderDetails.setTaxTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTaxAmount()));
+		orderDetails.setDiscountType(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountType()));
+		orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-		orderDetails.setEnableDelivery(1);
+		orderDetails.setEnableDelivery(Constants.VENDOR_HANDLE_DELIVERY);
 		orderDetails.setCallbackUrl(domain + "/api/order/callback");
-		orderDetails.setDcGstDetails(getGstDetails());
-		orderDetails.setPcGstDetails(getGstDetails());
+		orderDetails.setDcGstDetails(getGstDetails(null, null));
+		orderDetails.setPcGstDetails(getGstDetails(null, null));
+		orderDetails.setCollectCash(CommonUtils.emptyIfNullOrZeroToString(null));
 		OrderRequest orderRequest = new OrderRequest();
 		orderRequest.setOrderDetails(orderDetails);
 		return orderRequest;
@@ -171,8 +182,9 @@ public class PosOrderRequestTranslation {
 			orderItemDetails.setPrice(String.valueOf(orderItem.getPrice()));
 			orderItemDetails.setFinalPrice(String.valueOf(orderItem.getFinalPrice()));
 			orderItemDetails.setQuantity(String.valueOf(orderItem.getQuantity()));
-			orderItemDetails.setVariationName(orderItem.getVariationName());
-			orderItemDetails.setVariationId(orderItem.getVariationId());
+			orderItemDetails.setVariationName(CommonUtils.emptyIfNullOrZeroToString(orderItem.getVariationName()));
+			orderItemDetails.setVariationId(CommonUtils.emptyIfNullOrZeroToString(orderItem.getVariationId()));
+			orderItemDetails.setGstLiability(Constants.GST_VENDOR_LIABLE);
 			orderItemDetails.setAddonItems(getAddonItems(orderItem.getOrderAddonItems()));
 			orderItemDetails.setItemTax(getItemTax(orderItem.getOrderItemTax()));
 
@@ -195,48 +207,61 @@ public class PosOrderRequestTranslation {
 	}
 
 	public static AddonItemOrderRequest getAddonItems(List<OrderAddonItem> orderAddonItems) {
-		AddonItemOrderRequest addonItemOrderRequest = new AddonItemOrderRequest();
-		List<AddonItemDetails> addonItemDetailsList = new ArrayList<>();
-		for (OrderAddonItem orderAddonItem : orderAddonItems) {
-			AddonItemDetails addonItemDetails = new AddonItemDetails();
-			addonItemDetails.setId(orderAddonItem.getAddonItemId());
-			addonItemDetails.setName(orderAddonItem.getAddonItemName());
-			addonItemDetails.setGroupName(orderAddonItem.getAddonGroupName());
-			addonItemDetails.setPrice(String.valueOf(orderAddonItem.getPrice()));
-			addonItemDetails.setGroupId(Integer.parseInt(orderAddonItem.getAddonGroupId()));
-			addonItemDetails.setQuantity(String.valueOf(orderAddonItem.getQuantity()));
-			addonItemDetailsList.add(addonItemDetails);
+		AddonItemOrderRequest addonItemOrderRequest = null;
+		if (orderAddonItems != null) {
+			addonItemOrderRequest = new AddonItemOrderRequest();
+			List<AddonItemDetails> addonItemDetailsList = new ArrayList<>();
+			for (OrderAddonItem orderAddonItem : orderAddonItems) {
+				AddonItemDetails addonItemDetails = new AddonItemDetails();
+				addonItemDetails.setId(orderAddonItem.getAddonItemId());
+				addonItemDetails.setName(orderAddonItem.getAddonItemName());
+				addonItemDetails.setGroupName(orderAddonItem.getAddonGroupName());
+				addonItemDetails.setPrice(String.valueOf(orderAddonItem.getPrice()));
+				addonItemDetails.setGroupId(Integer.parseInt(orderAddonItem.getAddonGroupId()));
+				addonItemDetails.setQuantity(String.valueOf(orderAddonItem.getQuantity()));
+				addonItemDetailsList.add(addonItemDetails);
+			}
+			addonItemOrderRequest.setDetails(addonItemDetailsList);
 		}
-		addonItemOrderRequest.setDetails(addonItemDetailsList);
 		return addonItemOrderRequest;
 	}
 
-	public static TaxOrderRequest getTax() {
-		TaxOrderRequest tax = new TaxOrderRequest();
-		TaxDetails taxDetails = new TaxDetails();
-		taxDetails.setId(null);
-		taxDetails.setPrice(null);
-		taxDetails.setTax(null);
-		taxDetails.setTitle(null);
-		taxDetails.setType(null);
-		taxDetails.setRestaurantLiableAmt(null);
-		List<TaxDetails> taxDetailsList = new ArrayList<>();
-		taxDetailsList.add(taxDetails);
-		tax.setDetails(taxDetailsList);
-		return tax;
+	public static TaxOrderRequest getTax(List<OrderTax> taxList) {
+		TaxOrderRequest taxOrderRequest = null;
+		if (taxList != null) {
+			taxOrderRequest = new TaxOrderRequest();
+			List<TaxDetails> taxDetailsList = new ArrayList<>();
+			for (OrderTax tax : taxList) {
+				TaxDetails taxDetails = new TaxDetails();
+				taxDetails.setId(tax.getId());
+				taxDetails.setPrice(CommonUtils.emptyIfNullOrZeroToString(tax.getPrice()));
+				taxDetails.setTax(CommonUtils.emptyIfNullOrZeroToString(tax.getTax()));
+				taxDetails.setTitle(tax.getTitle());
+				taxDetails.setType(TaxType.fromCode(tax.getType()));
+				taxDetails.setRestaurantLiableAmt(CommonUtils.emptyIfNullOrZeroToString(null));
+				taxDetailsList.add(taxDetails);
+			}
+			taxOrderRequest.setDetails(taxDetailsList);
+		}
+		return taxOrderRequest;
 	}
 
-	public static DiscountOrderRequest getDiscount() {
-		DiscountOrderRequest discount = new DiscountOrderRequest();
-		List<DiscountDetails> discountDetailsList = new ArrayList<>();
-		DiscountDetails discountDetails = new DiscountDetails();
-		discountDetails.setId(null);
-		discountDetails.setTitle(null);
-		discountDetails.setType(null);
-		discountDetails.setPrice(null);
-		discountDetailsList.add(discountDetails);
-		discount.setDetails(discountDetailsList);
-		return discount;
+	public static DiscountOrderRequest getDiscount(List<OrderDiscount> orderDiscountList) {
+		DiscountOrderRequest discountOrderRequest = null;
+		if (orderDiscountList != null) {
+			discountOrderRequest = new DiscountOrderRequest();
+			List<DiscountDetails> discountDetailsList = new ArrayList<>();
+			for(OrderDiscount orderDiscount: orderDiscountList) {
+				DiscountDetails discountDetails = new DiscountDetails();
+				discountDetails.setId(orderDiscount.getId());
+				discountDetails.setTitle(orderDiscount.getTitle());
+				discountDetails.setType(orderDiscount.getType());
+				discountDetails.setPrice(orderDiscount.getPrice());
+				discountDetailsList.add(discountDetails);
+			}
+			discountOrderRequest.setDetails(discountDetailsList);
+		}
+		return discountOrderRequest;
 	}
 
 	public static RestaurantOrderRequest getRestaurantDetails(Restaurant restaurant) {
@@ -250,11 +275,11 @@ public class PosOrderRequestTranslation {
 		return restaurantRequest;
 	}
 
-	public static List<GstDetails> getGstDetails() {
+	public static List<GstDetails> getGstDetails(String gstLiable, String amount) {
 		List<GstDetails> gstDetailsList = new ArrayList<>();
 		GstDetails gstdetails = new GstDetails();
-		gstdetails.setGstLiable(null);
-		gstdetails.setAmount(null);
+		gstdetails.setGstLiable(CommonUtils.emptyIfNullOrZeroToString(gstLiable));
+		gstdetails.setAmount(CommonUtils.emptyIfNullOrZeroToString(amount));
 		gstDetailsList.add(gstdetails);
 		return gstDetailsList;
 	}

@@ -4,11 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import com.hyp.dto.OrderDto;
-import com.hyp.dto.OrderDto.OrderItemTax;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
 
@@ -25,10 +26,15 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "orders")
-public class Order extends BaseEntity {
+public class Order {
 
-	private static final long serialVersionUID = 1L;
-
+	@Transient
+    public static final String SEQUENCE_NAME = "order_sequence";
+	
+	@Id
+	@Field("id")
+	private String id;
+	
 	@Field("customer_id")
 	private String customerId;
 
@@ -93,6 +99,17 @@ public class Order extends BaseEntity {
 	@Field("order_time")
 	@CreatedDate
 	private LocalDateTime orderTime;
+	
+	@Field("created_at")
+	@CreatedDate
+	private LocalDateTime createdAt;
+
+	@Field("updated_at")
+	@LastModifiedDate
+	private LocalDateTime updatedAt;
+	
+	@Field("restaurant_id")
+	private String restaurantId;
 	
 	@Data
 	@NoArgsConstructor

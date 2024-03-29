@@ -11,7 +11,7 @@ public class CommonUtils {
 		char[] alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 		return NanoIdUtils.randomNanoId(random, alphabet, 10);
 	}
-	
+
 	public static String getISOAmount(double amount) {
 		String orderString = Double.toString(amount);
 		int indexOfDecimal = orderString.indexOf(".");
@@ -25,5 +25,23 @@ public class CommonUtils {
 		}
 		return orderString;
 	}
-	
+
+	public static int emptyIntToZero(String s) {
+		if (s.length() == 0) {
+			return 0;
+		} else {
+			return Integer.parseInt(s);
+		}
+
+	}
+
+	public static String emptyIfNullOrZeroToString(Object value) {
+		if (value == null || value == "" || (value instanceof Number && ((Number) value).doubleValue() == 0.0) ||
+	            (value instanceof String && ((String) value).equals("0")) ||
+	            (value instanceof String && ((String) value).equals("0.00"))) {
+	            return "";
+	        }
+		return value.toString();
+	}
+
 }
