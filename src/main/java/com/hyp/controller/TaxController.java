@@ -9,7 +9,7 @@ import com.hyp.entity.Tax;
 import com.hyp.translation.TaxTranslation;
 
 @RestController
-@RequestMapping("/api/tax")
+@RequestMapping("/tax")
 public class TaxController extends BaseController<TaxDto, Tax, String> {
 
 	@Autowired

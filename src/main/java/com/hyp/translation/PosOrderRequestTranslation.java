@@ -11,7 +11,8 @@ import com.hyp.entity.Order.OrderTax;
 import com.hyp.enums.DiscountType;
 import com.hyp.enums.OrderType;
 import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.PosOrderStatusType;
+import com.hyp.entity.Order.OrderTax;
+import com.hyp.enums.OrderType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.enums.TaxType;
 import com.hyp.entity.Restaurant;
@@ -43,8 +44,6 @@ import com.hyp.request.PosOrderRequest.AddonItemDetails;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
 
 public class PosOrderRequestTranslation {
 
@@ -161,7 +160,7 @@ public class PosOrderRequestTranslation {
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		orderDetails.setEnableDelivery(Constants.VENDOR_HANDLE_DELIVERY);
-		orderDetails.setCallbackUrl(domain + "/api/order/callback");
+		orderDetails.setCallbackUrl(domain + "/order/callback");
 		orderDetails.setDcGstDetails(getGstDetails(null, null));
 		orderDetails.setPcGstDetails(getGstDetails(null, null));
 		orderDetails.setCollectCash(CommonUtils.emptyIfNullOrZeroToString(null));

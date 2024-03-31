@@ -25,7 +25,7 @@ import com.hyp.service.PaymentService;
 import com.hyp.service.RazorpaySignatureVerifier;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/payment")
 public class PaymentController {
 	
 	@Autowired

@@ -9,7 +9,7 @@ import com.hyp.entity.Address;
 import com.hyp.translation.AddressTranslation;
 
 @RestController
-@RequestMapping("/api/address")
+@RequestMapping("/address")
 public class AddressController extends BaseController<AddressDto, Address, String> {
 
 	@Autowired

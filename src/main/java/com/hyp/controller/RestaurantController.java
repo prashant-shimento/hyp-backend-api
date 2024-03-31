@@ -9,7 +9,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.translation.RestaurantTranslation;
 
 @RestController
-@RequestMapping("/api/restaurant")
+@RequestMapping("/restaurant")
 public class RestaurantController extends BaseController<RestaurantDto, Restaurant, String> {
 
 	@Autowired

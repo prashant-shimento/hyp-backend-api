@@ -33,7 +33,7 @@ import com.hyp.service.RestaurantService;
 import com.hyp.translation.PosOrderRequestTranslation;
 
 @RestController
-@RequestMapping("/api/order")
+@RequestMapping("/order")
 public class OrderController extends BaseListController<OrderDto, Order, String> {
 
 	@Autowired

@@ -16,7 +16,7 @@ import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 
 @RestController
-@RequestMapping("/api/login")
+@RequestMapping("/login")
 public class LoginController {
 
 	@Autowired

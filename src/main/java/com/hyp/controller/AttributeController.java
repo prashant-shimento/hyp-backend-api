@@ -9,7 +9,7 @@ import com.hyp.entity.Attribute;
 import com.hyp.translation.AttributeTranslation;
 
 @RestController
-@RequestMapping("/api/attribute")
+@RequestMapping("/attribute")
 public class AttributeController extends BaseController<AttributeDto, Attribute, String> {
 
 	@Autowired

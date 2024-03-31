@@ -9,7 +9,7 @@ import com.hyp.entity.Customer;
 import com.hyp.translation.CustomerTranslation;
 
 @RestController
-@RequestMapping("/api/customer")
+@RequestMapping("/customer")
 public class CustomerController extends BaseController<CustomerDto, Customer, String> {
 	
 	@Autowired

@@ -16,7 +16,7 @@ import lombok.Data;
 
 @Data
 @RestController
-@RequestMapping("/api/menu")
+@RequestMapping("/menu")
 public class MenuController {
 
 	private final CategoryService categoryService;

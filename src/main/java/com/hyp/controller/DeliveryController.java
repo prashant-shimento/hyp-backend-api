@@ -15,7 +15,7 @@ import com.hyp.service.DeliveryService;
 import com.hyp.service.RestaurantService;
 
 @RestController
-@RequestMapping("/api/delivery")
+@RequestMapping("/delivery")
 public class DeliveryController {
 
 	@Autowired
