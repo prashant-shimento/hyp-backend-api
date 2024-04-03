@@ -18,8 +18,14 @@ public class AddressTranslation implements TranslationService<AddressDto, Addres
 	public Address getEntity(AddressDto dto) {
 		Address address = new Address();
 		address.setId(CommonUtils.genId());
-		address.setAddress(dto.getAddress());
 		address.setAddressType(dto.getAddressType());
+		address.setAddressOne(dto.getAddressOne());
+		address.setAddressTwo(dto.getAddressTwo());
+		address.setLandmark(dto.getLandmark());
+		address.setCity(dto.getCity());
+		address.setState(dto.getState());
+		address.setCountry(dto.getCountry());
+		address.setPincode(dto.getPincode());
 		address.setLocation(new Location(dto.getLatitude(), dto.getLongitude()));
 		return address;
 	}
@@ -27,8 +33,14 @@ public class AddressTranslation implements TranslationService<AddressDto, Addres
 	@Override
 	public AddressDto getDto(Address entity) {
 		AddressDto dto = new AddressDto();
-		dto.setAddress(entity.getAddress());
 		dto.setAddressType(entity.getAddressType());
+		dto.setAddressOne(entity.getAddressOne());
+		dto.setAddressTwo(entity.getAddressTwo());
+		dto.setLandmark(entity.getLandmark());
+		dto.setCity(entity.getCity());
+		dto.setState(entity.getState());
+		dto.setCountry(entity.getCountry());
+		dto.setPincode(entity.getPincode());
 
 		Location location = entity.getLocation();
 		if (location != null) {

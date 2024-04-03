@@ -16,10 +16,30 @@ public class Address extends BaseEntity {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	@Field("address")
-	private String address;
-	@Field("addressType")
+	@Field("address_type")
 	private String addressType;
+
+	@Field("address_one")
+	private String addressOne;
+
+	@Field("address_two")
+	private String addressTwo;
+
+	@Field("landmark")
+	private String landmark;
+
+	@Field("city")
+	private String city;
+
+	@Field("state")
+	private String state;
+
+	@Field("country")
+	private String country;
+
+	@Field("pincode")
+	private String pincode;
+
 	private Location location;
 
 	@Data
@@ -29,4 +49,5 @@ public class Address extends BaseEntity {
 		private double latitude;
 		private double longitude;
 	}
+
 }
