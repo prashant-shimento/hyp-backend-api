@@ -5,43 +5,43 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.hyp.dto.AddonGroupDTO;
+import com.hyp.dto.AddonGroupDto;
 import com.hyp.entity.AddonGroup;
 import com.hyp.service.TranslationService;
 
 @Service
-public class AddonGroupsTranslation implements TranslationService<AddonGroupDTO, AddonGroup> {
+public class AddonGroupsTranslation implements TranslationService<AddonGroupDto, AddonGroup> {
 
 	@Override
-	public AddonGroup getEntity(AddonGroupDTO addongroupdto) {
+	public AddonGroup getEntity(AddonGroupDto addongroupdto) {
 		AddonGroup addonGroup = new AddonGroup();
-		addonGroup.setId(addongroupdto.getAddongroupId());
-		addonGroup.setAddonGroupRank(addongroupdto.getAddongroupRank());
+		addonGroup.setId(addongroupdto.getId());
+		addonGroup.setAddonGroupRank(addongroupdto.getAddonGroupRank());
 		addonGroup.setActive(addongroupdto.getActive());
-		addonGroup.setAddonGroupName(addongroupdto.getAddongroupName());
-		addonGroup.setAddonItems(addongroupdto.getAddongroupitems());
+		addonGroup.setAddonGroupName(addongroupdto.getAddonGroupName());
+		addonGroup.setAddonGroupItems(addongroupdto.getAddonGroupItems());
 		return addonGroup;
 	}
 
 	@Override
-	public AddonGroupDTO getDto(AddonGroup addonGroup) {
-		AddonGroupDTO addonGroupDTO = new AddonGroupDTO();
+	public AddonGroupDto getDto(AddonGroup addonGroup) {
+		AddonGroupDto addonGroupDTO = new AddonGroupDto();
 
-		addonGroupDTO.setAddongroupId(addonGroup.getId());
-		addonGroupDTO.setAddongroupRank(addonGroup.getAddonGroupRank());
+		addonGroupDTO.setId(addonGroup.getId());
+		addonGroupDTO.setAddonGroupRank(addonGroup.getAddonGroupRank());
 		addonGroupDTO.setActive(addonGroup.getActive());
-		addonGroupDTO.setAddongroupName(addonGroup.getAddonGroupName());
-		addonGroupDTO.setAddongroupitems(addonGroup.getAddonItems());
+		addonGroupDTO.setAddonGroupName(addonGroup.getAddonGroupName());
+		addonGroupDTO.setAddonGroupItems(addonGroup.getAddonGroupItems());
 		return addonGroupDTO;
 
 	}
 
 	@Override
-	public List<AddonGroupDTO> getDtoList(List<AddonGroup> addonGroupsList) {
-		List<AddonGroupDTO> addonGroupDTOList = new ArrayList<>();
+	public List<AddonGroupDto> getDtoList(List<AddonGroup> addonGroupsList) {
+		List<AddonGroupDto> addonGroupDTOList = new ArrayList<>();
 
 		for (AddonGroup addonGroup : addonGroupsList) {
-			AddonGroupDTO addonGroupDTO = getDto(addonGroup);
+			AddonGroupDto addonGroupDTO = getDto(addonGroup);
 			addonGroupDTOList.add(addonGroupDTO);
 		}
 
@@ -49,7 +49,7 @@ public class AddonGroupsTranslation implements TranslationService<AddonGroupDTO,
 	}
 
 	@Override
-	public AddonGroup getPatchDto(AddonGroup existingEntity, AddonGroupDTO dto) {
+	public AddonGroup getPatchDto(AddonGroup existingEntity, AddonGroupDto dto) {
 		// TODO Auto-generated method stub
 		return null;
 	}

@@ -330,7 +330,7 @@ public class PosDataRequestTranslation {
 		addonGroup.setAddonGroupName(addonGroupRequest.getAddongroup_name());
 		addonGroup.setActive(addonGroupRequest.getActive());
 		addonGroup.setAddonGroupRank(addonGroupRequest.getAddongroup_rank());
-		addonGroup.setAddonItems(getAddonItemIdList(addonGroupRequest.getAddongroupitems()));
+		addonGroup.setAddonGroupItems(getAddonItemIdList(addonGroupRequest.getAddongroupitems()));
 		addonGroup.setAddonItemSelectionMax(addonGroupRequest.getAddon_item_selection_max());
 		addonGroup.setAddonItemSelectionMin(addonGroupRequest.getAddon_item_selection_min());
 		return addonGroup;

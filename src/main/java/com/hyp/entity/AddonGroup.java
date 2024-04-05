@@ -2,6 +2,7 @@ package com.hyp.entity;
 
 import java.util.List;
 
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -30,7 +31,7 @@ public class AddonGroup extends BaseEntity {
 	private String addonGroupRank;
 
 	@Field("addon_group_items")
-	private List<String> addonItems;
+	private List<String> addonGroupItems;
 
 	@Field("addon_item_selection_max")
 	private String addonItemSelectionMax;
@@ -38,8 +39,7 @@ public class AddonGroup extends BaseEntity {
 	@Field("addon_item_selection_min")
 	private String addonItemSelectionMin;
 
-	private transient List<AddonItem> items;
+	@Field("addon_items")
+	private transient List<AddonItem> addonItems;
 
-    }
-	
-
+}
