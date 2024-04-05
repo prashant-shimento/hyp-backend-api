@@ -10,5 +10,5 @@ public class AddonGroupDTO {
     private String addongroupRank;
     private String active;
     private String addongroupName;
-    private List<AddonItemDTO> addongroupitems;
+    private List<String> addongroupitems;
 }

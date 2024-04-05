@@ -20,7 +20,7 @@ import lombok.ToString;
 public class AddonGroup extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-	
+
 	@Field("addon_group_name")
 	private String addonGroupName;
 
@@ -38,5 +38,8 @@ public class AddonGroup extends BaseEntity {
 	@Field("addon_item_selection_min")
 	private String addonItemSelectionMin;
 
+	private transient List<AddonItem> items;
+
+    }
 	
-}
+

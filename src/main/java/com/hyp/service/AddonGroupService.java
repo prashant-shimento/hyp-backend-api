@@ -1,5 +1,7 @@
 package com.hyp.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -10,4 +12,8 @@ import com.hyp.repository.AddonGroupRepository;
 public class AddonGroupService extends BaseServiceImpl<AddonGroup, String> {
 	@Autowired
 	AddonGroupRepository addonGroupRepository;
+
+	public List<AddonGroup> getCategoryItems() {
+		return addonGroupRepository.getAddonGroupsAndItems();
+	}
 }
