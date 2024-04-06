@@ -19,32 +19,31 @@ import lombok.ToString;
 @Document(collection = "variations")
 public class Variation extends BaseEntity {
 
-    private static final long serialVersionUID = 1L;
-    
+	private static final long serialVersionUID = 1L;
+
 	private String name;
 
-    @Field("group_name")
-    private String groupName;
+	@Field("group_name")
+	private String groupName;
 
-    private String status;
-    
-    private String price;
-    private String active;
-    
-    @Field("item_packing_charges")
-    private String itemPackingCharges;
-    
-    @Field("variation_rank")
-    private String variationRank;
-    
-    @Field
-    private List<String> addonGroupId;
-    
-    @Field("variation_allow_addon")
-    private int variationAllowAddon;
-    
-    @Field("variation_id")
-    private String variation_id;
-    
+	private String status;
+
+	private String price;
+	private String active;
+
+	@Field("item_packing_charges")
+	private String itemPackingCharges;
+
+	@Field("variation_rank")
+	private String variationRank;
+
+	@Field("addon_group_id")
+	private List<String> addonGroupId;
+
+	@Field("variation_allow_addon")
+	private int variationAllowAddon;
+
+	@Field("variation_id")
+	private String variation_id;
+
 }
-
