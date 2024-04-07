@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.entity.Variation;
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.VariationService;
 
 @RestController
@@ -23,8 +23,8 @@ public class VariationController {
 	VariationService variationService;
 
 	@GetMapping("/addons")
-	public ResponseEntity<ResponseTemplate> getVariationsDetails() {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getVariationsDetails() {
+		Response response = new Response();
 		try {
 			List<Variation> variations = variationService.getVariationsWithAddonGroupsAndItems();
 			response.setData(variations);
@@ -38,8 +38,8 @@ public class VariationController {
 	}
 
 	@GetMapping("/{variationId}/addons")
-	public ResponseEntity<ResponseTemplate> getVariationsDetailsById(@PathVariable String variationId) {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getVariationsDetailsById(@PathVariable String variationId) {
+		Response response = new Response();
 		try {
 			List<Variation> variations = variationService.getVariationsWithAddonGroupsAndItemsById(variationId);
 			response.setData(variations);

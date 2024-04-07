@@ -13,13 +13,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.entity.Restaurant;
+import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
-import com.hyp.response.Response;
+import com.hyp.response.PosResponse;
+import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
-import com.hyp.service.StockService;
 import io.swagger.v3.oas.annotations.Hidden;
 
 @Hidden
@@ -34,14 +35,14 @@ public class PosController {
 	RestaurantService restaurantService;
 
 	@Autowired
-	StockService stockService;
+	OrderService orderService;
 
 	@PostMapping("/menu")
-	public ResponseEntity<Response> save(@RequestBody PosDataRequest posDataRequest) {
+	public ResponseEntity<PosResponse> saveMenuData(@RequestBody PosDataRequest posDataRequest) {
 		JSONObject jb = new JSONObject(posDataRequest);
 		System.out.println(jb.toString());
 		boolean result = posDataService.savePosData(posDataRequest);
-		Response response = new Response.Builder()
+		PosResponse response = new PosResponse.Builder()
 				.httpCode(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Menu Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
@@ -49,11 +50,11 @@ public class PosController {
 	}
 
 	@PostMapping("/status/get")
-	public ResponseEntity<Response> getStatus(@RequestBody PosStatusRequest getStatus) {
+	public ResponseEntity<PosResponse> getStatus(@RequestBody PosStatusRequest getStatus) {
 		JSONObject jb = new JSONObject(getStatus);
 		System.out.println(jb.toString());
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(getStatus.getRestID());
-		Response response = new Response.Builder()
+		PosResponse response = new PosResponse.Builder()
 				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
 				.message(restaurant != null ? "Store Delivery Status fetched successfully" : "Restaurant Not Found")
 				.status(restaurant != null ? "success" : "failed")
@@ -62,13 +63,13 @@ public class PosController {
 	}
 
 	@PostMapping("/status/update")
-	public ResponseEntity<Response> updateStatus(@RequestBody PosStatusRequest updateStatus) {
+	public ResponseEntity<PosResponse> updateStatus(@RequestBody PosStatusRequest updateStatus) {
 		JSONObject jb = new JSONObject(updateStatus);
 		System.out.println(jb.toString());
-		Response response = null;
+		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestID());
 		if (restaurant == null) {
-			response = new Response.Builder().httpCode(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
+			response = new PosResponse.Builder().httpCode(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
@@ -80,30 +81,48 @@ public class PosController {
 		}
 		restaurant.setStatusReason(updateStatus.getReason());
 		restaurantService.update(restaurant);
-		response = new Response.Builder().httpCode(HttpStatus.OK.value())
+		response = new PosResponse.Builder().httpCode(HttpStatus.OK.value())
 				.message("Store Status updated successfully for store restID").status("success").build();
 		updateStatus.setMessage("Store Status updated successfully for store restID");
 		updateStatus.setStatus("success");
-		return new ResponseEntity<Response>(response, HttpStatus.OK);
+		return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 	}
 
 	@PostMapping("/stock")
-	public ResponseEntity<Response> updateStock(@RequestBody PosStockRequest stockRequest) {
+	public ResponseEntity<PosResponse> updateStock(@RequestBody PosStockRequest stockRequest) {
 		JSONObject jb = new JSONObject(stockRequest);
 		System.out.println(jb.toString());
-		Response response = null;
+		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(stockRequest.getRestID());
 		if (restaurant == null) {
-			response = new Response.Builder().code(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
+			response = new PosResponse.Builder().code(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
-		boolean result = stockService.updateStock(stockRequest);
-		response = new Response.Builder()
+		boolean result = posDataService.updateStock(stockRequest);
+		response = new PosResponse.Builder()
 				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Stock Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
 		System.out.println(response.toString());
 		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/order/callback")
+	public ResponseEntity<PosResponse> orderCallBack(@RequestBody PosCallbackRequest posCallbackRequest) {
+		JSONObject jb = new JSONObject(posCallbackRequest);
+		System.out.println(jb.toString());
+		PosResponse response = null;
+		try {
+			orderService.processCallback(posCallbackRequest);
+			response = new PosResponse.Builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
+					.error(null).build();
+			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			response = new PosResponse.Builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+					.message("Error Occured").error(e.getMessage()).build();
+			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+		}
 	}
 }

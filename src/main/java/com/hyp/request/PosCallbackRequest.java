@@ -19,7 +19,7 @@ public class PosCallbackRequest {
 	private String cancelReason;
 	
 	@JsonProperty("minimum_prep_time")
-	private String minPrepTime;
+	private Double minPrepTime;
 	
 	@JsonProperty("minimum_delivery_time")
 	private String minDeliveryTime;

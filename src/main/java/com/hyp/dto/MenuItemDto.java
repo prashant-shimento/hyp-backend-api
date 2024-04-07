@@ -31,5 +31,4 @@ public class MenuItemDto {
 	private String item_image_url;
 	private String item_tax;
 	private String gst_type;
-	private NutritionDto nutrition;
 }

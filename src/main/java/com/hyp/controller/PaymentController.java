@@ -19,7 +19,7 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Payment;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.OrderType;
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RazorpaySignatureVerifier;
@@ -41,8 +41,8 @@ public class PaymentController {
     private String razorPaySecret;
 	
 	@PostMapping("{orderId}")
-	public ResponseEntity<ResponseTemplate> createPaymentOrder(@PathVariable("orderId") String orderId) {
-		ResponseTemplate response;
+	public ResponseEntity<Response> createPaymentOrder(@PathVariable("orderId") String orderId) {
+		Response response;
 		try {
 			Order order = orderService.findById(orderId);
 			if(order == null) {
@@ -50,19 +50,19 @@ public class PaymentController {
 			}
 			Payment payment = paymentService.createPaymentOrder(order.getId(), order.getTotalAmount());
 			paymentService.save(payment);
-			response = new ResponseTemplate(Collections.singletonList(payment), false,
+			response = new Response(Collections.singletonList(payment), false,
 					"Payment Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new ResponseTemplate(null, true, e.getMessage());
+			response = new Response(null, true, e.getMessage());
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 	
 	@PostMapping("/verify/{paymentId}")
-	public ResponseEntity<ResponseTemplate> verifyPayment(@PathVariable("paymentId") String paymentId, @RequestBody RazorpayVerifyDto razorPayDto) {
-		ResponseTemplate response;
+	public ResponseEntity<Response> verifyPayment(@PathVariable("paymentId") String paymentId, @RequestBody RazorpayVerifyDto razorPayDto) {
+		Response response;
 		try {
 			Payment payment = paymentService.findById(paymentId);
 			if(payment == null) {
@@ -75,11 +75,11 @@ public class PaymentController {
 			payment.setSignature(razorPayDto.getRazorpaySignature());
 			payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
 			paymentService.save(payment);
-			response = new ResponseTemplate(Collections.singletonList(payment), false,
+			response = new Response(Collections.singletonList(payment), false,
 					"Payment Verified Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new ResponseTemplate(null, true, e.getMessage());
+			response = new Response(null, true, e.getMessage());
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
@@ -108,12 +108,12 @@ public class PaymentController {
 	    }
 	}
 
-	private void handleOrderPaidEvent(RazorpayEventDto razorPayEventDto) {
+	private void handleOrderPaidEvent(RazorpayEventDto razorPayEventDto) throws Exception {
 	    String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 	    Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 	    Order order = orderService.findById(payment.getOrderId());
-	    order.setStatus(OrderStatusType.PAID);
-	    orderService.save(order);
+	    orderService.updateOrderStatus(order.getId(),OrderStatusType.PAID);
+	    orderService.processPosOrder(order);
 	}
 
 	private void handlePaymentCapturedEvent(RazorpayEventDto razorPayEventDto) {

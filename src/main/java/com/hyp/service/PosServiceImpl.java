@@ -1,5 +1,8 @@
 package com.hyp.service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,12 +10,16 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hyp.entity.AddonItem;
+import com.hyp.entity.Item;
 import com.hyp.entity.Restaurant;
+import com.hyp.exception.PosException;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
+import com.hyp.request.PosStockRequest;
 import com.hyp.translation.PosDataRequestTranslation;
 
 import reactor.core.publisher.Mono;
@@ -34,10 +41,10 @@ public class PosServiceImpl implements PosService {
 	private final CategoryService categoryService;
 	private final ItemService itemService;
 
-	public PosServiceImpl(AttributeService attributeService, CategoryService categoryService,
-			TaxService taxService, OrderTypeService orderTypeService, VariationService variationService,
-			RestaurantService restaurantService, DiscountService discountService,
-			AddonGroupService addonGroupService, AddonItemService addonItemService, ItemService itemService) {
+	public PosServiceImpl(AttributeService attributeService, CategoryService categoryService, TaxService taxService,
+			OrderTypeService orderTypeService, VariationService variationService, RestaurantService restaurantService,
+			DiscountService discountService, AddonGroupService addonGroupService, AddonItemService addonItemService,
+			ItemService itemService) {
 		this.attributeService = attributeService;
 		this.categoryService = categoryService;
 		this.taxService = taxService;
@@ -80,15 +87,15 @@ public class PosServiceImpl implements PosService {
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
-	public String createOrder(PosOrderRequest posOrderRequest) {
+	public String createOrder(PosOrderRequest posOrderRequest) throws PosException {
 		try {
-			System.out.println("Request "+new ObjectMapper().writeValueAsString(posOrderRequest));
+			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/save_order";
-			Mono<String> saveOrderResponse = webClient.post().uri(endpoint).body(BodyInserters.fromValue(posOrderRequest))
-					.retrieve().bodyToMono(String.class);
+			Mono<String> saveOrderResponse = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(posOrderRequest)).retrieve().bodyToMono(String.class);
 			saveOrderResponse.subscribe(response -> {
 				System.out.println("Response: " + response);
 			}, error -> {
@@ -96,17 +103,15 @@ public class PosServiceImpl implements PosService {
 			});
 			return saveOrderResponse.toString();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
+			throw new PosException("POS Order Creation failed " + e.getMessage());
 		}
-		
 	}
 
 	@Override
-	public String updateOrder(PosOrderUpdateRequest posOrderUpdateRequest) {
+	public String updateOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
 		try {
-			System.out.println("Request "+new ObjectMapper().writeValueAsString(posOrderUpdateRequest));
+			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/update_order_status";
 			Mono<String> updateOrderResponse = webClient.post().uri(endpoint)
@@ -118,17 +123,15 @@ public class PosServiceImpl implements PosService {
 			});
 			return updateOrderResponse.toString();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-			return null;
+			throw new PosException("POS Order Update failed " + e.getMessage());
 		}
-
 	}
 
 	@Override
 	public String updateRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {
-			System.out.println("Request "+new ObjectMapper().writeValueAsString(posRiderUpdateRequest));
+			System.out.println("Request " + new ObjectMapper().writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/rider_status_update";
 			Mono<String> riderUpdateResponse = webClient.post().uri(endpoint)
@@ -143,6 +146,45 @@ public class PosServiceImpl implements PosService {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
+		}
+	}
+
+	@Override
+	public boolean updateStock(PosStockRequest stockRequest) {
+		try {
+			for (String id : stockRequest.getItemID()) {
+				if (stockRequest.getType().equalsIgnoreCase("item")) {
+					Item item = itemService.findById(id);
+					if (item != null) {
+						item.setInStock(stockRequest.isInStock());
+						if (!stockRequest.isInStock() && stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")) {
+							item.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getCustomTurnOnTime(),
+									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+						} else if (!stockRequest.isInStock()) {
+							item.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getAutoTurnOnTime(),
+									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+						}
+						itemService.update(item);
+					}
+				} else {
+					AddonItem addOnItem = addonItemService.findById(id);
+					if (addOnItem != null) {
+						addOnItem.setActive(stockRequest.isInStock() ? "1" : "0");
+						if (!stockRequest.isInStock() && stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")) {
+							addOnItem.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getCustomTurnOnTime(),
+									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+						} else if (!stockRequest.isInStock()) {
+							addOnItem.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getAutoTurnOnTime(),
+									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+						}
+						addonItemService.update(addOnItem);
+					}
+				}
+			}
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
 		}
 	}
 }

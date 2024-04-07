@@ -2,27 +2,28 @@ package com.hyp.service;
 
 import java.time.LocalDateTime;
 
-import org.json.JSONObject;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hyp.dto.BaseDto;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
 import com.hyp.dto.OrderDto.OrderTax;
+import com.hyp.entity.Address;
+import com.hyp.entity.Customer;
+import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.OrderType;
+import com.hyp.exception.PosException;
 import com.hyp.mapper.DataMapper;
 import com.hyp.repository.OrderRepository;
+import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
+import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
-import com.hyp.util.CommonUtils;
 
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
@@ -52,9 +53,18 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	DataMapper dataMapper;
-	
+
 	@Autowired
 	SequenceService sequenceService;
+
+	@Autowired
+	AddressService addressService;
+
+	@Autowired
+	PosService posService;
+
+	@Autowired
+	DeliveryService deliveryService;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -63,7 +73,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		if (!customerService.isExistsById(orderDto.getCustomerId())) {
 			throw new Exception("Restaurant not found " + orderDto.getCustomerId());
 		}
-		
+
+		if (!addressService.isExistsById(orderDto.getDeliveryAddress())) {
+			throw new Exception("Delivery Address not found " + orderDto.getDeliveryAddress());
+		}
+
 		if (orderDto.getOrderDiscount() != null) {
 			for (OrderDto.OrderDiscount discount : orderDto.getOrderDiscount()) {
 				if (!discountService.isExistsById(discount.getId())) {
@@ -117,8 +131,45 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		Order order = this.findById(posCallbackRequest.getOrderId());
 		order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
-		// order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
-		// order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
+		order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
+		order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 		return this.update(order);
+	}
+
+	public void processPosOrder(Order order) {
+		try {
+			Address address = addressService.findById(order.getDeliveryAddress());
+			Customer customer = customerService.findById(order.getCustomerId());
+			customer.setAddress(address);
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			PosOrderRequest posOrderRequest = PosOrderRequestTranslation
+					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
+
+			posService.createOrder(posOrderRequest);
+
+			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
+					address, customer, order);
+
+			String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
+
+			Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+			delivery.setDeliveryOrderId(deliveryOrderId);
+			delivery.setStatus(DeliveryOrderStatusType.PENDING);
+			deliveryService.save(delivery);
+
+		} catch (PosException e) {
+			this.updateOrderStatus(order.getId(), OrderStatusType.ERROR);
+			// Need to handle Payment Refund or Retry Mechanism
+			throw new RuntimeException("Exception Occured while createOrder in POS Service " + e.getMessage());
+		} catch (Exception e) {
+			throw new RuntimeException("Exception Occured while Processing Order " + e.getMessage());
+		}
+
+	}
+
+	public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
+		Order order = this.findById(orderId);
+		order.setStatus(orderStatus);
+		this.save(order);
 	}
 }

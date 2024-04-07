@@ -1,5 +1,7 @@
 package com.hyp.util;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
@@ -36,12 +38,20 @@ public class CommonUtils {
 	}
 
 	public static String emptyIfNullOrZeroToString(Object value) {
-		if (value == null || value == "" || (value instanceof Number && ((Number) value).doubleValue() == 0.0) ||
-	            (value instanceof String && ((String) value).equals("0")) ||
-	            (value instanceof String && ((String) value).equals("0.00"))) {
-	            return "";
-	        }
+		if (value == null || value == "" || (value instanceof Number && ((Number) value).doubleValue() == 0.0)
+				|| (value instanceof String && ((String) value).equals("0"))
+				|| (value instanceof String && ((String) value).equals("0.00"))) {
+			return "";
+		}
 		return value.toString();
+	}
+
+	public static String generateReferenceId(String prefix) {
+		String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMyyHHmmss"));
+		Random random = new Random();
+		int identifier = random.nextInt(1000000);
+		String referenceId = prefix + timestamp + String.format("%04d", identifier);
+		return referenceId;
 	}
 
 }

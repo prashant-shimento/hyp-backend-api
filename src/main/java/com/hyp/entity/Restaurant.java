@@ -57,8 +57,9 @@ public class Restaurant extends BaseEntity {
 	private String state;
 
 	private String landmark;
+	
+	private String pincode;
 
-	@Field("location")
 	private Location location;
 
 	private List<String> images;

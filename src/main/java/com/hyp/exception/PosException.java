@@ -1,13 +1,13 @@
 package com.hyp.exception;
 
-public class CustomerNotFoundException extends Exception{
+public class PosException extends Exception{
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 
-	public CustomerNotFoundException(String message) {
+	public PosException(String message) {
 		super(message);
 	}
 

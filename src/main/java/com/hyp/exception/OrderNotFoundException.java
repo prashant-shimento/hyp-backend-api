@@ -1,6 +1,6 @@
 package com.hyp.exception;
 
-public class OrderNotFoundException extends EntityNotFoundException {
+public class OrderNotFoundException extends Exception {
 
 	/**
 	 * 

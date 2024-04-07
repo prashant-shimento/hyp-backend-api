@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.BaseService;
 import com.hyp.service.TranslationService;
 
@@ -28,60 +28,60 @@ public abstract class BaseController<DTO, T, ID> {
 	protected TranslationService<DTO, T> translationService;
 
 	@GetMapping
-	public ResponseEntity<ResponseTemplate> getAll() {
+	public ResponseEntity<Response> getAll() {
 		List<T> entities = service.findAll();
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
-		ResponseTemplate response = new ResponseTemplate(dtoEntities, false, "success");
+		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<ResponseTemplate> getById(@PathVariable ID id) {
+	public ResponseEntity<Response> getById(@PathVariable ID id) {
 		try {
 			T entity = service.findById(id);
 			if (entity != null) {
 				DTO dto = translationService.getDto(entity);
-				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
+				Response response = new Response(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
 				return ResponseEntity.notFound().build();
 			}
 		} catch (Exception ex) {
-			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@PostMapping
-	public ResponseEntity<ResponseTemplate> create(@RequestBody  @Valid DTO dto) {
+	public ResponseEntity<Response> create(@RequestBody  @Valid DTO dto) {
 		try {
 			T entity = translationService.getEntity(dto);
 			T savedEntity = service.save(entity);
 			dto = translationService.getDto(savedEntity);
 			// Need to revisit returning list logic
-			ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
+			Response response = new Response(Collections.singletonList(dto), false, "success");
 			return ResponseEntity.ok(response);
 		} catch (Exception ex) {
-			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@PutMapping("/{id}")
-	public ResponseEntity<ResponseTemplate> update(@PathVariable ID id, @RequestBody DTO dto) {
+	public ResponseEntity<Response> update(@PathVariable ID id, @RequestBody DTO dto) {
 		try {
 			if (service.findById(id) != null) {
 				T entity = translationService.getEntity(dto);
 				T updatedEntity = service.save(entity);
 				dto = translationService.getDto(updatedEntity);
 				// Need to revisit returning list logic
-				ResponseTemplate response = new ResponseTemplate(Collections.singletonList(dto), false, "success");
+				Response response = new Response(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
 				return ResponseEntity.notFound().build();
 			}
 		} catch (Exception ex) {
-			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -158,7 +158,7 @@ public abstract class BaseController<DTO, T, ID> {
 //    }
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<ResponseTemplate> delete(@PathVariable ID id) {
+	public ResponseEntity<Response> delete(@PathVariable ID id) {
 		try {
 			if (service.findById(id) != null) {
 				service.deleteById(id);
@@ -167,7 +167,7 @@ public abstract class BaseController<DTO, T, ID> {
 				return ResponseEntity.notFound().build();
 			}
 		} catch (Exception ex) {
-			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

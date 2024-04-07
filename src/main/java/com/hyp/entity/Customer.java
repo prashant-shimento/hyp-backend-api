@@ -26,4 +26,11 @@ public class Customer extends BaseEntity {
 	private String email;
 	@Field("address_id") 
 	private List<String> address_id;
+	
+	private transient List<Address> addresses;
+	
+	private transient Address address;
+
+	
+	
 }

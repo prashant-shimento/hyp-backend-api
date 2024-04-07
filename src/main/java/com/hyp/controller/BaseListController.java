@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.TranslationService;
 
 public abstract class BaseListController<DTO, T, ID> {
@@ -27,27 +27,27 @@ public abstract class BaseListController<DTO, T, ID> {
     protected TranslationService<DTO, T> translationService;
 
 	@GetMapping
-	public ResponseEntity<ResponseTemplate> getAll() {
+	public ResponseEntity<Response> getAll() {
 		List<T> entities = repository.findAll();
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
-		ResponseTemplate response = new ResponseTemplate(dtoEntities, false, "success");
+		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);
 	}
 
 	@GetMapping("/{id}")
-	public ResponseEntity<ResponseTemplate> getById(@PathVariable ID id) {
+	public ResponseEntity<Response> getById(@PathVariable ID id) {
 		try {
 			Optional<T> optionalEntity = repository.findById(id);
 			if (optionalEntity.isPresent()) {
 				DTO dto = translationService.getDto(optionalEntity.get());
 				List<DTO> entity = Collections.singletonList(dto);
-				ResponseTemplate response = new ResponseTemplate(entity, false, "success");
+				Response response = new Response(entity, false, "success");
 				return ResponseEntity.ok(response);
 			} else {
 				return ResponseEntity.notFound().build();
 			}
 		} catch (Exception ex) {
-			ResponseTemplate response = new ResponseTemplate(null, true, ex.getMessage());
+			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

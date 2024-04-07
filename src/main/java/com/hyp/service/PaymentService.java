@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.hyp.constants.Constants;
 import com.hyp.entity.Payment;
+import com.hyp.enums.OrderStatusType;
 import com.hyp.repository.PaymentRepository;
 import com.hyp.util.CommonUtils;
 import com.razorpay.Order;
@@ -24,6 +25,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 	@Autowired
 	PaymentRepository paymentRepository;
 	
+	@Autowired
+	OrderService orderService;
 	
 	public Payment createPaymentOrder(String orderId, double amount) {
 		try {
@@ -43,9 +46,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setCurrency(order.get("currency"));
 			payment.setProvider(Constants.RAZOR_PAY);
 			payment.setOrderId(orderId);
+			orderService.updateOrderStatus(orderId,OrderStatusType.PAYMENT_PENDING);
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();
+			orderService.updateOrderStatus(orderId,OrderStatusType.PAYMENT_FAILED);
             throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);
 		}	
 	}

@@ -111,6 +111,12 @@ public class Order {
 	@Field("restaurant_id")
 	private String restaurantId;
 	
+	@Field("minimum_prep_time")
+	private Double minPrepTime;
+	
+	@Field("minimum_delivery_time")
+	private String minDeliveryTime;
+	
 	@Data
 	@NoArgsConstructor
 	public static class OrderItem {

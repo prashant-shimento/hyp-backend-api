@@ -14,7 +14,7 @@ import com.hyp.dto.AddonGroupDto;
 import com.hyp.entity.AddonGroup;
 import com.hyp.entity.Category;
 import com.hyp.mapper.DataMapper;
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.AddonGroupService;
 import com.hyp.translation.AddonGroupsTranslation;
 
@@ -32,8 +32,8 @@ public class AddonGroupController extends BaseListController<AddonGroupDto, Addo
 	DataMapper dataMapper;
 
 	@GetMapping("/items")
-	public ResponseEntity<ResponseTemplate> getAllAddonGroupsAndItems() {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getAddonGroupsAndItems() {
+		Response response = new Response();
 		try {
 			List<AddonGroup> addonGroups = addonGroupService.getAllAddonGroupsAndItems();
 			response.setData(addonGroups);
@@ -47,9 +47,13 @@ public class AddonGroupController extends BaseListController<AddonGroupDto, Addo
 	}
 
 	@GetMapping("/{addonGroupId}/items")
-	public ResponseEntity<ResponseTemplate> getAddonGroupsAndItemsById(@PathVariable String addonGroupId) {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getAddonGroupsAndItemsById(@PathVariable String addonGroupId) {
+		Response response = new Response();
 		try {
+			if (!addonGroupService.isExistsById(addonGroupId)) {
+				response = new Response(null, true, "AddonGroup not found " + addonGroupId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
 			List<AddonGroup> addonGroups = addonGroupService.getAddonGroupsAndItemsById(addonGroupId);
 			response.setData(addonGroups);
 			response.setMessage("Addongroups retrieved successfully.");

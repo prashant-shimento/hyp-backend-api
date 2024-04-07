@@ -129,8 +129,8 @@ public class PosOrderRequestTranslation {
 	public static CustomerOrderRequest getCustomerDetails(Customer customer) {
 		CustomerDetails customerDetails = new CustomerDetails();
 		customerDetails.setEmail(customer.getEmail());
-		customerDetails.setLatitude("34.11752681212772");
-		customerDetails.setLongitude("74.72949172653219");
+		customerDetails.setLatitude(String.valueOf(customer.getAddress().getLocation().getLatitude()));
+		customerDetails.setLongitude(String.valueOf(customer.getAddress().getLocation().getLongitude()));
 		customerDetails.setName(customer.getName());
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();
@@ -160,7 +160,7 @@ public class PosOrderRequestTranslation {
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		orderDetails.setEnableDelivery(Constants.VENDOR_HANDLE_DELIVERY);
-		orderDetails.setCallbackUrl(domain + "/order/callback");
+		orderDetails.setCallbackUrl(domain + "/pos/order/callback");
 		orderDetails.setDcGstDetails(getGstDetails(null, null));
 		orderDetails.setPcGstDetails(getGstDetails(null, null));
 		orderDetails.setCollectCash(CommonUtils.emptyIfNullOrZeroToString(null));
@@ -250,7 +250,7 @@ public class PosOrderRequestTranslation {
 		if (orderDiscountList != null) {
 			discountOrderRequest = new DiscountOrderRequest();
 			List<DiscountDetails> discountDetailsList = new ArrayList<>();
-			for(OrderDiscount orderDiscount: orderDiscountList) {
+			for (OrderDiscount orderDiscount : orderDiscountList) {
 				DiscountDetails discountDetails = new DiscountDetails();
 				discountDetails.setId(orderDiscount.getId());
 				discountDetails.setTitle(orderDiscount.getTitle());

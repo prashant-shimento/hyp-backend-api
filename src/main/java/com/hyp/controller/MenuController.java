@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.entity.Category;
-import com.hyp.response.ResponseTemplate;
+import com.hyp.response.Response;
 import com.hyp.service.CategoryService;
 
 import lombok.Data;
@@ -23,8 +23,8 @@ public class MenuController {
 	private final CategoryService categoryService;
 
 	@GetMapping("/category")
-	public ResponseEntity<ResponseTemplate> getCategoryDetails() {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getCategoryItems() {
+		Response response = new Response();
 		try {
 			List<Category> categories = categoryService.getAllCategoryItems();
 			response.setData(categories);
@@ -38,8 +38,8 @@ public class MenuController {
 	}
 
 	@GetMapping("/category/{categoryId}")
-	public ResponseEntity<ResponseTemplate> getCategoryDetailsById(@PathVariable String categoryId) {
-		ResponseTemplate response = new ResponseTemplate();
+	public ResponseEntity<Response> getCategoryDetailsById(@PathVariable String categoryId) {
+		Response response = new Response();
 		try {
 			List<Category> categories = categoryService.getCategoryItemsById(categoryId);
 			response.setData(categories);
