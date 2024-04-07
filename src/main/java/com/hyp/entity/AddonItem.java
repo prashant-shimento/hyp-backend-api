@@ -17,7 +17,6 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "addon_items")
-
 public class AddonItem extends BaseEntity{
     
     private static final long serialVersionUID = 1L;

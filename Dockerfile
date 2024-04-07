@@ -1,5 +1,5 @@
-# Use the official OpenJDK 11 base image
-FROM adoptopenjdk:11-jre-hotspot
+# Use BellSoft Liberica OpenJDK Alpine image for Java 17
+FROM bellsoft/liberica-openjdk-alpine:17
 
 # Set the working directory inside the container
 WORKDIR /app

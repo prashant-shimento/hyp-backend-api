@@ -22,26 +22,20 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 	MongoTemplate mongoTemplate;
 
 	public List<Category> getCategoryItemsById(String categoryId) {
-		LookupOperation lookupOperation = createLookupOperation();
 
-		Aggregation aggregation;
-		if (categoryId != null && !categoryId.isEmpty()) {
-			Criteria criteria = Criteria.where("_id").is(categoryId);
-			aggregation = Aggregation.newAggregation(Aggregation.match(criteria), lookupOperation);
-		} else {
-			aggregation = Aggregation.newAggregation(lookupOperation);
-		}
+		Criteria criteria = Criteria.where("_id").is(categoryId);
+		Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
+				getCategoryItemsLookupOperation());
 
 		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 	}
 
 	public List<Category> getAllCategoryItems() {
-		LookupOperation lookupOperation = createLookupOperation();
-		Aggregation aggregation = Aggregation.newAggregation(lookupOperation);
+		Aggregation aggregation = Aggregation.newAggregation(getCategoryItemsLookupOperation());
 		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 	}
 
-	private LookupOperation createLookupOperation() {
+	private LookupOperation getCategoryItemsLookupOperation() {
 		return LookupOperation.newLookup().from("items").localField("_id").foreignField("item_category_id").as("items");
 	}
 }

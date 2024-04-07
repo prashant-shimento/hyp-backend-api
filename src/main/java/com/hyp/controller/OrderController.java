@@ -2,7 +2,6 @@ package com.hyp.controller;
 
 import java.util.Collections;
 
-import javax.validation.Valid;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +30,8 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.PosOrderRequestTranslation;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/order")

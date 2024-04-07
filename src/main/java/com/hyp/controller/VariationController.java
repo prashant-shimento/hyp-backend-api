@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.entity.Variation;
 import com.hyp.response.ResponseTemplate;
 import com.hyp.service.VariationService;
 
@@ -21,11 +22,11 @@ public class VariationController {
 	@Autowired
 	VariationService variationService;
 
-	@GetMapping("/items")
+	@GetMapping("/addons")
 	public ResponseEntity<ResponseTemplate> getVariationsDetails() {
 		ResponseTemplate response = new ResponseTemplate();
 		try {
-			List<Document> variations = variationService.getVariationsWithAddonGroupsAndItems();
+			List<Variation> variations = variationService.getVariationsWithAddonGroupsAndItems();
 			response.setData(variations);
 			response.setMessage("Variations retrieved successfully.");
 			return ResponseEntity.ok(response);
@@ -36,16 +37,11 @@ public class VariationController {
 		}
 	}
 
-	@GetMapping("/items/{variationId}")
+	@GetMapping("/{variationId}/addons")
 	public ResponseEntity<ResponseTemplate> getVariationsDetailsById(@PathVariable String variationId) {
 		ResponseTemplate response = new ResponseTemplate();
 		try {
-			List<Document> variations;
-			if (variationId != null && !variationId.isEmpty()) {
-				variations = variationService.getVariationsWithAddonGroupsAndItemsById(variationId);
-			} else {
-				variations = variationService.getVariationsWithAddonGroupsAndItems();
-			}
+			List<Variation> variations = variationService.getVariationsWithAddonGroupsAndItemsById(variationId);
 			response.setData(variations);
 			response.setMessage("Variations retrieved successfully.");
 			return ResponseEntity.ok(response);

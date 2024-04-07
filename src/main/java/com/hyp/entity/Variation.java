@@ -45,5 +45,8 @@ public class Variation extends BaseEntity {
 
 	@Field("variation_id")
 	private String variation_id;
-
+	
+	@Field("addon_groups")
+	private transient List<AddonGroup> addonGroups;
+	
 }

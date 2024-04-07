@@ -23,27 +23,22 @@ public class AddonGroupService extends BaseServiceImpl<AddonGroup, String> {
 	MongoTemplate mongoTemplate;
 
 	public List<AddonGroup> getAddonGroupsAndItemsById(String addonGroupId) {
-		LookupOperation lookupOperation = createLookupOperation();
-
 		Criteria criteria = Criteria.where("_id").is(addonGroupId);
-		MatchOperation matchOperation = Aggregation.match(criteria);
 
-		Aggregation aggregation = Aggregation.newAggregation(lookupOperation, matchOperation);
+		Aggregation aggregation = Aggregation.newAggregation(getAddonGroupsItemsLookupOperation(), Aggregation.match(criteria));
 
 		AggregationResults<AddonGroup> results = mongoTemplate.aggregate(aggregation, "addon_groups", AddonGroup.class);
 		return results.getMappedResults();
 	}
 
 	public List<AddonGroup> getAllAddonGroupsAndItems() {
-		LookupOperation lookupOperation = createLookupOperation();
-
-		Aggregation aggregation = Aggregation.newAggregation(lookupOperation);
+		Aggregation aggregation = Aggregation.newAggregation(getAddonGroupsItemsLookupOperation());
 
 		AggregationResults<AddonGroup> results = mongoTemplate.aggregate(aggregation, "addon_groups", AddonGroup.class);
 		return results.getMappedResults();
 	}
 
-	private LookupOperation createLookupOperation() {
+	private LookupOperation getAddonGroupsItemsLookupOperation() {
 		return LookupOperation.newLookup().from("addon_items").localField("addon_group_items").foreignField("_id")
 				.as("addon_items");
 	}

@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.info.Info;
 
 @SpringBootApplication
 @EnableMongoAuditing
-@OpenAPIDefinition(info = @Info(title = "Menu API", version = "2.0", description = "An API for Managing Restaurant Menus"))
+@OpenAPIDefinition(info = @Info(title = "Hyperapps Backend API", version = "1.0", description = "An APIs for Hyperapps Backend"))
 public class HypBackendApiApplication {
 
 	public static void main(String[] args) {

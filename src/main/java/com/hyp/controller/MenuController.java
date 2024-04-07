@@ -41,12 +41,7 @@ public class MenuController {
 	public ResponseEntity<ResponseTemplate> getCategoryDetailsById(@PathVariable String categoryId) {
 		ResponseTemplate response = new ResponseTemplate();
 		try {
-			List<Category> categories;
-			if (categoryId != null) {
-				categories = categoryService.getCategoryItemsById(categoryId);
-			} else {
-				categories = categoryService.getAllCategoryItems();
-			}
+			List<Category> categories = categoryService.getCategoryItemsById(categoryId);
 			response.setData(categories);
 			response.setMessage("Categories retrieved successfully.");
 			return ResponseEntity.ok(response);
