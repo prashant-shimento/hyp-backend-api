@@ -113,7 +113,7 @@ public class PaymentController {
 	    Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 	    Order order = orderService.findById(payment.getOrderId());
 	    orderService.updateOrderStatus(order.getId(),OrderStatusType.PAID);
-	    orderService.processPosOrder(order);
+	    orderService.processOrder(order);
 	}
 
 	private void handlePaymentCapturedEvent(RazorpayEventDto razorPayEventDto) {
@@ -126,9 +126,7 @@ public class PaymentController {
 	private void handlePaymentFailedEvent(RazorpayEventDto razorPayEventDto) {
 	    String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 	    Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
-	    Order order = orderService.findById(payment.getOrderId());
-	    order.setStatus(OrderStatusType.PAYMENT_FAILED);
-	    orderService.save(order);
+	    orderService.updateOrderStatus(payment.getOrderId(), OrderStatusType.PAYMENT_FAILED);
 	    payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 	    paymentService.save(payment);
 	}

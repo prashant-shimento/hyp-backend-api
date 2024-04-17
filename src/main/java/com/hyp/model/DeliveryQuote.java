@@ -40,6 +40,8 @@ public class DeliveryQuote {
 		private Quote quote;
 
 		private String error;
+		
+		private String token;
 	}
 
 	@Data

@@ -14,11 +14,11 @@ public interface PosService {
 
 	public boolean savePosData(PosDataRequest posDataRequest);
 
-	public String createOrder(PosOrderRequest posOrderRequest) throws PosException;
+	public String createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
 
-	public String updateOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
+	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
 
-	public String updateRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
+	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 
 	public boolean updateStock(PosStockRequest stockRequest);
 

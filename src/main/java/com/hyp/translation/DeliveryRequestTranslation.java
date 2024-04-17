@@ -10,6 +10,7 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryOrderRequest.ContactDetail;
 import com.hyp.request.DeliveryOrderRequest.Trip;
@@ -21,6 +22,13 @@ import com.hyp.request.DeliveryQuoteRequest.Pickup;
 import com.hyp.util.CommonUtils;
 
 public class DeliveryRequestTranslation {
+
+	public static DeliveryFulfillRequest getOrderFulfillRequest(Delivery delivery) {
+		List<String> orderIds = new ArrayList<>();
+		orderIds.add(delivery.getDeliveryOrderId());
+		return new DeliveryFulfillRequest(orderIds, delivery.getService(), true, delivery.getNetworkId(),
+				delivery.getNetworkToken());
+	}
 
 	public static DeliveryQuoteRequest getQuoteRequest(Restaurant restaurant, Address address) {
 		DeliveryQuoteRequest quoteRequest = new DeliveryQuoteRequest();
@@ -97,28 +105,34 @@ public class DeliveryRequestTranslation {
 		orderRequest.setTrips(trips);
 		return orderRequest;
 	}
-	
+
 	public static Delivery getDeliveryEntity(DeliveryOrderRequest deliveryOrderRequest) {
 		Delivery delivery = new Delivery();
 		delivery.setChannel(deliveryOrderRequest.getChannel());
-		
+
 		Delivery.ContactDetail senderDetail = new Delivery.ContactDetail();
+		Delivery.Address senderAddress = new Delivery.Address();
 		BeanUtils.copyProperties(deliveryOrderRequest.getSenderDetail(), senderDetail);
+		BeanUtils.copyProperties(deliveryOrderRequest.getSenderDetail().getAddress(), senderAddress);
+		senderDetail.setAddress(senderAddress);
 		delivery.setSenderDetail(senderDetail);
 
 		Delivery.ContactDetail pocDetail = new Delivery.ContactDetail();
 		BeanUtils.copyProperties(deliveryOrderRequest.getPocDetail(), pocDetail);
 		delivery.setPocDetail(pocDetail);
-		
-		Trip trip = deliveryOrderRequest.getTrips().get(0);		
+
+		Trip trip = deliveryOrderRequest.getTrips().get(0);
 		delivery.setAmount(trip.getBillAmount());
 		delivery.setReferenceId(trip.getReferenceId());
 		delivery.setOrderId(trip.getSourceOrderId());
-		
+
 		Delivery.ContactDetail receiverDetail = new Delivery.ContactDetail();
+		Delivery.Address receiverAddress = new Delivery.Address();
 		BeanUtils.copyProperties(trip.getReceiverDetail(), receiverDetail);
+		BeanUtils.copyProperties(trip.getReceiverDetail().getAddress(), receiverAddress);
+		receiverDetail.setAddress(receiverAddress);
 		delivery.setReceiverDetail(receiverDetail);
-		
+
 		return delivery;
 	}
 }

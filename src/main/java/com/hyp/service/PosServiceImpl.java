@@ -89,7 +89,7 @@ public class PosServiceImpl implements PosService {
 	}
 
 	@Override
-	public String createOrder(PosOrderRequest posOrderRequest) throws PosException {
+	public String createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
@@ -109,7 +109,7 @@ public class PosServiceImpl implements PosService {
 	}
 
 	@Override
-	public String updateOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
+	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
@@ -129,7 +129,7 @@ public class PosServiceImpl implements PosService {
 	}
 
 	@Override
-	public String updateRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
+	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();

@@ -29,12 +29,12 @@ import lombok.ToString;
 public class Order {
 
 	@Transient
-    public static final String SEQUENCE_NAME = "order_sequence";
-	
+	public static final String SEQUENCE_NAME = "order_sequence";
+
 	@Id
 	@Field("id")
 	private String id;
-	
+
 	@Field("customer_id")
 	private String customerId;
 
@@ -93,13 +93,12 @@ public class Order {
 	@Field("special_instructions")
 	private String specialInstructions;
 
-	@Field("delivery_address")
-	private String deliveryAddress;
+	@Field("delivery_details")
+	private DeliveryDetails deliveryDetails;
 
 	@Field("order_time")
-	@CreatedDate
 	private LocalDateTime orderTime;
-	
+
 	@Field("created_at")
 	@CreatedDate
 	private LocalDateTime createdAt;
@@ -107,16 +106,16 @@ public class Order {
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
-	
+
 	@Field("restaurant_id")
 	private String restaurantId;
-	
+
 	@Field("minimum_prep_time")
-	private Double minPrepTime;
-	
+	private String minPrepTime;
+
 	@Field("minimum_delivery_time")
 	private String minDeliveryTime;
-	
+
 	@Data
 	@NoArgsConstructor
 	public static class OrderItem {
@@ -195,7 +194,7 @@ public class Order {
 	public static class OrderDiscount {
 
 		private String id;
-		
+
 		private String title;
 
 		private String type;
@@ -209,6 +208,18 @@ public class Order {
 		private String id;
 		private String name;
 		private double amount;
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class DeliveryDetails {
+		@Field("address_id")
+		private String addressId;
+		private String service;
+		@Field("pickup_now")
+		private boolean pickupNow;
+		@Field("network_id")
+		private int networkId;
 	}
 
 }

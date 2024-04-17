@@ -2,6 +2,8 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import org.springframework.data.mongodb.core.mapping.Field;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -36,8 +38,8 @@ public class OrderDto extends BaseDto {
 	@Valid
 	private List<OrderTax> orderTax;
 
-	@NotBlank(message = "Delivery address cannot be blank")
-	private String deliveryAddress;
+	@Valid
+	private DeliveryDetails deliveryDetails;
 	@NotBlank(message = "Special instructions cannot be blank")
 	private String specialInstructions;
 	@NotBlank(message = "Order time cannot be blank")
@@ -65,6 +67,8 @@ public class OrderDto extends BaseDto {
 	@Valid
 	private List<OrderDiscount> orderDiscount;
 	private String discountType;
+	private String minDeliveryTime;
+	private String minPrepTime;
 
 	@Data
 	@NoArgsConstructor
@@ -141,5 +145,16 @@ public class OrderDto extends BaseDto {
 		private String name;
 		@PositiveOrZero(message = "OrderItemTax amount must be positive")
 		private double amount;
+	}
+
+	@Data
+	@NoArgsConstructor
+	public static class DeliveryDetails {
+		@NotBlank(message = "Address ID cannot be blank")
+		private String addressId;
+		@NotBlank(message = "Service name cannot be blank")
+		private String service;
+		private String pickUpNow;
+		private double networkId;
 	}
 }

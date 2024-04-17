@@ -1,8 +1,8 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import com.hyp.dto.OrderDto;
@@ -17,6 +17,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.PosException;
+import com.hyp.exception.RequestTranslationException;
 import com.hyp.mapper.DataMapper;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
@@ -24,6 +25,8 @@ import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
+import com.hyp.util.CommonUtils;
+import com.hyp.util.OrderFulfillmentTrigger;
 
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
@@ -71,11 +74,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
 		}
 		if (!customerService.isExistsById(orderDto.getCustomerId())) {
-			throw new Exception("Restaurant not found " + orderDto.getCustomerId());
+			throw new Exception("Customer not found " + orderDto.getCustomerId());
 		}
 
-		if (!addressService.isExistsById(orderDto.getDeliveryAddress())) {
-			throw new Exception("Delivery Address not found " + orderDto.getDeliveryAddress());
+		if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
+			throw new Exception("Delivery Address not found " + orderDto.getDeliveryDetails().getAddressId());
 		}
 
 		if (orderDto.getOrderDiscount() != null) {
@@ -115,6 +118,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Order order = dataMapper.toOrderEntity(orderDto);
 		order.setId(sequenceService.generateSequence(Order.SEQUENCE_NAME));
 		order.setStatus(OrderStatusType.CREATED);
+		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
 		return this.save(order);
 	}
@@ -126,26 +130,67 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
 		}
 		if (!this.isExistsById(posCallbackRequest.getOrderId())) {
-			throw new Exception("Restaurant not found " + posCallbackRequest.getOrderId());
+			throw new Exception("Order not found " + posCallbackRequest.getOrderId());
 		}
 
 		Order order = this.findById(posCallbackRequest.getOrderId());
 		order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
 		order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 		order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-		return this.update(order);
+		order = this.update(order);
+
+		Delivery delivery = deliveryService.findByOrderId(order.getId());
+		OrderFulfillmentTrigger trigger = new OrderFulfillmentTrigger(order);
+
+		if (!delivery.isDeliveryScheduled()) {
+			if (order.getStatus().equals(OrderStatusType.DISPATCHED)) {
+				deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+			}
+			delivery.setDeliveryScheduled(true);
+			delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
+			deliveryService.save(delivery);
+		}
+
+		//Todo: Need to revist this logic to enable time based api call
+		/*
+		 * if (!delivery.isDeliveryScheduled()) { DeliveryQuote deliveryQuote =
+		 * deliveryService.getServiceability(delivery.getDeliveryOrderId());
+		 * List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
+		 * String token = deliveryNetworks.stream() .filter(network ->
+		 * network.getNetworkId() == delivery.getNetworkId())
+		 * .map(DeliveryNetworks::getToken).findFirst().get();
+		 * delivery.setNetworkToken(token); deliveryService.save(delivery);
+		 * ScheduledFuture<?> future = null;
+		 * 
+		 * try { future = (ScheduledFuture<?>) taskScheduler.schedule(() -> {
+		 * System.out.println("Delivery Order scheduled via Scheduler for " +
+		 * delivery.getDeliveryOrderId() + delivery.getDeliveryScheduledAt()); boolean
+		 * completed = deliveryService
+		 * .initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(
+		 * delivery)); if (completed) {
+		 * System.out.println("Scheduled task completed successfully."); } },
+		 * trigger).get();
+		 * 
+		 * } catch (Exception e) { e.printStackTrace(); future.cancel(true);
+		 * System.out.println("Error occured during fulfilment"); }
+		 * delivery.setDeliveryScheduled(true);
+		 * delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
+		 * deliveryService.save(delivery); }
+		 */
+
+		return order;
 	}
 
-	public void processPosOrder(Order order) {
+	public void processOrder(Order order) {
 		try {
-			Address address = addressService.findById(order.getDeliveryAddress());
+			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
 			Customer customer = customerService.findById(order.getCustomerId());
 			customer.setAddress(address);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderRequest posOrderRequest = PosOrderRequestTranslation
 					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
 
-			posService.createOrder(posOrderRequest);
+			posService.createPosOrder(posOrderRequest);
 
 			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
 					address, customer, order);
@@ -153,10 +198,17 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
 
 			Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+			delivery.setId(CommonUtils.genId());
 			delivery.setDeliveryOrderId(deliveryOrderId);
 			delivery.setStatus(DeliveryOrderStatusType.PENDING);
+			delivery.setService(order.getDeliveryDetails().getService());
+			delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
+			delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
 			deliveryService.save(delivery);
 
+		} catch (RequestTranslationException e) {
+			// Need to handle Payment Refund or Retry Mechanism
+			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());
 		} catch (PosException e) {
 			this.updateOrderStatus(order.getId(), OrderStatusType.ERROR);
 			// Need to handle Payment Refund or Retry Mechanism

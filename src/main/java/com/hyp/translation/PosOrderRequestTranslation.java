@@ -15,6 +15,7 @@ import com.hyp.entity.Order.OrderTax;
 import com.hyp.enums.OrderType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.enums.TaxType;
+import com.hyp.exception.RequestTranslationException;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.Tax;
 import com.hyp.request.PosOrderRequest;
@@ -60,7 +61,7 @@ public class PosOrderRequestTranslation {
 	private static String domain = "https://aardvark-notable-terminally.ngrok-free.app";
 
 	public static PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order,
-			String cancelReason) {
+			String cancelReason) throws RequestTranslationException {
 		PosOrderUpdateRequest posOrderUpdateRequest = new PosOrderUpdateRequest();
 		try {
 			posOrderUpdateRequest.setAccessToken(accessToken);
@@ -73,6 +74,7 @@ public class PosOrderRequestTranslation {
 			posOrderUpdateRequest.setStatus("-1");
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
 		}
 		return posOrderUpdateRequest;
 	}
@@ -94,7 +96,7 @@ public class PosOrderRequestTranslation {
 		return posRiderUpdateRequest;
 	}
 
-	public static PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer) {
+	public static PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer) throws RequestTranslationException {
 		PosOrderRequest posOrderRequest = new PosOrderRequest();
 		try {
 			posOrderRequest.setAccessToken(accessToken);
@@ -103,6 +105,7 @@ public class PosOrderRequestTranslation {
 			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer));
 		} catch (Exception e) {
 			e.printStackTrace();
+			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
 		}
 		return posOrderRequest;
 	}
@@ -155,7 +158,9 @@ public class PosOrderRequestTranslation {
 		orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
 		orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));
 		orderDetails.setTaxTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTaxAmount()));
-		orderDetails.setDiscountType(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountType()));
+		if(order.getDiscountType() != null) {
+			orderDetails.setDiscountType(DiscountType.fromCode(order.getDiscountType()));
+		}		
 		orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
@@ -164,6 +169,7 @@ public class PosOrderRequestTranslation {
 		orderDetails.setDcGstDetails(getGstDetails(null, null));
 		orderDetails.setPcGstDetails(getGstDetails(null, null));
 		orderDetails.setCollectCash(CommonUtils.emptyIfNullOrZeroToString(null));
+		orderDetails.setMinPrepTime(CommonUtils.emptyIfNullOrZeroToString(order.getMinPrepTime()));
 		OrderRequest orderRequest = new OrderRequest();
 		orderRequest.setOrderDetails(orderDetails);
 		return orderRequest;

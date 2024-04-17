@@ -55,7 +55,7 @@ public class DeliveryController {
 		Response response;
 		try {
 			Restaurant restaurant = restaurantService.findById(restaurantId);
-			if (restaurantService == null) {
+			if (restaurant == null) {
 				response = new Response(null, true, "Restaurant not found " + restaurantId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
@@ -66,7 +66,7 @@ public class DeliveryController {
 			}
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
-			response = new Response(Collections.singletonList(deliveryQuote), false, "Delivery Quotes Fetched");
+			response = new Response(Collections.singletonList(deliveryQuote.getData()), false, "Delivery Quotes Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

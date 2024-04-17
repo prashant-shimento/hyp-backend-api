@@ -2,6 +2,8 @@ package com.hyp.mapper;
 
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.modelmapper.spi.MatchingStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,8 +13,8 @@ public class MapperConfig {
 	@Bean
 	ModelMapper modelMapper() {
 		ModelMapper modelMapper = new ModelMapper();
-		modelMapper.getConfiguration().setSkipNullEnabled(true);
-		modelMapper.getConfiguration().setPropertyCondition(Conditions.isNotNull());
+		modelMapper.getConfiguration().setSkipNullEnabled(true).setAmbiguityIgnored(true)
+				.setPropertyCondition(Conditions.isNotNull()).setMatchingStrategy(MatchingStrategies.STRICT);
 		return modelMapper;
 	}
 }

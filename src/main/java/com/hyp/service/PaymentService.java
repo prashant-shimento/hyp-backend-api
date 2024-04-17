@@ -50,7 +50,6 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();
-			orderService.updateOrderStatus(orderId,OrderStatusType.PAYMENT_FAILED);
             throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);
 		}	
 	}

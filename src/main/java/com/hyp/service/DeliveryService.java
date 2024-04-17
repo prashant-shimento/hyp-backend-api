@@ -1,8 +1,13 @@
 package com.hyp.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -10,9 +15,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import com.hyp.entity.Delivery;
+import com.hyp.entity.Restaurant;
 import com.hyp.model.DeliveryQuote;
+import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
+import com.hyp.request.DeliveryFulfillRequest;
 
 import reactor.core.publisher.Mono;
 
@@ -21,6 +29,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Value("${delivery.pidge.url}")
 	private String baseUrl;
+
+	@Autowired
+	DeliveryRepository deliveryRepository;
 
 	private static final double DELIVERY_RADIUS_KM = 5.0;
 
@@ -44,7 +55,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjphZmEyYjlmMC1mMzI5LTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
 			String endpoint = "/v1.0/store/channel/vendor/order";
 			Mono<String> createOrderResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryOrderRequest)).retrieve().bodyToMono(String.class);
@@ -81,7 +92,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryQuoteRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjphZmEyYjlmMC1mMzI5LTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
 			String endpoint = "/v1.0/store/channel/vendor/quote";
 			Mono<DeliveryQuote> quoteResponseMono = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class);
@@ -95,6 +106,48 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			e.printStackTrace();
 			throw new RuntimeException("Error in getDeliveryQuote: " + e.getMessage(), e);
 		}
+	}
+	
+	public DeliveryQuote getServiceability(String deliveryOrderId) {
+		try {
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
+					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			String endpoint = "v1.0/store/channel/vendor/order/fulfillment/services?ids="+deliveryOrderId;
+			System.out.println("Endpoint : " + endpoint);
+			Mono<DeliveryQuote> quoteResponseMono = webClient.get().uri(endpoint)
+					.retrieve().bodyToMono(DeliveryQuote.class);
+			quoteResponseMono.subscribe(response -> {
+				System.out.println("Response: " + response);
+			}, error -> {
+				System.err.println("Error response: " + error.getMessage());
+			});
+			return quoteResponseMono.block();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in getDeliveryQuote: " + e.getMessage(), e);
+		}
+	}
+
+	public boolean initiateOrderFulfill(DeliveryFulfillRequest deliveryFulfillRequest) {
+		try {
+			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryFulfillRequest));
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
+					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			String endpoint = "/v1.0/store/channel/vendor/order/fulfill";
+			ClientResponse response = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve().bodyToMono(ClientResponse.class)
+					.block();
+			System.out.println("response from fulfill " + response + " " +response.statusCode());
+			return response.statusCode().equals(HttpStatus.OK) ? true : false;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in initiateOrderFulfill: " + e.getMessage(), e);
+		}
+	}
+
+	public Delivery findByOrderId(String orderId) {
+		return deliveryRepository.findByOrderId(orderId);
 	}
 
 }

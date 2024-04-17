@@ -142,7 +142,7 @@ public class PosOrderRequest extends PosBaseRequest {
 		@JsonProperty("enable_delivery")
 		private int enableDelivery;
 		@JsonProperty("min_prep_time")
-		private int minPrepTime;
+		private String minPrepTime;
 		@JsonProperty("callback_url")
 		private String callbackUrl;
 		@JsonProperty("collect_cash")

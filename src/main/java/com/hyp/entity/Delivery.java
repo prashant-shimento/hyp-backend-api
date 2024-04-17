@@ -1,9 +1,10 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hyp.enums.DeliveryOrderStatusType;
 
 import lombok.AllArgsConstructor;
@@ -32,6 +33,13 @@ public class Delivery extends BaseEntity {
 	private ContactDetail pocDetail;
 	private ContactDetail receiverDetail;
 	private double amount;
+	private int networkId;
+	private boolean pickupNow;
+	private String service;
+	private boolean isDeliveryScheduled;
+	private LocalDateTime deliveryScheduledAt;
+	private String networkToken;
+
 
 	@Data
 	@NoArgsConstructor

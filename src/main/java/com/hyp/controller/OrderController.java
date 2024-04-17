@@ -82,7 +82,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
 					.getPosRiderStatusUpdateRequest(restaurant, order, RiderStatusType.rider_assigned);
-			String posResponse = posService.updateRiderStatus(posRiderUpdateRequest);
+			String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
@@ -102,7 +102,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderUpdateRequest posOrderUpdateRequest = PosOrderRequestTranslation
 					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
-			String posResponse = posService.updateOrder(posOrderUpdateRequest);
+			String posResponse = posService.updatePosOrder(posOrderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Order Cancelled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
