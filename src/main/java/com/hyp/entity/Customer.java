@@ -2,8 +2,13 @@ package com.hyp.entity;
 
 import java.util.List;
 
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,6 +18,7 @@ import lombok.NoArgsConstructor;
 @Document(collection = "customers")
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(Include.NON_NULL)
 public class Customer extends BaseEntity {
 	/**
 	 * 
@@ -24,13 +30,10 @@ public class Customer extends BaseEntity {
 	private String mobile;
 	@Field("email")
 	private String email;
-	@Field("address_id") 
-	private List<String> address_id;
-	
-	private transient List<Address> addresses;
-	
+	@Field("is_verified")
+	private boolean isVerified;
 	private transient Address address;
+	@DBRef
+	private transient List<Address> addresses;
 
-	
-	
 }

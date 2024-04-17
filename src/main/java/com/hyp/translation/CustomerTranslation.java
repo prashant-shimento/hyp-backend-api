@@ -25,6 +25,7 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 	@Override
 	public CustomerDto getDto(Customer entity) {
 		CustomerDto dto = new CustomerDto();
+		dto.setAddresses(entity.getAddresses());
 		BeanUtils.copyProperties(entity, dto);
 		return dto;
 	}
@@ -40,7 +41,7 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 			dto.setName(customer.getName());
 			dto.setMobile(customer.getMobile());
 			dto.setEmail(customer.getEmail());
-			dto.setAddress_id(customer.getAddress_id());
+			dto.setAddresses(customer.getAddresses());
 			dtoList.add(dto);
 		}
 
@@ -49,31 +50,6 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 
 	@Override
 	public Customer getPatchDto(Customer existingEntity, CustomerDto dto) {
-		if (existingEntity == null || dto == null) {
-			return null;
-		}
-
-		Customer patchedEntity = new Customer();
-		patchedEntity.setName(existingEntity.getName());
-		patchedEntity.setMobile(existingEntity.getMobile());
-		patchedEntity.setEmail(existingEntity.getEmail());
-		patchedEntity.setAddress_id(existingEntity.getAddress_id());
-
-		// here we need to check the id also but leave it for now....
-		if (dto.getName() != null) {
-			patchedEntity.setName(dto.getName());
-		}
-		if (dto.getMobile() != null) {
-			patchedEntity.setMobile(dto.getMobile());
-		}
-		if (dto.getEmail() != null) {
-			patchedEntity.setEmail(dto.getEmail());
-		}
-		if (dto.getAddress_id() != null) {
-			patchedEntity.setAddress_id(dto.getAddress_id());
-		}
-
-		return patchedEntity;
+		return null;
 	}
-
 }

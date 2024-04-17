@@ -1,5 +1,7 @@
 package com.hyp.controller;
 
+import java.util.Collections;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hyp.dto.CustomerDto;
 import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
+import com.hyp.mapper.DataMapper;
 import com.hyp.response.Response;
+import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 
@@ -20,10 +24,16 @@ import com.hyp.service.OtpService;
 public class LoginController {
 
 	@Autowired
-	CustomerService customerService;
+	public CustomerService customerService;
+
+	@Autowired
+	public AddressService addressService;
 
 	@Autowired
 	OtpService otpService;
+
+	@Autowired
+	DataMapper dataMapper;
 
 	@PostMapping("/otp")
 	public ResponseEntity<Response> userLogin(@RequestBody CustomerDto customerDto) {
@@ -31,14 +41,13 @@ public class LoginController {
 		try {
 			Customer customer = customerService.findByMobile(customerDto.getMobile());
 			if (customer == null) {
-				customer = new Customer();
-				customer.setMobile(customerDto.getMobile());
-				customer.setName(customerDto.getName());
+				customer = dataMapper.createCustomer(customerDto);
 				customer = customerService.save(customer);
 			}
 			otpService.sendOtp(customer.getMobile());
 
 			response = new Response(null, false, "OTP Sent Successfully");
+
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
@@ -53,8 +62,14 @@ public class LoginController {
 		try {
 			int storedOtp = otpService.getOtp(verificationRequest.getMobile());
 			if (verificationRequest.getOtp() == storedOtp) {
-				response = new Response(null, false, "OTP Sent Successfully");
-				return ResponseEntity.ok(response);
+				Customer customer = customerService.findByMobile(verificationRequest.getMobile());
+				if (customer != null) {
+					response = new Response(Collections.singletonList(customer), false, "OTP Verified Successfully");
+					return ResponseEntity.ok(response);
+				} else {
+					response = new Response(null, true, "Customer not found");
+					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+				}
 			} else {
 				response = new Response(null, true, "OTP Verification Failed");
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
@@ -65,7 +80,7 @@ public class LoginController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+
 	@PostMapping("/resend-otp")
 	public ResponseEntity<Response> otpResend(@RequestBody CustomerDto customerDto) {
 		Response response;
@@ -80,4 +95,6 @@ public class LoginController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+	
+
 }

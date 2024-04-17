@@ -8,9 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.hyp.dto.AddonGroupDto;
+import com.hyp.dto.CustomerDto;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.AddonGroup;
+import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
+import com.hyp.util.CommonUtils;
 
 @Component
 public class DataMapper {
@@ -29,7 +32,7 @@ public class DataMapper {
 	public Order toOrderEntity(OrderDto orderDto) {
 		return modelMapper.map(orderDto, Order.class);
 	}
-	
+
 	public AddonGroupDto toAddonGroupDto(AddonGroup addonGroup) {
 		return modelMapper.map(addonGroup, AddonGroupDto.class);
 	}
@@ -37,18 +40,21 @@ public class DataMapper {
 	public AddonGroup toAddonGroupEntity(AddonGroupDto addonGroupDto) {
 		return modelMapper.map(addonGroupDto, AddonGroup.class);
 	}
-	
-	public List<AddonGroupDto> toAddonGroupDtoList(List<AddonGroup> addonGroups) {
-        return addonGroups.stream()
-                .map(this::toAddonGroupDto)
-                .collect(Collectors.toList());
-    }
 
-    public List<AddonGroup> toAddonGroupEntityList(List<AddonGroupDto> addonGroupDtos) {
-        return addonGroupDtos.stream()
-                .map(this::toAddonGroupEntity)
-                .collect(Collectors.toList());
-    }
-	
-	
+	public List<AddonGroupDto> toAddonGroupDtoList(List<AddonGroup> addonGroups) {
+		return addonGroups.stream().map(this::toAddonGroupDto).collect(Collectors.toList());
+	}
+
+	public List<AddonGroup> toAddonGroupEntityList(List<AddonGroupDto> addonGroupDtos) {
+		return addonGroupDtos.stream().map(this::toAddonGroupEntity).collect(Collectors.toList());
+	}
+	public Customer createCustomer(CustomerDto customerDto) {
+		Customer customer = new Customer();
+		customer.setId(CommonUtils.genId());
+		customer.setName(customerDto.getName());
+		customer.setMobile(customerDto.getMobile());
+		customer.setVerified(false);
+		return customer;
+	}
+
 }
