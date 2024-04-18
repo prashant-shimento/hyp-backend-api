@@ -1,12 +1,11 @@
 package com.hyp.entity;
 
 import java.time.LocalDateTime;
-
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.hyp.enums.DeliveryOrderStatusType;
-
+import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
@@ -23,23 +22,34 @@ import lombok.ToString;
 public class Delivery extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-
+	
+	@Field("delivery_order_id")
 	private String deliveryOrderId;
+	@Field("order_id")
 	private String orderId;
+	@Field("reference_id")
 	private String referenceId;
 	private String channel;
 	private DeliveryOrderStatusType status;
+	@Field("sender_detail")
 	private ContactDetail senderDetail;
+	@Field("poc_detail")
 	private ContactDetail pocDetail;
+	@Field("receiver_detail")
 	private ContactDetail receiverDetail;
 	private double amount;
+	@Field("network_id")
 	private int networkId;
+	@Field("pickup_now")
 	private boolean pickupNow;
 	private String service;
+	@Field("is_delivery_scheduled")
 	private boolean isDeliveryScheduled;
+	@Field("delivery_scheduled_at")
 	private LocalDateTime deliveryScheduledAt;
+	@Field("network_token")
 	private String networkToken;
-
+	private DeliveryFulfillment fulfillment;
 
 	@Data
 	@NoArgsConstructor
@@ -51,7 +61,7 @@ public class Delivery extends BaseEntity {
 		private String mobile;
 		private String email;
 	}
-	
+
 	@Data
 	@NoArgsConstructor
 	public static class Address {

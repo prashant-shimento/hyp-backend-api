@@ -1,6 +1,8 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
@@ -16,9 +18,12 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.exception.DeliveryException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.mapper.DataMapper;
+import com.hyp.model.DeliveryQuote;
+import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
@@ -125,60 +130,77 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	public Order processCallback(PosCallbackRequest posCallbackRequest) throws Exception {
 
-		Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
-		if (restaurant == null) {
-			throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
-		}
-		if (!this.isExistsById(posCallbackRequest.getOrderId())) {
-			throw new Exception("Order not found " + posCallbackRequest.getOrderId());
-		}
-
-		Order order = this.findById(posCallbackRequest.getOrderId());
-		order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
-		order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
-		order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-		order = this.update(order);
-
-		Delivery delivery = deliveryService.findByOrderId(order.getId());
-		OrderFulfillmentTrigger trigger = new OrderFulfillmentTrigger(order);
-
-		if (!delivery.isDeliveryScheduled()) {
-			if (order.getStatus().equals(OrderStatusType.DISPATCHED)) {
-				deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+		try {
+			Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
+			if (restaurant == null) {
+				throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
 			}
-			delivery.setDeliveryScheduled(true);
-			delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
-			deliveryService.save(delivery);
+			if (!this.isExistsById(posCallbackRequest.getOrderId())) {
+				throw new Exception("Order not found " + posCallbackRequest.getOrderId());
+			}
+			Order order = this.findById(posCallbackRequest.getOrderId());
+			order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
+			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
+			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
+			order = this.update(order);
+
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			OrderFulfillmentTrigger trigger = new OrderFulfillmentTrigger(order);
+
+			if (order.getStatus().equals(OrderStatusType.DISPATCHED)) {
+				DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
+				List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
+				String token = deliveryNetworks.stream()
+						.filter(network -> network.getNetworkId() == delivery.getNetworkId())
+						.map(DeliveryNetworks::getToken).findFirst().get();
+				delivery.setNetworkToken(token);
+				deliveryService.save(delivery);
+				deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+				delivery.setDeliveryScheduled(true);
+				delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
+				deliveryService.save(delivery);
+			}
+
+			// Todo: Need to revist this logic to enable time based api call
+//			if (!delivery.isDeliveryScheduled()) {
+//				DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
+//				List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
+//				String token = deliveryNetworks.stream()
+//						.filter(network -> network.getNetworkId() == delivery.getNetworkId())
+//						.map(DeliveryNetworks::getToken).findFirst().get();
+//				delivery.setNetworkToken(token);
+//				deliveryService.save(delivery);
+//				ScheduledFuture<?> future = null;
+			//
+//				try {
+//					future = (ScheduledFuture<?>) taskScheduler.schedule(() -> {
+//						System.out.println("Delivery Order scheduled via Scheduler for " + delivery.getDeliveryOrderId()
+//								+ delivery.getDeliveryScheduledAt());
+//						boolean completed = deliveryService
+//								.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+//						if (completed) {
+//							System.out.println("Scheduled task completed successfully.");
+//						}
+//					}, trigger).get();
+			//
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//					future.cancel(true);
+//					System.out.println("Error occured during fulfilment");
+//				}
+//				delivery.setDeliveryScheduled(true);
+//				delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
+//				deliveryService.save(delivery);
+//			}
+			return order;
+
+		} catch (DeliveryException e) {
+			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.DELIVERY_ERROR);
+			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
+		} catch (Exception e) {
+			throw new RuntimeException("Exception Occured while processCallback Order " + e.getMessage());
 		}
 
-		//Todo: Need to revist this logic to enable time based api call
-		/*
-		 * if (!delivery.isDeliveryScheduled()) { DeliveryQuote deliveryQuote =
-		 * deliveryService.getServiceability(delivery.getDeliveryOrderId());
-		 * List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
-		 * String token = deliveryNetworks.stream() .filter(network ->
-		 * network.getNetworkId() == delivery.getNetworkId())
-		 * .map(DeliveryNetworks::getToken).findFirst().get();
-		 * delivery.setNetworkToken(token); deliveryService.save(delivery);
-		 * ScheduledFuture<?> future = null;
-		 * 
-		 * try { future = (ScheduledFuture<?>) taskScheduler.schedule(() -> {
-		 * System.out.println("Delivery Order scheduled via Scheduler for " +
-		 * delivery.getDeliveryOrderId() + delivery.getDeliveryScheduledAt()); boolean
-		 * completed = deliveryService
-		 * .initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(
-		 * delivery)); if (completed) {
-		 * System.out.println("Scheduled task completed successfully."); } },
-		 * trigger).get();
-		 * 
-		 * } catch (Exception e) { e.printStackTrace(); future.cancel(true);
-		 * System.out.println("Error occured during fulfilment"); }
-		 * delivery.setDeliveryScheduled(true);
-		 * delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
-		 * deliveryService.save(delivery); }
-		 */
-
-		return order;
 	}
 
 	public void processOrder(Order order) {
@@ -210,9 +232,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			// Need to handle Payment Refund or Retry Mechanism
 			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());
 		} catch (PosException e) {
-			this.updateOrderStatus(order.getId(), OrderStatusType.ERROR);
+			this.updateOrderStatus(order.getId(), OrderStatusType.POS_ERROR);
 			// Need to handle Payment Refund or Retry Mechanism
 			throw new RuntimeException("Exception Occured while createOrder in POS Service " + e.getMessage());
+		} catch (DeliveryException e) {
+			this.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_ERROR);
+			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			throw new RuntimeException("Exception Occured while Processing Order " + e.getMessage());
 		}

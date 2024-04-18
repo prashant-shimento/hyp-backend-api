@@ -80,7 +80,7 @@ public class PosOrderRequestTranslation {
 	}
 
 	public static PosRiderUpdateRequest getPosRiderStatusUpdateRequest(Restaurant restaurant, Order order,
-			RiderStatusType riderStatus) {
+			RiderDetails riderDetails,RiderStatusType riderStatus) {
 		PosRiderUpdateRequest posRiderUpdateRequest = new PosRiderUpdateRequest();
 		try {
 			posRiderUpdateRequest.setAccessToken(accessToken);
@@ -88,7 +88,7 @@ public class PosOrderRequestTranslation {
 			posRiderUpdateRequest.setAppSecret(appSecret);
 			posRiderUpdateRequest.setRestaurantId(restaurant.getMenuSharingCode());
 			posRiderUpdateRequest.setOrderId(order.getId());
-			posRiderUpdateRequest.setRiderData(new RiderDetails("rider", "9964552656"));
+			posRiderUpdateRequest.setRiderData(riderDetails);
 			posRiderUpdateRequest.setStatus(String.valueOf(riderStatus));
 		} catch (Exception e) {
 			e.printStackTrace();

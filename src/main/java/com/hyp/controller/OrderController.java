@@ -25,6 +25,7 @@ import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
+import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.response.PosResponse;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
@@ -81,7 +82,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
-					.getPosRiderStatusUpdateRequest(restaurant, order, RiderStatusType.rider_assigned);
+					.getPosRiderStatusUpdateRequest(restaurant, order, new RiderDetails("rider", "9964552656"),RiderStatusType.rider_assigned);
 			String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);

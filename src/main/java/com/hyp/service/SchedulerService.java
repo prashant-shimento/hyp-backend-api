@@ -22,15 +22,15 @@ public class SchedulerService {
 	DeliveryService deliveryService;
 
 	public void schedulerJob(SchedulerJob job, Trigger trigger, Delivery delivery) {
-		taskScheduler.schedule(() -> {
-			System.out.println("Delivery Order scheduled via Scheduler for " + delivery.getDeliveryOrderId()
-					+ delivery.getDeliveryScheduledAt());
-			boolean completed = deliveryService
-					.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
-			if (completed) {
-				System.out.println("Scheduled task completed successfully.");
-			}
-		}, trigger);
+//		taskScheduler.schedule(() -> {
+//			System.out.println("Delivery Order scheduled via Scheduler for " + delivery.getDeliveryOrderId()
+//					+ delivery.getDeliveryScheduledAt());
+//			boolean completed = deliveryService
+//					.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+//			if (completed) {
+//				System.out.println("Scheduled task completed successfully.");
+//			}
+//		}, trigger);
 
 		schedulerMap.put(job.getJobName() + "-" + System.currentTimeMillis(), job);
 	}

@@ -1,8 +1,9 @@
-package com.hyp.request;
+package com.hyp.model;
 
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hyp.enums.DeliveryFulfillStatusType;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -49,13 +50,16 @@ public class DeliveryOrderStatus {
 	@JsonProperty("notes")
 	private List<Object> notes;
 
+	private DeliveryFulfillment fulfillment;
+
 	@JsonProperty("owner")
 	private Owner owner;
 
 	@JsonProperty("parent_id")
 	private int parentId;
 
-	class DeliveryChannel {
+	@Data
+	public static class DeliveryChannel {
 		@JsonProperty("name")
 		private String name;
 
@@ -67,7 +71,8 @@ public class DeliveryOrderStatus {
 
 	}
 
-	class User {
+	@Data
+	public static class User {
 		@JsonProperty("id")
 		private int id;
 
@@ -76,7 +81,20 @@ public class DeliveryOrderStatus {
 
 	}
 
-	class ContactDetail {
+	@Data
+	public static class DeliveryFulfillment {
+		private Channel channel;
+		private List<Log> logs;
+		private DeliveryFulfillStatusType status;
+		private Location pickup;
+		private Rider rider;
+		private Location drop;
+		private Mtg mtg;
+
+	}
+
+	@Data
+	public static class ContactDetail {
 		@JsonProperty("name")
 		private String name;
 
@@ -85,7 +103,39 @@ public class DeliveryOrderStatus {
 
 	}
 
-	class Owner {
+	@Data
+	public static class Channel {
+		private String name;
+		@JsonProperty("order_id")
+		private String orderId;
+	}
+
+	@Data
+	public static class Log {
+		private String timestamp;
+		private String status;
+		private Location location;
+		private String remark;
+		private Rider rider;
+		private Channel channel;
+		private String attemptType;
+	}
+
+	@Data
+	public static class Location {
+		private double latitude;
+		private double longitude;
+	}
+
+	@Data
+	public static class Rider {
+		private String id;
+		private String name;
+		private String mobile;
+	}
+
+	@Data
+	public static class Owner {
 		@JsonProperty("id")
 		private int id;
 
@@ -94,7 +144,20 @@ public class DeliveryOrderStatus {
 
 		@JsonProperty("name")
 		private String name;
+	}
 
+	@Data
+	public static class Mtg {
+		@JsonProperty("trip_id")
+		private int tripId;
+		@JsonProperty("group_id")
+		private int groupId;
+		@JsonProperty("rider_id")
+		private int riderId;
+		@JsonProperty("bundle_id")
+		private int bundleId;
+		@JsonProperty("sequence_number")
+		private int sequenceNumber;
 	}
 
 }
