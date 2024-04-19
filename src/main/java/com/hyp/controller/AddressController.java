@@ -1,8 +1,6 @@
 package com.hyp.controller;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.AddressDto;
+import com.hyp.dto.CustomerDto;
 import com.hyp.entity.Address;
-import com.hyp.entity.Customer;
 import com.hyp.entity.Address.Location;
+import com.hyp.entity.Customer;
+import com.hyp.mapper.DataMapper;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
@@ -41,8 +41,7 @@ public class AddressController extends BaseController<AddressDto, Address, Strin
 	public OtpService otpService;
 
 	@PostMapping("/{customerId}")
-	public ResponseEntity<Response> addAddress(@RequestBody List<AddressDto> addressDtoList,
-			@PathVariable String customerId) {
+	public ResponseEntity<Response> addAddress(@RequestBody AddressDto addressDto, @PathVariable String customerId) {
 		Response response;
 		try {
 			Customer customer = customerService.findById(customerId);
@@ -57,13 +56,19 @@ public class AddressController extends BaseController<AddressDto, Address, Strin
 				return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
 			}
 
-			List<Address> addresses = createAddresses(addressDtoList);
+			Address address = createAddress(addressDto);
 
-			customer.setVerified(true);
-			customer.setAddresses(addresses);
+			customer.getAddresses().add(address);
 			customerService.save(customer);
 
-			response = new Response(Collections.singletonList(customer), false, "Address Added Successfully");
+			CustomerDto customerResponseDto = new CustomerDto();
+			customerResponseDto.setId(customer.getId());
+			customerResponseDto.setName(customer.getName());
+			customerResponseDto.setMobile(customer.getMobile());
+			customerResponseDto.setAddresses(Collections.singletonList(address));
+
+			response = new Response(Collections.singletonList(customerResponseDto), false,
+					"Address Added Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
@@ -72,22 +77,18 @@ public class AddressController extends BaseController<AddressDto, Address, Strin
 		}
 	}
 
-	private List<Address> createAddresses(List<AddressDto> addressDtoList) {
-		List<Address> addresses = new ArrayList<>();
-		for (AddressDto addressDto : addressDtoList) {
-			Address address = new Address();
-			address.setId(CommonUtils.genId());
-			address.setAddressOne(addressDto.getAddressOne());
-			address.setAddressTwo(addressDto.getAddressTwo());
-			address.setLandmark(addressDto.getLandmark());
-			address.setCity(addressDto.getCity());
-			address.setState(addressDto.getState());
-			address.setCountry(addressDto.getCountry());
-			address.setPincode(addressDto.getPincode());
-			address.setLocation(new Location(addressDto.getLatitude(), addressDto.getLongitude()));
-			address = addressService.save(address);
-			addresses.add(address);
-		}
-		return addresses;
+	private Address createAddress(AddressDto addressDto) {
+		Address address = new Address();
+		address.setId(CommonUtils.genId());
+		address.setAddressOne(addressDto.getAddressOne());
+		address.setAddressTwo(addressDto.getAddressTwo());
+		address.setLandmark(addressDto.getLandmark());
+		address.setCity(addressDto.getCity());
+		address.setState(addressDto.getState());
+		address.setCountry(addressDto.getCountry());
+		address.setPincode(addressDto.getPincode());
+		address.setLocation(new Location(addressDto.getLatitude(), addressDto.getLongitude()));
+		return addressService.save(address);
 	}
+
 }

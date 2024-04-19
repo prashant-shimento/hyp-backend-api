@@ -8,10 +8,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.hyp.dto.AddonGroupDto;
-import com.hyp.dto.CustomerDto;
+import com.hyp.dto.AddressDto;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.AddonGroup;
-import com.hyp.entity.Customer;
+import com.hyp.entity.Address;
+import com.hyp.entity.Address.Location;
 import com.hyp.entity.Order;
 import com.hyp.util.CommonUtils;
 
@@ -48,13 +49,4 @@ public class DataMapper {
 	public List<AddonGroup> toAddonGroupEntityList(List<AddonGroupDto> addonGroupDtos) {
 		return addonGroupDtos.stream().map(this::toAddonGroupEntity).collect(Collectors.toList());
 	}
-	public Customer createCustomer(CustomerDto customerDto) {
-		Customer customer = new Customer();
-		customer.setId(CommonUtils.genId());
-		customer.setName(customerDto.getName());
-		customer.setMobile(customerDto.getMobile());
-		customer.setVerified(false);
-		return customer;
-	}
-
 }
