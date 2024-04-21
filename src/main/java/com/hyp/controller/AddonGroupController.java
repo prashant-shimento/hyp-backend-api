@@ -19,7 +19,7 @@ import com.hyp.service.AddonGroupService;
 import com.hyp.translation.AddonGroupsTranslation;
 
 @RestController
-@RequestMapping("/addon-groups")
+@RequestMapping("/addon-group")
 public class AddonGroupController extends BaseListController<AddonGroupDto, AddonGroup, String> {
 
 	@Autowired

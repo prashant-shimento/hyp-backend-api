@@ -8,6 +8,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.google.maps.GeoApiContext;
+import com.google.maps.GeocodingApi;
+import com.google.maps.model.AddressComponent;
+import com.google.maps.model.AddressComponentType;
+import com.google.maps.model.AddressType;
+import com.google.maps.model.GeocodingResult;
+import com.google.maps.model.GeocodingResult;
+import com.google.maps.model.LatLng;
+import com.hyp.dto.AddressDto;
 import com.hyp.entity.Payment;
 import com.hyp.model.PlaceData;
 import com.hyp.model.PlacePredictionData;
@@ -19,6 +28,24 @@ public class LocationService extends BaseServiceImpl<Payment, String> {
 
 	@Value("${google.api.key}")
 	private String googleApiKey;
+
+	private static final double DELIVERY_RADIUS_KM = 5.0;
+
+	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
+			double restaurantLongitude) {
+		double distance = calculateDistance(userLatitude, userLongitude, restaurantLatitude, restaurantLongitude);
+		return distance <= DELIVERY_RADIUS_KM;
+	}
+
+	private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+		double earthRadius = 6371;
+		double dLat = Math.toRadians(lat2 - lat1);
+		double dLon = Math.toRadians(lon2 - lon1);
+		double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1))
+				* Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+		double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+		return earthRadius * c;
+	}
 
 	public PlacePredictionData getLocationPrediction(String search) {
 		try {
@@ -44,12 +71,12 @@ public class LocationService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
-	public PlaceData getPlace(String placeId) {
+	public String getPlaceDetails(String placeId) {
 		try {
 			WebClient webClient = WebClient.builder().baseUrl("https://places.googleapis.com/v1/places/" + placeId)
 					.defaultHeader("X-Goog-Api-Key", googleApiKey)
-					.defaultHeaders(headers -> headers.set("X-Goog-FieldMask", "id,formattedAddress,location")).build();
-			Mono<PlaceData> placeResponse = webClient.get().retrieve().bodyToMono(PlaceData.class);
+					.defaultHeaders(headers -> headers.set("X-Goog-FieldMask", "*")).build();
+			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
 				System.out.println("Response: " + response);
 			}, error -> {
@@ -59,6 +86,36 @@ public class LocationService extends BaseServiceImpl<Payment, String> {
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException("Error in getLocationPrediction: " + e.getMessage(), e);
+		}
+	}
+
+	public String getPlaceByGeocodeByRest(double latitude, double longitude) {
+		try {
+			String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + latitude + "," + longitude
+					+ "&key=" + googleApiKey;
+			WebClient webClient = WebClient.builder().baseUrl(url).build();
+			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
+			placeResponse.subscribe(response -> {
+				System.out.println("Response: " + response);
+			}, error -> {
+				System.err.println("Error response: " + error.getMessage());
+			});
+			return placeResponse.block();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in getPlaceByGeocode: " + e.getMessage(), e);
+		}
+	}
+
+	public GeocodingResult[] getPlaceByGeocodebyClient(double latitude, double longitude) {
+		try {
+			GeoApiContext context = new GeoApiContext.Builder().apiKey(googleApiKey).build();
+			LatLng latLng = new LatLng(latitude, longitude);
+			GeocodingResult[] results = GeocodingApi.reverseGeocode(context, latLng).await();
+			return results;
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in getPlaceByGeocodebyClient: " + e.getMessage(), e);
 		}
 	}
 

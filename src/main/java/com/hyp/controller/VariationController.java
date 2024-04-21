@@ -16,7 +16,7 @@ import com.hyp.response.Response;
 import com.hyp.service.VariationService;
 
 @RestController
-@RequestMapping("/variations")
+@RequestMapping("/variation")
 public class VariationController {
 
 	@Autowired

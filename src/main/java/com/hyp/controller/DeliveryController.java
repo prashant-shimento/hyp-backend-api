@@ -124,6 +124,7 @@ public class DeliveryController {
 		}
 	}
 
+	@Hidden
 	@GetMapping("/rider-location/{orderId}")
 	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId) {
 		Response response;
@@ -137,31 +138,6 @@ public class DeliveryController {
 			DeliveryRiderLocation deliveryRiderLocation = deliveryService.getRiderCurrentLocation(orderId);
 
 			response = new Response(Collections.singletonList(deliveryRiderLocation), false, "Delivery Quotes Fetched");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
-	}
-
-    @Hidden
-	@PostMapping("/eligibility/{restaurantId}")
-	public ResponseEntity<Response> checkDelivery(@PathVariable("restaurantId") String restaurantId,
-			@RequestParam("latitude") double latitude, @RequestParam("longitude") double longitude) {
-		Response response;
-		try {
-			Restaurant restaurant = restaurantService.findById(restaurantId);
-			if (restaurantService == null) {
-				response = new Response(null, true, "Restaurant not found " + restaurantId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			if (!deliveryService.isLocationDeliverable(latitude, longitude, restaurant.getLocation().getLatitude(),
-					restaurant.getLocation().getLatitude())) {
-				response = new Response(null, false, "Location Not Deliverable");
-				return ResponseEntity.badRequest().body(response);
-			}
-			response = new Response(null, false, "Location Deliverable");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
