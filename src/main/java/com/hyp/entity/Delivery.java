@@ -18,7 +18,7 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "delivery")
+@Document(collection = "deliveries")
 public class Delivery extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;

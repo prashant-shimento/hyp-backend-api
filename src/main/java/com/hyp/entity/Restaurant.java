@@ -89,6 +89,9 @@ public class Restaurant extends BaseEntity {
 
 	@Field("status_reason")
 	private String statusReason;
+	
+	@Field("delivery_radius")
+	private double deliveryRadius;
 
 	@Getter
 	@Setter

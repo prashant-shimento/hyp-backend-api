@@ -13,3 +13,7 @@
 #Aasif
 #Need to refactor the query Param with Limits
 #Need to rework on Customer and Address mapping
+
+#Sudhakar
+#Discount as 0 static
+#Final price also subracted with Discount as 0

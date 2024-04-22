@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.google.maps.model.GeocodingResult;
 import com.hyp.dto.AddressDto;
 import com.hyp.entity.Restaurant;
-import com.hyp.model.PlaceData;
 import com.hyp.model.PlacePredictionData;
 import com.hyp.response.Response;
 import com.hyp.service.LocationService;
@@ -62,7 +61,8 @@ public class LocationController {
 			AddressDto addressPlaceData = MapDataTranslation.getPlaceDatatoAddress(rawPlaceData);
 
 			if (!locationService.isLocationDeliverable(addressPlaceData.getLatitude(), addressPlaceData.getLongitude(),
-					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLatitude())) {
+					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getDeliveryRadius())) {
 				response = new Response(null, true, "Location Not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}
@@ -95,7 +95,8 @@ public class LocationController {
 			AddressDto addressPlaceData = MapDataTranslation.getGeocodeDatatoAddress(geocodingResults);
 
 			if (!locationService.isLocationDeliverable(addressPlaceData.getLatitude(), addressPlaceData.getLongitude(),
-					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLatitude())) {
+					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getDeliveryRadius())) {
 				response = new Response(null, true, "Location Not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}

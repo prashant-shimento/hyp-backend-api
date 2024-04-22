@@ -11,7 +11,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
 import com.hyp.entity.BaseEntity;
-import com.hyp.entity.Restaurant;
 
 @Service
 public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {

@@ -10,31 +10,22 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.google.maps.GeoApiContext;
 import com.google.maps.GeocodingApi;
-import com.google.maps.model.AddressComponent;
-import com.google.maps.model.AddressComponentType;
-import com.google.maps.model.AddressType;
-import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
-import com.hyp.dto.AddressDto;
-import com.hyp.entity.Payment;
-import com.hyp.model.PlaceData;
 import com.hyp.model.PlacePredictionData;
 import com.hyp.request.PredictionRequest;
 import reactor.core.publisher.Mono;
 
 @Component
-public class LocationService extends BaseServiceImpl<Payment, String> {
+public class LocationService {
 
 	@Value("${google.api.key}")
 	private String googleApiKey;
 
-	private static final double DELIVERY_RADIUS_KM = 5.0;
-
 	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
-			double restaurantLongitude) {
+			double restaurantLongitude, double radius) {
 		double distance = calculateDistance(userLatitude, userLongitude, restaurantLatitude, restaurantLongitude);
-		return distance <= DELIVERY_RADIUS_KM;
+		return distance/1000 <= radius;
 	}
 
 	private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {

@@ -37,6 +37,13 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.springframework/spring-aop -->
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-aop</artifactId>
+    <version>6.1.6</version>
+</dependency>
+
 		<!-- Third Party Dependencies -->
 		<dependency>
 			<groupId>org.json</groupId>
