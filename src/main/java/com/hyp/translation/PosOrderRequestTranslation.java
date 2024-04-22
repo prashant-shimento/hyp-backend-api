@@ -125,7 +125,6 @@ public class PosOrderRequestTranslation {
 		orderInfoDetails.setOrder(getOrderDetails(order));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
-		orderInfoDetails.setDiscount(getDiscount(order.getOrderDiscount()));
 		return orderInfoDetails;
 	}
 
@@ -145,8 +144,8 @@ public class PosOrderRequestTranslation {
 		OrderDetails orderDetails = new OrderDetails();
 		orderDetails.setOrderId(order.getId());
 		orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
-		orderDetails.setPreOrderDate(CommonUtils.emptyIfNullOrZeroToString(null));
-		orderDetails.setPreOrderTime(CommonUtils.emptyIfNullOrZeroToString(null));
+		orderDetails.setPreOrderDate(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+		orderDetails.setPreOrderTime(order.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 		orderDetails.setServiceCharge(CommonUtils.emptyIfNullOrZeroToString(order.getServiceCharge()));
 		orderDetails.setScTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getScTaxAmount()));
 		orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(order.getDeliveryCharge()));

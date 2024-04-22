@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationPipeline;
 import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
@@ -34,8 +35,14 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 		Aggregation aggregation = Aggregation.newAggregation(getCategoryItemsLookupOperation());
 		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 	}
-
+	
 	private LookupOperation getCategoryItemsLookupOperation() {
-		return LookupOperation.newLookup().from("items").localField("_id").foreignField("item_category_id").as("items");
+		AggregationPipeline taxLookUpPipeline = Aggregation
+				.newAggregation(
+						LookupOperation.newLookup().from("taxes").localField("item_tax").foreignField("_id").as("taxes"))
+				.getPipeline();
+
+		return LookupOperation.newLookup().from("items").localField("_id").foreignField("item_category_id")
+				.pipeline(taxLookUpPipeline).as("items");
 	}
 }

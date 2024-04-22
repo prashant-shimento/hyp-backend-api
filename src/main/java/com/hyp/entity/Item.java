@@ -94,5 +94,7 @@ public class Item extends BaseEntity {
     
     @Field("auto_turn_on_time")
     private LocalDateTime autoTurnOnTime;
+    
+	private transient List<Tax> taxes;
 }
 

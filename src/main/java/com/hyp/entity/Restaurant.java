@@ -32,10 +32,10 @@ public class Restaurant extends BaseEntity {
 
 	private String country;
 
-	@Field("minimumorderamount")
+	@Field("minimum_order_amount")
 	private String minimumOrderAmount;
 
-	@Field("restaurantname")
+	@Field("restaurant_name")
 	private String restaurantName;
 
 	@Field("packaging_applicable_on")
@@ -46,7 +46,7 @@ public class Restaurant extends BaseEntity {
 	@Field("packaging_charge")
 	private String packagingCharge;
 
-	@Field("calculatetaxondelivery")
+	@Field("calculate_tax_on_delivery")
 	private int calculateTaxOnDelivery;
 
 	@Field("packaging_charge_type")
@@ -69,19 +69,19 @@ public class Restaurant extends BaseEntity {
 	@Field("tax")
 	private RestaurantTax tax;
 
-	@Field("menusharingcode")
+	@Field("menu_sharing_code")
 	private String menuSharingCode;
 
 	@Field("delivery_hours")
 	private List<DeliveryHours> deliveryHours;
 
-	@Field("calculatetaxonpacking")
+	@Field("calculate_tax_on_packing")
 	private int calculateTaxOnPacking;
 
 	@Field("deliverycharge")
 	private String deliveryCharge;
 
-	@Field("minimumdeliverytime")
+	@Field("minimum_delivery_time")
 	private String minimumDeliveryTime;
 
 	@Field("turn_on_time")

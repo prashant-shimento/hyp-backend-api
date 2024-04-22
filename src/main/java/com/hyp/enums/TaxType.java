@@ -6,9 +6,9 @@ public enum TaxType {
 	public static String fromCode(String code) {
 		switch (code) {
 		case "1":
-			return F.toString();
-		case "2":
 			return P.toString();
+		case "2":
+			return F.toString();
 		default:
 			return P.toString();
 		}
