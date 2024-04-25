@@ -43,10 +43,6 @@ public class Delivery extends BaseEntity {
 	@Field("pickup_now")
 	private boolean pickupNow;
 	private String service;
-	@Field("is_delivery_scheduled")
-	private boolean isDeliveryScheduled;
-	@Field("delivery_scheduled_at")
-	private LocalDateTime deliveryScheduledAt;
 	@Field("network_token")
 	private String networkToken;
 	private DeliveryFulfillment fulfillment;

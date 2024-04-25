@@ -14,49 +14,55 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DeliveryOrderStatus {
 
-	@JsonProperty("id")
-	private String id;
+	private DeliveryOrderData data;
 
-	@JsonProperty("dd_channel")
-	private DeliveryChannel ddChannel;
+	@Data
+	public static class DeliveryOrderData {
+		@JsonProperty("id")
+		private String id;
 
-	@JsonProperty("reference_id")
-	private String referenceId;
+		@JsonProperty("dd_channel")
+		private DeliveryChannel ddChannel;
 
-	@JsonProperty("bill_amount")
-	private int billAmount;
+		@JsonProperty("reference_id")
+		private String referenceId;
 
-	@JsonProperty("cod_amount")
-	private int codAmount;
+		@JsonProperty("bill_amount")
+		private int billAmount;
 
-	@JsonProperty("created_at")
-	private String createdAt;
+		@JsonProperty("cod_amount")
+		private int codAmount;
 
-	@JsonProperty("customer_detail")
-	private ContactDetail customerDetail;
+		@JsonProperty("created_at")
+		private String createdAt;
 
-	@JsonProperty("sender_detail")
-	private ContactDetail senderDetail;
+		@JsonProperty("customer_detail")
+		private ContactDetail customerDetail;
 
-	@JsonProperty("poc_detail")
-	private ContactDetail pocDetail;
+		@JsonProperty("sender_detail")
+		private ContactDetail senderDetail;
 
-	@JsonProperty("status")
-	private String status;
+		@JsonProperty("poc_detail")
+		private ContactDetail pocDetail;
 
-	@JsonProperty("updated_at")
-	private String updatedAt;
+		@JsonProperty("status")
+		private String status;
 
-	@JsonProperty("notes")
-	private List<Object> notes;
+		@JsonProperty("updated_at")
+		private String updatedAt;
 
-	private DeliveryFulfillment fulfillment;
+		@JsonProperty("notes")
+		private List<Object> notes;
 
-	@JsonProperty("owner")
-	private Owner owner;
+		private DeliveryFulfillment fulfillment;
 
-	@JsonProperty("parent_id")
-	private int parentId;
+		@JsonProperty("owner")
+		private Owner owner;
+
+		@JsonProperty("parent_id")
+		private int parentId;
+
+	}
 
 	@Data
 	public static class DeliveryChannel {
@@ -86,9 +92,9 @@ public class DeliveryOrderStatus {
 		private Channel channel;
 		private List<Log> logs;
 		private DeliveryFulfillStatusType status;
-		private Location pickup;
+		private LogisticsInfo pickup;
 		private Rider rider;
-		private Location drop;
+		private LogisticsInfo drop;
 		private Mtg mtg;
 
 	}
@@ -158,6 +164,14 @@ public class DeliveryOrderStatus {
 		private int bundleId;
 		@JsonProperty("sequence_number")
 		private int sequenceNumber;
+	}
+	
+	@Data
+	public static class LogisticsInfo {
+		private String eta;
+		private Location location;
+		private String timestamp;
+		private List<Object> proof;
 	}
 
 }

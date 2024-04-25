@@ -2,7 +2,6 @@ package com.hyp.controller;
 
 import java.util.Collections;
 
-
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -81,8 +80,8 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		try {
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
-					.getPosRiderStatusUpdateRequest(restaurant, order, new RiderDetails("rider", "9964552656"),RiderStatusType.rider_assigned);
+			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation.getPosRiderStatusUpdateRequest(
+					restaurant, order, new RiderDetails("rider", "9964552656"), RiderStatusType.rider_assigned);
 			String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);

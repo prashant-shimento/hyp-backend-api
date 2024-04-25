@@ -2,6 +2,7 @@ package com.hyp.service;
 
 import java.util.List;
 
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,4 +25,7 @@ public interface BaseService<T, ID> {
 	public boolean isExistsById(ID id);
 	
     public T findByField(Class<T> entityClass, String fieldName, Object value);
+    
+    public List<T> findByQuery(Class<T> entityClass, Query query);
+
 }

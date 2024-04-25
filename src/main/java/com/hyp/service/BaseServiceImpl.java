@@ -17,10 +17,9 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
 	@Autowired
 	private MongoRepository<T, ID> repository;
-	
-	@Autowired
-    private MongoTemplate mongoTemplate;
 
+	@Autowired
+	private MongoTemplate mongoTemplate;
 
 	@Override
 	public T findById(ID id) {
@@ -60,15 +59,20 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 	public void deleteById(ID id) {
 		repository.deleteById(id);
 	}
-	
+
 	@Override
-    public boolean isExistsById(ID id) {
-        return repository.existsById(id);
-    }
-	
+	public boolean isExistsById(ID id) {
+		return repository.existsById(id);
+	}
+
 	@Override
 	public T findByField(Class<T> entityClass, String fieldName, Object value) {
-		 Query query = new Query(Criteria.where(fieldName).is(value));
-	     return mongoTemplate.findOne(query, entityClass);
+		Query query = new Query(Criteria.where(fieldName).is(value));
+		return mongoTemplate.findOne(query, entityClass);
+	}
+
+	@Override
+	public List<T> findByQuery(Class<T> entityClass, Query query) {
+		return mongoTemplate.find(query,entityClass);
 	}
 }

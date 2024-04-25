@@ -49,6 +49,8 @@ public class OrderDto extends BaseDto {
 	@Positive(message = "Total amount must be positive")
 	private double totalAmount;
 	@PositiveOrZero(message = "Discount amount must be non-negative")
+	private double grandTotalAmount;
+	@PositiveOrZero(message = "Grand Total amount must be non-negative")
 	private double discountAmount;
 	@PositiveOrZero(message = "Tax amount must be positive")
 	private double taxAmount;

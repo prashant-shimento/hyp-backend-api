@@ -11,8 +11,8 @@
 #Alert Mechanism for Delivery API Error
 
 #Aasif
-#Need to refactor the query Param with Limits
-#Need to rework on Customer and Address mapping
+#Need to refactor the query Param with Sortby
+#Reduce OrderTax payload in Order
 
 #Sudhakar
 #Discount as 0 static

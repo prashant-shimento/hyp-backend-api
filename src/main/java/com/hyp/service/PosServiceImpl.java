@@ -128,7 +128,6 @@ public class PosServiceImpl implements PosService {
 		}
 	}
 
-	
 	@Override
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {

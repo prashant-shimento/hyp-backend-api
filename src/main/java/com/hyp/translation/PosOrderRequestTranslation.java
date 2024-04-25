@@ -58,7 +58,7 @@ public class PosOrderRequestTranslation {
 	private static String appKey = "13yrzmb9pivxscoh25gdj0t7fk48uaqw";
 
 	// @Value("${myapp.domain}")
-	private static String domain = "https://aardvark-notable-terminally.ngrok-free.app";
+	private static String domain = "https://aardvark-notable-terminally.ngrok-free.app/hyp-backend-api";
 
 	public static PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order,
 			String cancelReason) throws RequestTranslationException {

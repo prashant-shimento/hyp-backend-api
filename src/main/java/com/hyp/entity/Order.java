@@ -52,6 +52,9 @@ public class Order {
 
 	@Field("total_amount")
 	private double totalAmount;
+	
+	@Field("grand_total_amount")
+	private double grandTotalAmount;
 
 	private String description;
 

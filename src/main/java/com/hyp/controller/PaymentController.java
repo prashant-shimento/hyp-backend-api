@@ -48,7 +48,7 @@ public class PaymentController {
 			if(order == null) {
 				throw new Exception("Order not found " + orderId);
 			}
-			Payment payment = paymentService.createPaymentOrder(order.getId(), order.getTotalAmount());
+			Payment payment = paymentService.createPaymentOrder(order.getId(), order.getGrandTotalAmount());
 			paymentService.save(payment);
 			response = new Response(Collections.singletonList(payment), false,
 					"Payment Order Created");

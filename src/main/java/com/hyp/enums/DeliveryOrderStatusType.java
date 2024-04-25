@@ -1,7 +1,7 @@
 package com.hyp.enums;
 
 public enum DeliveryOrderStatusType {
-	CREATED, CANCELLED, PENDING, PROCESSING, FULFILLED;
+	CREATED, CANCELLED, PENDING, PROCESSING, FULFILLED, COMPLETED;
 	
 	public static DeliveryOrderStatusType getDeliveryOrderStatus(String value) {
 		switch (value) {
@@ -15,6 +15,8 @@ public enum DeliveryOrderStatusType {
 			return PROCESSING;
 		case "fulfilled":
 			return FULFILLED;
+		case "completed":
+			return COMPLETED;
 		default:
 			return CREATED;
 		}

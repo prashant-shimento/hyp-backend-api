@@ -24,6 +24,7 @@ import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
+import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.response.Response;
@@ -59,33 +60,28 @@ public class DeliveryController {
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderStatus) {
 		Response response;
 		try {
-			Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderStatus.getId());
+			DeliveryOrderData deliveryOrderData = deliveryOrderStatus.getData();
+			Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
 			if (delivery == null) {
-				response = new Response(null, true, "Delivery Id not found " + deliveryOrderStatus.getId());
+				response = new Response(null, true, "Delivery Id not found " + deliveryOrderData.getId());
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			DeliveryFulfillment deliveryFulfill = deliveryOrderStatus.getFulfillment();
-			DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
-
-			delivery.setStatus(DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderStatus.getStatus()));
-
-			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED && deliveryFulfill != null) {
+			delivery.setStatus(DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus()));
+			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
+					|| delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
+				DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
+				DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
 				delivery.setFulfillment(deliveryFulfill);
-			}
-			deliveryService.save(delivery);
-
-			Order order = orderService.findById(delivery.getOrderId());
-
-			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED && deliveryFulfill != null) {
+				Order order = orderService.findById(delivery.getOrderId());
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
-			}
 
-			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
-					&& deliveryService.isPosUpdateRequired(fullFillStatus)) {
-				deliveryService.updatePosRiderStatus(delivery,order);
-			}
+				if (deliveryService.isPosUpdateRequired(fullFillStatus)) {
+					deliveryService.updatePosRiderStatus(delivery, order);
+				}
+				deliveryService.save(delivery);
 
+			}
 			response = new Response(null, false, "Success");
 			return ResponseEntity.ok().build();
 		} catch (Exception e) {
@@ -113,10 +109,10 @@ public class DeliveryController {
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
-			Optional<DeliveryQuote.DeliveryNetworks> deliveryHighestQuote = deliveryQuote.getData().getItems().stream()
-					.max(Comparator.comparingDouble(item -> item.getQuote().getPrice()));
+			Optional<DeliveryQuote.DeliveryNetworks> secondLowestQuote = deliveryQuote.getData().getItems().stream()
+					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).skip(1).findFirst();
 
-			response = new Response(Collections.singletonList(deliveryHighestQuote), false, "Delivery Quotes Fetched");
+			response = new Response(Collections.singletonList(secondLowestQuote), false, "Delivery Quotes Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

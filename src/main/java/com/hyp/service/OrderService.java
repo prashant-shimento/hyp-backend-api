@@ -1,10 +1,16 @@
 package com.hyp.service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.hyp.dto.OrderDto;
@@ -31,7 +37,6 @@ import com.hyp.request.PosOrderRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
-import com.hyp.util.OrderFulfillmentTrigger;
 
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
@@ -144,58 +149,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 			order = this.update(order);
 
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			OrderFulfillmentTrigger trigger = new OrderFulfillmentTrigger(order);
-
-			if (order.getStatus().equals(OrderStatusType.DISPATCHED)) {
-				DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
-				List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
-				String token = deliveryNetworks.stream()
-						.filter(network -> network.getNetworkId() == delivery.getNetworkId())
-						.map(DeliveryNetworks::getToken).findFirst().get();
-				delivery.setNetworkToken(token);
-				deliveryService.save(delivery);
-				deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
-				delivery.setDeliveryScheduled(true);
-				delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
-				deliveryService.save(delivery);
+			if (order.getStatus() == OrderStatusType.READY_FOR_DELIVERY) {
+				Delivery delivery = deliveryService.findByOrderId(order.getId());
+				if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+					System.out.println("Food Ready before given minPrepTime");
+					processDeliveryFulfill(delivery);
+				}
 			}
 
-			// Todo: Need to revist this logic to enable time based api call
-//			if (!delivery.isDeliveryScheduled()) {
-//				DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
-//				List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
-//				String token = deliveryNetworks.stream()
-//						.filter(network -> network.getNetworkId() == delivery.getNetworkId())
-//						.map(DeliveryNetworks::getToken).findFirst().get();
-//				delivery.setNetworkToken(token);
-//				deliveryService.save(delivery);
-//				ScheduledFuture<?> future = null;
-			//
-//				try {
-//					future = (ScheduledFuture<?>) taskScheduler.schedule(() -> {
-//						System.out.println("Delivery Order scheduled via Scheduler for " + delivery.getDeliveryOrderId()
-//								+ delivery.getDeliveryScheduledAt());
-//						boolean completed = deliveryService
-//								.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
-//						if (completed) {
-//							System.out.println("Scheduled task completed successfully.");
-//						}
-//					}, trigger).get();
-			//
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//					future.cancel(true);
-//					System.out.println("Error occured during fulfilment");
-//				}
-//				delivery.setDeliveryScheduled(true);
-//				delivery.setDeliveryScheduledAt(trigger.getTriggerTime());
-//				deliveryService.save(delivery);
-//			}
 			return order;
 
 		} catch (DeliveryException e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.DELIVERY_ERROR);
+			// Add Alert Mechanism
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			throw new RuntimeException("Exception Occured while processCallback Order " + e.getMessage());
@@ -249,4 +215,40 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setStatus(orderStatus);
 		this.save(order);
 	}
+
+	@Scheduled(fixedRate = 60000)
+	public void scheduleDeliveryFullfill() throws DeliveryException {
+		LocalDateTime currentTime = LocalDateTime.now();
+
+		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
+			int minPrepTime = Integer.parseInt(order.getMinPrepTime());
+			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : minPrepTime - 5;
+			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
+			System.out.println(
+					"Buffer Time for Order " + order.getId() + " is " + bufferTime + " and Trigger " + triggerTime);
+
+			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
+		}).collect(Collectors.toList());
+
+		for (Order order : ordersToProcess) {
+			System.out.println("Order to be Processed " + order.getId());
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+				processDeliveryFulfill(delivery);
+			}
+		}
+
+	}
+
+	public void processDeliveryFulfill(Delivery delivery) throws DeliveryException {
+		DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
+		List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
+		String token = deliveryNetworks.stream().filter(network -> network.getNetworkId() == delivery.getNetworkId())
+				.map(DeliveryNetworks::getToken).findFirst().get();
+		delivery.setNetworkToken(token);
+		deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+		delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
+		deliveryService.save(delivery);
+	}
+
 }

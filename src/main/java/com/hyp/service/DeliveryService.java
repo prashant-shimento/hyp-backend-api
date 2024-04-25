@@ -52,8 +52,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 
 	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {
-		return fullFillStatus == DeliveryFulfillStatusType.CREATED
-				|| fullFillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP
+		return fullFillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP
 				|| fullFillStatus == DeliveryFulfillStatusType.REACHED_PICKUP
 				|| fullFillStatus == DeliveryFulfillStatusType.PICKED_UP
 				|| fullFillStatus == DeliveryFulfillStatusType.DELIVERED;
@@ -137,18 +136,23 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	public boolean initiateOrderFulfill(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
+	public void initiateOrderFulfill(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryFulfillRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
 					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
 			String endpoint = "/v1.0/store/channel/vendor/order/fulfill";
-			ClientResponse response = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve().bodyToMono(ClientResponse.class)
-					.block();
-			System.out.println("response from fulfill " + response + " " + response.statusCode());
-			return response.statusCode().equals(HttpStatus.OK) ? true : false;
+			Mono<Object> responses = webClient.post()
+				    .uri(endpoint)
+				    .body(BodyInserters.fromValue(deliveryFulfillRequest))
+				    .exchangeToMono(response -> {
+				        HttpStatus statusCode = (HttpStatus) response.statusCode();
+				        // Do something with the status code
+				        System.out.println("Status code: " + statusCode);
+				        return Mono.just(statusCode);
+				    });
 
+			responses.subscribe();
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new DeliveryException("Error in initiateOrderFulfill: " + e.getMessage());

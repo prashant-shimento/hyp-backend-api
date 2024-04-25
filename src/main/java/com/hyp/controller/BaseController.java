@@ -2,8 +2,11 @@ package com.hyp.controller;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.GenericTypeResolver;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,10 +15,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.hyp.response.Response;
 import com.hyp.service.BaseService;
 import com.hyp.service.TranslationService;
+import com.hyp.util.QueryUtils;
 
 import jakarta.validation.Valid;
 
@@ -27,9 +32,33 @@ public abstract class BaseController<DTO, T, ID> {
 	@Autowired
 	protected TranslationService<DTO, T> translationService;
 
+	protected Class<T> entity;
+
+	@SuppressWarnings("unchecked")
+	public BaseController() {
+		Class<?>[] typeArgs = GenericTypeResolver.resolveTypeArguments(getClass(), BaseListController.class);
+		if (typeArgs != null && typeArgs.length >= 2) {
+			this.entity = (Class<T>) typeArgs[1];
+		} else {
+			throw new IllegalStateException("Cannot resolve entity class");
+		}
+	}
+	
 	@GetMapping
-	public ResponseEntity<Response> getAll() {
-		List<T> entities = service.findAll();
+	public ResponseEntity<Response> getAll(@RequestParam Map<String, String> queryParam, @RequestParam int limit,
+			@RequestParam int offset) {
+		List<T> entities;
+		if (!queryParam.isEmpty()) {
+			Query query = QueryUtils.getFilterQuery(queryParam, limit, offset,
+					QueryUtils.getAllowedParameters(entity.getSimpleName()));
+			if (query == null) {
+				return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
+			}
+			entities = service.findByQuery(entity, query);
+		} else {
+			entities = service.findAll();
+		}
+
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);
