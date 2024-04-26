@@ -2,11 +2,9 @@ package com.hyp.controller;
 
 import java.util.Collections;
 
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.ResponseEntity.BodyBuilder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,18 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.OrderDto;
-import com.hyp.entity.Address;
-import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.mapper.DataMapper;
-import com.hyp.request.PosCallbackRequest;
-import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
-import com.hyp.response.PosResponse;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;

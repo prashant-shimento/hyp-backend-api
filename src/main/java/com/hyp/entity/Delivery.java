@@ -1,11 +1,11 @@
 package com.hyp.entity;
 
-import java.time.LocalDateTime;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;

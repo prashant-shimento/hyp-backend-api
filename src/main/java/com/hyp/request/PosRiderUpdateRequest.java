@@ -1,7 +1,6 @@
 package com.hyp.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hyp.request.PosDataRequest.RestaurantDetails;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

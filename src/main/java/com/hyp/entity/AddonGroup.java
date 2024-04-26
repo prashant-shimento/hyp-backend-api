@@ -2,7 +2,6 @@ package com.hyp.entity;
 
 import java.util.List;
 
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 

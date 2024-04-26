@@ -9,7 +9,6 @@ import org.springframework.scheduling.Trigger;
 
 import com.hyp.entity.Delivery;
 import com.hyp.model.SchedulerJob;
-import com.hyp.translation.DeliveryRequestTranslation;
 
 public class SchedulerService {
 

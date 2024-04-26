@@ -1,7 +1,6 @@
 package com.hyp.dto;
 
 import java.util.List;
-import java.util.Map;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

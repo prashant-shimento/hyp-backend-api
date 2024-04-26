@@ -1,15 +1,10 @@
 package com.hyp.service;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -79,6 +74,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
 	DeliveryService deliveryService;
 
+	@Autowired
+	PaymentService paymentService;
+
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
@@ -144,19 +142,28 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				throw new Exception("Order not found " + posCallbackRequest.getOrderId());
 			}
 			Order order = this.findById(posCallbackRequest.getOrderId());
-			order.setStatus(OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus()));
-			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
-			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-			order = this.update(order);
+			OrderStatusType oldOrderStatus = order.getStatus();
+			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
 
-			if (order.getStatus() == OrderStatusType.READY_FOR_DELIVERY) {
+			if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
-				if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					System.out.println("Food Ready before given minPrepTime");
+				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					processDeliveryFulfill(delivery);
 				}
 			}
-
+			
+			if (newOrderStatus == OrderStatusType.CANCELLED && oldOrderStatus == OrderStatusType.ACCEPTED) {
+				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
+				Delivery delivery = deliveryService.findByOrderId(order.getId());
+				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+				}
+			}
+			
+			order.setStatus(newOrderStatus);
+			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
+			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
+			order = this.update(order);
 			return order;
 
 		} catch (DeliveryException e) {
@@ -164,6 +171,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			// Add Alert Mechanism
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
+			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
 			throw new RuntimeException("Exception Occured while processCallback Order " + e.getMessage());
 		}
 

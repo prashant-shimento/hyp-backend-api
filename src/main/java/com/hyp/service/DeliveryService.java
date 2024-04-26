@@ -7,7 +7,6 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,12 +22,12 @@ import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.repository.DeliveryRepository;
+import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.translation.PosOrderRequestTranslation;
-import com.hyp.request.DeliveryFulfillRequest;
 
 import reactor.core.publisher.Mono;
 
@@ -199,5 +198,26 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
 
 		posService.updatePosRiderStatus(posRiderUpdateRequest);
+	}
+	
+	public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
+		try {
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
+					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			String endpoint = "/v1.0/store/channel/vendor/"+deliveryOrderId+"/cancel";
+			Mono<Object> responses = webClient.post()
+				    .uri(endpoint)
+				    .exchangeToMono(response -> {
+				        HttpStatus statusCode = (HttpStatus) response.statusCode();
+				        // Do something with the status code
+				        System.out.println("Status code: " + statusCode);
+				        return Mono.just(statusCode);
+				    });
+
+			responses.subscribe();
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new DeliveryException("Error in cancelDeliveryOrder: " + e.getMessage());
+		}
 	}
 }
