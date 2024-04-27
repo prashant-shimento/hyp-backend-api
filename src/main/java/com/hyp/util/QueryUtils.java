@@ -12,20 +12,25 @@ import com.hyp.constants.Constants;
 
 public class QueryUtils {
 
-    public static final Map<String, List<String>> ALLOWED_API_PARAMS = new HashMap<>();
+	public static final Map<String, List<String>> ALLOWED_API_PARAMS = new HashMap<>();
 
+	static {
+		ALLOWED_API_PARAMS.put("Order", Constants.ORDER_API_PARAMS);
+		ALLOWED_API_PARAMS.put("Customer", Constants.CUSTOMER_API_PARAMS);
+		ALLOWED_API_PARAMS.put("Item", Constants.ITEM_API_PARAMS);
 
-    static {
-        ALLOWED_API_PARAMS.put("Order", Constants.ORDER_PARAMS);
-        ALLOWED_API_PARAMS.put("Customer", Constants.CUSTOMER_PARAMS);
+	}
 
-    }
-    
-	public static Query getFilterQuery(Map<String, String> requestParam,int limit, int offset, List<String> allowedParams) {
+	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
+		Integer limit = null;
+		Integer offset = null;
+
 		for (String key : requestParam.keySet()) {
-			String[] parts = key.split("_");
-			if (parts.length != 2 || !allowedParams.contains(parts[0]) || !isValidQueryParamOperator(parts[1])) {
-				return null;
+			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
+				String[] parts = key.split("_");
+				if (parts.length != 2 || !allowedParams.contains(parts[0]) || !isValidQueryParamOperator(parts[1])) {
+					return null;
+				}
 			}
 		}
 
@@ -34,6 +39,15 @@ public class QueryUtils {
 		for (Map.Entry<String, String> entry : requestParam.entrySet()) {
 			String key = entry.getKey();
 			String value = entry.getValue();
+
+			if (key.equalsIgnoreCase("limit")) {
+				limit = Integer.parseInt(value);
+			}
+			if (key.equalsIgnoreCase("offset")) {
+				offset = Integer.parseInt(value);
+			}
+
+			
 
 			String[] parts = key.split("_");
 			String fieldName = parts[0];
@@ -74,8 +88,10 @@ public class QueryUtils {
 				return null;
 			}
 		}
-		query.limit(limit > 0 ? limit : 10);
-		query.skip(offset > 0 ? offset * limit : 0);
+
+		query.limit(limit != null ? limit : 10);
+		query.skip(offset != null ? offset * limit : 0);
+		
 		return query;
 
 	}
@@ -83,8 +99,8 @@ public class QueryUtils {
 	public static boolean isValidQueryParamOperator(String operator) {
 		return Arrays.asList("eq", "neq", "in", "nin", "gte", "gt", "lte", "lt", "like", "nlike").contains(operator);
 	}
-	
+
 	public static List<String> getAllowedParameters(String className) {
-		return ALLOWED_API_PARAMS.getOrDefault(className,Arrays.asList("id"));
+		return ALLOWED_API_PARAMS.getOrDefault(className, Arrays.asList("id"));
 	}
 }

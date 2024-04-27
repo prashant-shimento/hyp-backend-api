@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hyp.constants.Constants;
+import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Order.OrderAddonItem;
@@ -92,13 +93,13 @@ public class PosOrderRequestTranslation {
 		return posRiderUpdateRequest;
 	}
 
-	public static PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer) throws RequestTranslationException {
+	public static PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address) throws RequestTranslationException {
 		PosOrderRequest posOrderRequest = new PosOrderRequest();
 		try {
 			posOrderRequest.setAccessToken(accessToken);
 			posOrderRequest.setAppKey(appKey);
 			posOrderRequest.setAppSecret(appSecret);
-			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer));
+			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address));
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
@@ -106,29 +107,29 @@ public class PosOrderRequestTranslation {
 		return posOrderRequest;
 	}
 
-	public static OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer) {
+	public static OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address) {
 		OrderInfo orderInfo = new OrderInfo();
-		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer));
+		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address));
 		orderInfo.setDeviceType("");
 		orderInfo.setUdid("");
 		return orderInfo;
 	}
 
-	public static OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer) {
+	public static OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer, Address address) {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
-		orderInfoDetails.setCustomer(getCustomerDetails(customer));
+		orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
 		orderInfoDetails.setOrder(getOrderDetails(order));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
 		return orderInfoDetails;
 	}
 
-	public static CustomerOrderRequest getCustomerDetails(Customer customer) {
+	public static CustomerOrderRequest getCustomerDetails(Customer customer, Address address) {
 		CustomerDetails customerDetails = new CustomerDetails();
 		customerDetails.setEmail(customer.getEmail());
-		customerDetails.setLatitude(String.valueOf(customer.getAddress().getLocation().getLatitude()));
-		customerDetails.setLongitude(String.valueOf(customer.getAddress().getLocation().getLongitude()));
+		customerDetails.setLatitude(String.valueOf(address.getLocation().getLatitude()));
+		customerDetails.setLongitude(String.valueOf(address.getLocation().getLongitude()));
 		customerDetails.setName(customer.getName());
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();

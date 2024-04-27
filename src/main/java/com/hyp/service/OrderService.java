@@ -181,10 +181,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		try {
 			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
 			Customer customer = customerService.findById(order.getCustomerId());
-			customer.setAddress(address);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderRequest posOrderRequest = PosOrderRequestTranslation
-					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
+					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer,address);
 
 			posService.createPosOrder(posOrderRequest);
 

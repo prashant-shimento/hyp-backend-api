@@ -39,20 +39,12 @@ public abstract class BaseListController<DTO, T, ID> {
 	}
 
 	@GetMapping
-	public ResponseEntity<Response> getAll(@RequestParam Map<String, String> queryParam, @RequestParam int limit,
-			@RequestParam int offset) {
-		List<T> entities;
-		if (!queryParam.isEmpty()) {
-			Query query = QueryUtils.getFilterQuery(queryParam, limit, offset,
-					QueryUtils.getAllowedParameters(entity.getSimpleName()));
-			if (query == null) {
-				return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
-			}
-			entities = service.findByQuery(entity, query);
-		} else {
-			entities = service.findAll();
+	public ResponseEntity<Response> getAll(@RequestParam(required = false) Map<String, String> queryParam) {
+		Query query = QueryUtils.getFilterQuery(queryParam, QueryUtils.getAllowedParameters(entity.getSimpleName()));
+		if (query == null) {
+			return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
 		}
-
+		List<T> entities = service.findByQuery(entity, query);
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);

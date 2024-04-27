@@ -1,5 +1,6 @@
 package com.hyp.entity;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -31,8 +32,7 @@ public class Customer extends BaseEntity {
 	private String email;
 	@Field("is_verified")
 	private boolean isVerified;
-	private transient Address address;
 	@DBRef
-	private transient List<Address> addresses;
+	private List<Address> addresses = new ArrayList<>();
 
 }
