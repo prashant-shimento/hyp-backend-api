@@ -15,4 +15,11 @@ public interface Constants {
 	List<String> ORDER_API_PARAMS = Arrays.asList("id","status","customerId","createdAt","totalAmount","orderType","orderTime");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id","itemName","inStock","itemAllowVariation","itemCategoryId","itemAllowAddon","itemAttributeId");
 
+	// Constants for logging API integration
+		String INBOUND_API_LOG = "InboundAPILog";
+		String OUTBOUND_API_LOG = "OutboundAPILog";
+
+		public enum ApiStatus {
+			SUCCESSFUL, FAILURE
+		}
 }
