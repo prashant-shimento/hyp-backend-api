@@ -9,6 +9,7 @@ public interface Constants {
 	int VENDOR_HANDLE_DELIVERY = 0;
 	int RESTAURANT_HANDLE_DELIVERY = 1;
 	String GST_VENDOR_LIABLE = "vendor";
+	String GST_RESTAURANT_LIABLE = "restaurant";
 	String PET_POOJA = "PET_POOJA";
 	String PIDGE = "PIDGE";
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id","name","mobile","createdAt");

@@ -64,7 +64,6 @@ public class DeliveryRequestTranslation {
 		DeliveryOrderRequest.Address senderAddress = new DeliveryOrderRequest.Address();
 		senderAddress.setAddressLine1(restaurant.getAddress());
 		senderAddress.setPincode(restaurant.getPincode());
-		senderAddress.setLabel(restaurant.getRestaurantName());
 		senderAddress.setCity(restaurant.getCity());
 		senderAddress.setState(restaurant.getState());
 		senderAddress.setCountry(restaurant.getCountry());
@@ -85,7 +84,6 @@ public class DeliveryRequestTranslation {
 		receiverAddress.setAddressLine1(address.getAddressOne());
 		receiverAddress.setAddressLine2(address.getAddressTwo());
 		receiverAddress.setPincode(address.getPincode());
-		receiverAddress.setLabel(address.getAddressType());
 		receiverAddress.setCity(address.getCity());
 		receiverAddress.setState(address.getState());
 		receiverAddress.setCountry(address.getCountry());

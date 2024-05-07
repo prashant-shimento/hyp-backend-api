@@ -37,7 +37,7 @@ public class LocationService {
 	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
 			double restaurantLongitude, double radius) {
 		double distance = calculateDistance(userLatitude, userLongitude, restaurantLatitude, restaurantLongitude);
-		return distance / 1000 <= radius;
+		return distance <= radius;
 	}
 
 	private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {

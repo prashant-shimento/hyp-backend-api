@@ -122,6 +122,7 @@ public class OrderDto extends BaseDto {
 		private double price;
 		@PositiveOrZero(message = "OrderTax amount must be positive")
 		private double tax;
+		private double restaurantLiableAmt;
 	}
 
 	@Data

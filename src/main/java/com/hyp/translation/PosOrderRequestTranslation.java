@@ -185,7 +185,7 @@ public class PosOrderRequestTranslation {
 			orderItemDetails.setQuantity(String.valueOf(orderItem.getQuantity()));
 			orderItemDetails.setVariationName(CommonUtils.emptyIfNullOrZeroToString(orderItem.getVariationName()));
 			orderItemDetails.setVariationId(CommonUtils.emptyIfNullOrZeroToString(orderItem.getVariationId()));
-			orderItemDetails.setGstLiability(Constants.GST_VENDOR_LIABLE);
+			orderItemDetails.setGstLiability(Constants.GST_RESTAURANT_LIABLE);
 			orderItemDetails.setAddonItems(getAddonItems(orderItem.getOrderAddonItems()));
 			orderItemDetails.setItemTax(getItemTax(orderItem.getOrderItemTax()));
 
@@ -239,7 +239,7 @@ public class PosOrderRequestTranslation {
 				taxDetails.setTax(CommonUtils.emptyIfNullOrZeroToString(tax.getTax()));
 				taxDetails.setTitle(tax.getTitle());
 				taxDetails.setType(TaxType.fromCode(tax.getType()));
-				taxDetails.setRestaurantLiableAmt(CommonUtils.emptyIfNullOrZeroToString(null));
+				taxDetails.setRestaurantLiableAmt(CommonUtils.emptyIfNullOrZeroToString(tax.getRestaurantLiableAmt()));
 				taxDetailsList.add(taxDetails);
 			}
 			taxOrderRequest.setDetails(taxDetailsList);
