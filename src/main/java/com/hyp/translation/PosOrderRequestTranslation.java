@@ -4,6 +4,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
@@ -43,22 +46,23 @@ import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.util.CommonUtils;
 
+@Service
 public class PosOrderRequestTranslation {
 
-	// @Value("${pos.petpooja.token}")
-	private static String accessToken = "1306d6f5f3332a3e3a35c77909f8cdf77831cef3";
+	@Value("${pos.petpooja.token}")
+	private String accessToken;
 
-	// @Value("${pos.petpooja.secret}")
-	private static String appSecret = "154e9636cfb4a98a00933f6aeffbbd92c814e482";
+	@Value("${pos.petpooja.secret}")
+	private String appSecret;
 
-	// @Value("${pos.petpooja.key}")
-	private static String appKey = "13yrzmb9pivxscoh25gdj0t7fk48uaqw";
+	@Value("${pos.petpooja.key}")
+	private String appKey;
 
-	// @Value("${myapp.domain}")
-	private static String domain = "https://aardvark-notable-terminally.ngrok-free.app/hyp-backend-api";
+	@Value("${myapp.domain}")
+	private String domain;
 
-	public static PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order,
-			String cancelReason) throws RequestTranslationException {
+	public PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order, String cancelReason)
+			throws RequestTranslationException {
 		PosOrderUpdateRequest posOrderUpdateRequest = new PosOrderUpdateRequest();
 		try {
 			posOrderUpdateRequest.setAccessToken(accessToken);
@@ -76,8 +80,8 @@ public class PosOrderRequestTranslation {
 		return posOrderUpdateRequest;
 	}
 
-	public static PosRiderUpdateRequest getPosRiderStatusUpdateRequest(Restaurant restaurant, Order order,
-			RiderDetails riderDetails,RiderStatusType riderStatus) {
+	public PosRiderUpdateRequest getPosRiderStatusUpdateRequest(Restaurant restaurant, Order order,
+			RiderDetails riderDetails, RiderStatusType riderStatus) {
 		PosRiderUpdateRequest posRiderUpdateRequest = new PosRiderUpdateRequest();
 		try {
 			posRiderUpdateRequest.setAccessToken(accessToken);
@@ -93,7 +97,8 @@ public class PosOrderRequestTranslation {
 		return posRiderUpdateRequest;
 	}
 
-	public static PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address) throws RequestTranslationException {
+	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address)
+			throws RequestTranslationException {
 		PosOrderRequest posOrderRequest = new PosOrderRequest();
 		try {
 			posOrderRequest.setAccessToken(accessToken);
@@ -107,7 +112,7 @@ public class PosOrderRequestTranslation {
 		return posOrderRequest;
 	}
 
-	public static OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address) {
+	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address) {
 		OrderInfo orderInfo = new OrderInfo();
 		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address));
 		orderInfo.setDeviceType("");
@@ -115,7 +120,8 @@ public class PosOrderRequestTranslation {
 		return orderInfo;
 	}
 
-	public static OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer, Address address) {
+	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer,
+			Address address) {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
 		orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
@@ -137,7 +143,7 @@ public class PosOrderRequestTranslation {
 		return customerRequest;
 	}
 
-	public static OrderRequest getOrderDetails(Order order) {
+	public OrderRequest getOrderDetails(Order order) {
 		OrderDetails orderDetails = new OrderDetails();
 		orderDetails.setOrderId(order.getId());
 		orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
@@ -154,9 +160,9 @@ public class PosOrderRequestTranslation {
 		orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
 		orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));
 		orderDetails.setTaxTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTaxAmount()));
-		if(order.getDiscountType() != null) {
+		if (order.getDiscountType() != null) {
 			orderDetails.setDiscountType(DiscountType.fromCode(order.getDiscountType()));
-		}		
+		}
 		orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));

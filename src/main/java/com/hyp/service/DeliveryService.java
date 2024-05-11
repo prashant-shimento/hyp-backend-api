@@ -43,6 +43,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	@Value("${delivery.pidge.url}")
 	private String baseUrl;
 
+	@Value("${delivery.pidge.token}")
+	private String token;
+
 	@Autowired
 	DeliveryRepository deliveryRepository;
 
@@ -51,8 +54,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Autowired
 	RestaurantService restaurantService;
+	
 	@Autowired
 	ApiRequestResponseLogService apiRequestResponseLogService;
+	
+	@Autowired
+	PosOrderRequestTranslation posOrderRequestTranslation;
 
 	@Autowired
 	RetryTemplate retryTemplate;
@@ -70,8 +77,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			Instant requestTime = Instant.now();
 
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryOrderRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			Mono<String> createOrderResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryOrderRequest)).retrieve().bodyToMono(String.class);
 			String response = createOrderResponse.block();
@@ -122,8 +129,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			Instant requestTime = Instant.now();
 
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryQuoteRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			String endpoint = "/v1.0/store/channel/vendor/quote";
 			Mono<DeliveryQuote> quoteResponseMono = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class);
@@ -160,8 +167,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			Instant requestTime = Instant.now();
 
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			String endpoint = "v1.0/store/channel/vendor/order/fulfillment/services?ids=" + deliveryOrderId;
 			System.out.println("Endpoint : " + endpoint);
 			Mono<DeliveryQuote> quoteResponseMono = webClient.get().uri(endpoint).retrieve()
@@ -198,8 +205,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			Instant requestTime = Instant.now();
 
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryFulfillRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
 						HttpStatus statusCode = (HttpStatus) response.statusCode();
@@ -243,8 +250,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			Instant requestTime = Instant.now();
 
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			System.out.println("Endpoint : " + endpoint);
 			Mono<DeliveryRiderLocation> deliveryLocationResponseMono = webClient.get().uri(endpoint).retrieve()
 					.bodyToMono(DeliveryRiderLocation.class);
@@ -286,7 +293,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		RiderStatusType riderStatus = RiderStatusType
 				.getRiderStatusByDeliveryRider(delivery.getFulfillment().getStatus());
 
-		PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation
+		PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation
 				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
 
 		posService.updatePosRiderStatus(posRiderUpdateRequest);
@@ -298,8 +305,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			Instant requestTime = Instant.now();
 
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION,
-					"Bearer c3Rrbjo0OjgwMjo1MGMxMDQ4MC1mN2NjLTExZWUtOTJlYi01N2Y1NTA2YzQ0Mjk=").build();
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint).exchangeToMono(response -> {
 				HttpStatus statusCode = (HttpStatus) response.statusCode();
 				// Do something with the status code
@@ -307,8 +314,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				Instant responseTime = Instant.now();
 
 				apiRequestResponseLogService.save(new ApiLog("Cancel Delivery Order API", baseUrl + endpoint, "POST",
-						Constants.OUTBOUND_API_LOG, "",
-						response.toString(), requestTime, responseTime,
+						Constants.OUTBOUND_API_LOG, "", response.toString(), requestTime, responseTime,
 						Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
 
 				return Mono.just(statusCode);

@@ -76,6 +76,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	PaymentService paymentService;
+	
+	@Autowired
+	PosOrderRequestTranslation posOrderRequestTranslation;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -182,7 +185,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosOrderRequest posOrderRequest = PosOrderRequestTranslation
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation
 					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer,address);
 
 			posService.createPosOrder(posOrderRequest);

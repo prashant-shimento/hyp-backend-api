@@ -51,6 +51,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 	@Autowired
 	AddressService addressService;
 
+	@Autowired
+	PosOrderRequestTranslation posOrderRequestTranslation;
+
 	@PostMapping()
 	public ResponseEntity<Response> create(@RequestBody @Valid OrderDto orderDto) {
 		Response response;
@@ -73,7 +76,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		try {
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosRiderUpdateRequest posRiderUpdateRequest = PosOrderRequestTranslation.getPosRiderStatusUpdateRequest(
+			PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation.getPosRiderStatusUpdateRequest(
 					restaurant, order, new RiderDetails("rider", "9964552656"), RiderStatusType.rider_assigned);
 			String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
@@ -93,7 +96,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		try {
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosOrderUpdateRequest posOrderUpdateRequest = PosOrderRequestTranslation
+			PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
 					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
 			String posResponse = posService.updatePosOrder(posOrderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Order Cancelled");
