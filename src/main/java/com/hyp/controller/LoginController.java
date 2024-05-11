@@ -1,10 +1,15 @@
 package com.hyp.controller;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,7 +41,11 @@ public class LoginController {
 
 	@Autowired
 	DataMapper dataMapper;
+	
+	@Autowired
+    private Environment env;
 
+    
 	@PostMapping("/otp")
 	public ResponseEntity<Response> userLogin(@RequestBody LoginDto loginDto) {
 		Response response;
@@ -102,5 +111,31 @@ public class LoginController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+	
+
+	@GetMapping("/config")
+    public Map<String, Object> getConfig() {
+        Map<String, Object> configMap = new HashMap();
+        
+        configMap.put("sms.url", env.getProperty("sms.url"));
+        configMap.put("sms.key", env.getProperty("sms.key"));
+        configMap.put("delivery.pidge.url", env.getProperty("delivery.pidge.url"));
+        configMap.put("delivery.pidge.username", env.getProperty("delivery.pidge.username"));
+        configMap.put("delivery.pidge.password", env.getProperty("delivery.pidge.password"));
+        configMap.put("delivery.pidge.token", env.getProperty("delivery.pidge.token"));
+        configMap.put("google.api.key", env.getProperty("google.api.key"));
+        configMap.put("pos.petpooja.url", env.getProperty("pos.petpooja.url"));
+        configMap.put("pos.petpooja.token", env.getProperty("pos.petpooja.token"));
+        configMap.put("pos.petpooja.secret", env.getProperty("pos.petpooja.secret"));
+        configMap.put("pos.petpooja.key", env.getProperty("pos.petpooja.key"));
+        configMap.put("razorpay.key", env.getProperty("razorpay.key"));
+        configMap.put("razorpay.secret", env.getProperty("razorpay.secret"));
+        configMap.put("app.domain", env.getProperty("app.domain"));
+        configMap.put("spring.data.mongodb.uri", env.getProperty("spring.data.mongodb.uri"));
+
+        return configMap;
+    }
+	
+	
 
 }

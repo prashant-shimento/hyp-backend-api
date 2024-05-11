@@ -58,7 +58,7 @@ public class PosOrderRequestTranslation {
 	@Value("${pos.petpooja.key}")
 	private String appKey;
 
-	@Value("${myapp.domain}")
+	@Value("${app.domain}")
 	private String domain;
 
 	public PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order, String cancelReason)
