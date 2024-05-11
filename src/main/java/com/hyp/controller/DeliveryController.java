@@ -30,6 +30,7 @@ import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.DeliveryService;
+import com.hyp.service.LocationService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
@@ -55,6 +56,9 @@ public class DeliveryController {
 
 	@Autowired
 	OrderService orderService;
+
+	@Autowired
+	LocationService locationService;
 
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderStatus) {
@@ -106,6 +110,14 @@ public class DeliveryController {
 				response = new Response(null, true, "Address not found " + addressId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
+
+			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
+					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+				response = new Response(null, true, "Location not Deliverable");
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+			}
+			
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 

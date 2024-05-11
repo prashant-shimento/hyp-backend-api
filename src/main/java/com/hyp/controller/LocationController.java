@@ -64,7 +64,7 @@ public class LocationController {
 			if (!locationService.isLocationDeliverable(addressPlaceData.getLatitude(), addressPlaceData.getLongitude(),
 					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLongitude(),
 					restaurant.getDeliveryRadius())) {
-				response = new Response(null, true, "Location Not Deliverable");
+				response = new Response(null, true, "Location not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}
 
