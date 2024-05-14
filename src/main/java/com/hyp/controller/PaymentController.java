@@ -109,7 +109,8 @@ public class PaymentController {
 	}
 
 	@PostMapping("/webhook/razorpay")
-	public ResponseEntity<String> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
+	public ResponseEntity<Response> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
+		Response response;
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":
@@ -128,12 +129,13 @@ public class PaymentController {
 				handleRefundEvent(razorPayEventDto, OrderStatusType.REFUND_FAILED);
 				break;
 			default:
-				return ResponseEntity.ok("Success");
+				return ResponseEntity.ok(new Response(null, false, "Success"));
 			}
-			return ResponseEntity.ok("Success");
+			return ResponseEntity.ok(new Response(null, false, "Success"));
 		} catch (Exception e) {
 			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed");
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new Response(null, true, e.getMessage()));
 		}
 	}
 
