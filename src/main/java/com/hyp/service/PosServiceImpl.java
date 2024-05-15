@@ -36,7 +36,7 @@ public class PosServiceImpl implements PosService {
 
 	@Value("${pos.petpooja.url}")
 	private String baseUrl;
-	
+
 	@Autowired
 	ApiRequestResponseLogService apiRequestResponseLogService;
 
@@ -99,32 +99,22 @@ public class PosServiceImpl implements PosService {
 	}
 
 	@Override
-	public String createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
+	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
 		try {
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/save_order";
-			Instant requestTime = Instant.now();
 
-			Mono<String> saveOrderResponse = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(posOrderRequest)).retrieve().bodyToMono(String.class);
-			saveOrderResponse.subscribe(response -> {
+			String response = webClient.post().uri(endpoint).body(BodyInserters.fromValue(posOrderRequest)).retrieve()
+					.bodyToMono(String.class).block();
+
+			if (response != null && !response.isEmpty()) {
 				System.out.println("Response: " + response);
-				Instant responseTime = Instant.now();
-				try {
-					apiRequestResponseLogService.save(new ApiLog("Create POS Order API", baseUrl + endpoint,
-							Constants.OUTBOUND_API_LOG, "POST", new ObjectMapper().writeValueAsString(posOrderRequest),
-							response, requestTime, responseTime, Duration.between(requestTime, responseTime),ApiStatus.SUCCESSFUL));
-				} catch (JsonProcessingException e) {
-					e.printStackTrace();
-				}
-			}, error -> {
-				  System.err.println("Error response: " + error.getMessage());
-		            Instant responseTime = Instant.now();
-		            apiRequestResponseLogService.save(new ApiLog("Create POS Order API", baseUrl + endpoint,
-					        Constants.OUTBOUND_API_LOG, "POST", posOrderRequest.toString(),
-					        error.getMessage(), requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));			});
-			return saveOrderResponse.toString();
+				return true; // Successful order creation
+			} else {
+				System.err.println("Error: Empty response received");
+				return false; // Failed order creation
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new PosException("POS Order Creation failed " + e.getMessage());
@@ -146,20 +136,20 @@ public class PosServiceImpl implements PosService {
 				Instant responseTime = Instant.now();
 				try {
 					apiRequestResponseLogService.save(
-							new ApiLog("Update POS Order API", baseUrl + endpoint, Constants.OUTBOUND_API_LOG,
-									"POST", new ObjectMapper().writeValueAsString(posOrderUpdateRequest), response,
-									requestTime, responseTime, Duration.between(requestTime, responseTime),ApiStatus.SUCCESSFUL));
+							new ApiLog("Update POS Order API", baseUrl + endpoint, Constants.OUTBOUND_API_LOG, "POST",
+									new ObjectMapper().writeValueAsString(posOrderUpdateRequest), response, requestTime,
+									responseTime, Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
 
 				} catch (JsonProcessingException e) {
 					e.printStackTrace();
 				}
 			}, error -> {
-				 System.err.println("Error response: " + error.getMessage());
-		            Instant responseTime = Instant.now();
-		            apiRequestResponseLogService.save(
-					        new ApiLog("Update POS Order API", baseUrl + endpoint, Constants.OUTBOUND_API_LOG,
-					                "POST", posOrderUpdateRequest.toString(), error.getMessage(),
-					                requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));			});
+				System.err.println("Error response: " + error.getMessage());
+				Instant responseTime = Instant.now();
+				apiRequestResponseLogService.save(new ApiLog("Update POS Order API", baseUrl + endpoint,
+						Constants.OUTBOUND_API_LOG, "POST", posOrderUpdateRequest.toString(), error.getMessage(),
+						requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
+			});
 			return updateOrderResponse.toString();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -183,16 +173,17 @@ public class PosServiceImpl implements PosService {
 					apiRequestResponseLogService.save(new ApiLog("Update POS Rider Status API", baseUrl + endpoint,
 							Constants.OUTBOUND_API_LOG, "POST",
 							new ObjectMapper().writeValueAsString(posRiderUpdateRequest), response, requestTime,
-							responseTime, Duration.between(requestTime, responseTime),ApiStatus.SUCCESSFUL));
+							responseTime, Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
 				} catch (JsonProcessingException e) {
 					e.printStackTrace();
 				}
 			}, error -> {
-				  System.err.println("Error response: " + error.getMessage());
-		            Instant responseTime = Instant.now();
-		            apiRequestResponseLogService.save(new ApiLog("Update POS Rider Status API", baseUrl + endpoint,
-					        Constants.OUTBOUND_API_LOG, "POST", posRiderUpdateRequest.toString(),
-					        error.getMessage(), requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));			});
+				System.err.println("Error response: " + error.getMessage());
+				Instant responseTime = Instant.now();
+				apiRequestResponseLogService.save(new ApiLog("Update POS Rider Status API", baseUrl + endpoint,
+						Constants.OUTBOUND_API_LOG, "POST", posRiderUpdateRequest.toString(), error.getMessage(),
+						requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
+			});
 			return riderUpdateResponse.toString();
 		} catch (Exception e) {
 			e.printStackTrace();

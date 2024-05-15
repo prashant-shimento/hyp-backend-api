@@ -12,6 +12,7 @@ public interface Constants {
 	String GST_RESTAURANT_LIABLE = "restaurant";
 	String PET_POOJA = "PET_POOJA";
 	String PIDGE = "PIDGE";
+	String SYSTEM = "SYSTEM";
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id","name","mobile","createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id","status","customerId","createdAt","totalAmount","orderType","orderTime");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id","itemName","inStock","itemAllowVariation","itemCategoryId","itemAllowAddon","itemAttributeId");

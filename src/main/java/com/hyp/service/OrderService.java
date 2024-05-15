@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.hyp.constants.Constants;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
@@ -76,7 +77,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	PaymentService paymentService;
-	
+
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
 
@@ -151,10 +152,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					processDeliveryFulfill(delivery);
+					processDeliveryFulfill(delivery, Constants.PET_POOJA);
 				}
 			}
-			
+
 			if (newOrderStatus == OrderStatusType.CANCELLED && oldOrderStatus == OrderStatusType.ACCEPTED) {
 				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -162,7 +163,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
 				}
 			}
-			
+
 			order.setStatus(newOrderStatus);
 			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
@@ -186,23 +187,23 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation
-					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer,address);
+					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer, address);
 
-			posService.createPosOrder(posOrderRequest);
+			if (posService.createPosOrder(posOrderRequest)) {
+				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
+						.getDeliveryOrderRequest(restaurant, address, customer, order);
 
-			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
-					address, customer, order);
+				String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
 
-			String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
-
-			Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
-			delivery.setId(CommonUtils.genId());
-			delivery.setDeliveryOrderId(deliveryOrderId);
-			delivery.setStatus(DeliveryOrderStatusType.PENDING);
-			delivery.setService(order.getDeliveryDetails().getService());
-			delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
-			delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
-			deliveryService.save(delivery);
+				Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+				delivery.setId(CommonUtils.genId());
+				delivery.setDeliveryOrderId(deliveryOrderId);
+				delivery.setStatus(DeliveryOrderStatusType.PENDING);
+				delivery.setService(order.getDeliveryDetails().getService());
+				delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
+				delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
+				deliveryService.save(delivery);
+			}
 
 		} catch (RequestTranslationException e) {
 			// Need to handle Payment Refund or Retry Mechanism
@@ -234,23 +235,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			int minPrepTime = Integer.parseInt(order.getMinPrepTime());
 			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : minPrepTime - 5;
 			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
-			System.out.println(
-					"Buffer Time for Order " + order.getId() + " is " + bufferTime + " and Trigger " + triggerTime);
-
 			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
 		}).collect(Collectors.toList());
 
 		for (Order order : ordersToProcess) {
-			System.out.println("Order to be Processed " + order.getId());
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
 			if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-				processDeliveryFulfill(delivery);
+				processDeliveryFulfill(delivery, Constants.SYSTEM);
 			}
 		}
 
 	}
 
-	public void processDeliveryFulfill(Delivery delivery) throws DeliveryException {
+	public void processDeliveryFulfill(Delivery delivery, String fulfillmentType) throws DeliveryException {
 		DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
 		List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
 		String token = deliveryNetworks.stream().filter(network -> network.getNetworkId() == delivery.getNetworkId())
@@ -258,6 +255,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		delivery.setNetworkToken(token);
 		deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
 		delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
+		delivery.setFulfillmentType(fulfillmentType);
+		delivery.setFulfillmentAt(LocalDateTime.now());
 		deliveryService.save(delivery);
 	}
 

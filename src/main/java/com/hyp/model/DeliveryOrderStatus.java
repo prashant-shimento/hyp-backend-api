@@ -96,6 +96,11 @@ public class DeliveryOrderStatus {
 		private Rider rider;
 		private LogisticsInfo drop;
 		private Mtg mtg;
+		@JsonProperty("track_code")
+		private String trackCode;
+		@JsonProperty("delivery_charge")
+		private double deliveryCharge;
+
 
 	}
 

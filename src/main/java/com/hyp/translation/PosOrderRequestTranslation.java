@@ -151,7 +151,6 @@ public class PosOrderRequestTranslation {
 		orderDetails.setPreOrderTime(order.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
 		orderDetails.setServiceCharge(CommonUtils.emptyIfNullOrZeroToString(order.getServiceCharge()));
 		orderDetails.setScTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getScTaxAmount()));
-		orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(order.getDeliveryCharge()));
 		orderDetails.setDcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getDcTaxAmount()));
 		orderDetails.setPackingCharges(CommonUtils.emptyIfNullOrZeroToString(order.getPackagingCharge()));
 		orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
@@ -167,6 +166,9 @@ public class PosOrderRequestTranslation {
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 		orderDetails.setEnableDelivery(Constants.VENDOR_HANDLE_DELIVERY);
+		orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(
+				orderDetails.getEnableDelivery() == Constants.RESTAURANT_HANDLE_DELIVERY ? order.getDeliveryCharge()
+						: 0));
 		orderDetails.setCallbackUrl(domain + "/pos/order/callback");
 		orderDetails.setDcGstDetails(getGstDetails(null, null));
 		orderDetails.setPcGstDetails(getGstDetails(null, null));

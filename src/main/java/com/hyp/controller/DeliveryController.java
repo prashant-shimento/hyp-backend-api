@@ -79,12 +79,15 @@ public class DeliveryController {
 				Order order = orderService.findById(delivery.getOrderId());
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
-
+				if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
+					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
+					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
+					orderService.save(order);
+				}
 				if (deliveryService.isPosUpdateRequired(fullFillStatus)) {
 					deliveryService.updatePosRiderStatus(delivery, order);
 				}
 				deliveryService.save(delivery);
-
 			}
 			response = new Response(null, false, "Success");
 			return ResponseEntity.ok().build();
@@ -117,7 +120,7 @@ public class DeliveryController {
 				response = new Response(null, true, "Location not Deliverable");
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 			}
-			
+
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 

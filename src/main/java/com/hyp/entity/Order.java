@@ -118,6 +118,10 @@ public class Order {
 
 	@Field("minimum_delivery_time")
 	private String minDeliveryTime;
+	
+	@Field("delivery_tracking_link")
+	private String deliveryTrackingLink;
+	
 
 	@Data
 	@NoArgsConstructor

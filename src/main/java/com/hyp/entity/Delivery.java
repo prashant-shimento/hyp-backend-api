@@ -1,5 +1,7 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -46,6 +48,10 @@ public class Delivery extends BaseEntity {
 	@Field("network_token")
 	private String networkToken;
 	private DeliveryFulfillment fulfillment;
+	@Field("fulfillment_type")
+	private String fulfillmentType;
+	@Field("fulfillment_at")
+	private LocalDateTime fulfillmentAt;
 
 	@Data
 	@NoArgsConstructor

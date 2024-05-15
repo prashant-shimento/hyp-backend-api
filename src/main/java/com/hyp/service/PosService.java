@@ -14,7 +14,7 @@ public interface PosService {
 
 	public boolean savePosData(PosDataRequest posDataRequest);
 
-	public String createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
+	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
 
 	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
 
