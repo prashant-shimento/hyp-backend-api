@@ -17,7 +17,7 @@ public class CustomerTranslation implements TranslationService<CustomerDto, Cust
 	@Override
 	public Customer getEntity(CustomerDto dto) {
 		Customer customer = new Customer();
-		dto.setId(CommonUtils.genId());
+		dto.setId(dto.getId() == null ? CommonUtils.genId() : dto.getId());
 		BeanUtils.copyProperties(dto, customer);
 		return customer;
 	}

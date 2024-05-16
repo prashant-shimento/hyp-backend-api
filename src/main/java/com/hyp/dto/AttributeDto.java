@@ -3,7 +3,7 @@ package com.hyp.dto;
 import lombok.Data;
 
 @Data
-public class AttributeDto {
+public class AttributeDto extends BaseDto {
 	private String attributeId;
 	private String attribute;
 	private String active;

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AddressDto {
+public class AddressDto extends BaseDto{
 	private String addressType;
 	private String addressOne;
 	private String addressTwo;

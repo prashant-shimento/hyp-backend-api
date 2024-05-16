@@ -17,7 +17,7 @@ public class AddressTranslation implements TranslationService<AddressDto, Addres
 	@Override
 	public Address getEntity(AddressDto dto) {
 		Address address = new Address();
-		address.setId(CommonUtils.genId());
+		address.setId(dto.getId() == null ? CommonUtils.genId() : dto.getId());
 		address.setAddressType(dto.getAddressType());
 		address.setAddressOne(dto.getAddressOne());
 		address.setAddressTwo(dto.getAddressTwo());

@@ -16,7 +16,7 @@ public class AttributeTranslation implements TranslationService<AttributeDto, At
 	@Override
 	public Attribute getEntity(AttributeDto dto) {
 		Attribute entity = new Attribute();
-		entity.setId(CommonUtils.genId());
+		entity.setId(dto.getId() == null ? CommonUtils.genId() : dto.getId());
 		entity.setAttribute(dto.getAttribute());
 		entity.setActive(dto.getActive());
 		return entity;
