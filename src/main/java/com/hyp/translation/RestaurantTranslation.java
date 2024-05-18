@@ -22,7 +22,7 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 			return null;
 		}
 		Restaurant restaurant = new Restaurant();
-		restaurant.setRestaurantId(restaurantDto.getRestaurantId());
+		restaurant.setId(restaurantDto.getId());
 		restaurant.setActive(restaurantDto.isActive());
 		RestaurantTax tax = new RestaurantTax();
 		List<DeliveryHours> deliveryHours = new ArrayList<>();
@@ -83,7 +83,7 @@ public class RestaurantTranslation implements TranslationService<RestaurantDto, 
 	public RestaurantDto getDto(Restaurant entity) {
 		RestaurantDto r_dto = new RestaurantDto();
 
-		r_dto.setRestaurantId(entity.getRestaurantId());
+		r_dto.setId(entity.getId());
 		r_dto.setActive(entity.isActive());
 
 		r_dto.setCurrencyHtml(entity.getCurrencyHtml());

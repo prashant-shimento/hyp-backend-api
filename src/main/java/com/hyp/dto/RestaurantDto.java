@@ -9,8 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RestaurantDto {
-	private String restaurantId;
+public class RestaurantDto extends BaseDto {
 	private boolean active;
 	private String menuSharingCode;
 	private String currencyHtml;
