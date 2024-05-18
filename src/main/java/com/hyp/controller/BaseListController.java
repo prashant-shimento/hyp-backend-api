@@ -15,13 +15,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.hyp.response.Response;
 import com.hyp.service.BaseService;
-import com.hyp.service.TranslationService;
+import com.hyp.service.BaseTranslationService;
 import com.hyp.util.QueryUtils;
 
 public abstract class BaseListController<DTO, T, ID> {
 
 	@Autowired
-	protected TranslationService<DTO, T> translationService;
+	protected BaseTranslationService<DTO, T> translationService;
 
 	@Autowired
 	protected BaseService<T, ID> service;

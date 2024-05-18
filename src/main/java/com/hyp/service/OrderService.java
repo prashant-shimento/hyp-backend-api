@@ -23,7 +23,6 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
-import com.hyp.mapper.DataMapper;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.repository.OrderRepository;
@@ -31,6 +30,7 @@ import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
+import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 
@@ -61,7 +61,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	VariationService variationService;
 
 	@Autowired
-	DataMapper dataMapper;
+	OrderTranslation orderTranslation;
 
 	@Autowired
 	SequenceService sequenceService;
@@ -127,7 +127,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 		}
 
-		Order order = dataMapper.toOrderEntity(orderDto);
+		Order order = orderTranslation.getEntity(orderDto);
 		order.setId(sequenceService.generateSequence(Order.SEQUENCE_NAME));
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());

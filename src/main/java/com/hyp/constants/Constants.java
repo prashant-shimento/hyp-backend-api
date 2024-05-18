@@ -15,7 +15,10 @@ public interface Constants {
 	String SYSTEM = "SYSTEM";
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id","name","mobile","createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id","status","customerId","createdAt","totalAmount","orderType","orderTime");
-	List<String> ITEM_API_PARAMS = Arrays.asList("id","itemName","inStock","itemAllowVariation","itemCategoryId","itemAllowAddon","itemAttributeId");
+	List<String> ITEM_API_PARAMS = Arrays.asList("id","itemName","inStock","itemAllowVariation","itemCategoryId","itemAllowAddon","itemAttributeId","status");
+	List<String> ADDRESS_API_PARAMS = Arrays.asList("id","customerId","addressType");
+	List<String> DELIVERY_API_PARAMS = Arrays.asList("id","networkId","status","orderId","service","deliveryOrderId","channel");
+	List<String> CONTENT_API_PARAMS = Arrays.asList("id","type");
 
 	// Constants for logging API integration
 		String INBOUND_API_LOG = "InboundAPILog";

@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.AddonGroupDto;
 import com.hyp.entity.AddonGroup;
-import com.hyp.mapper.DataMapper;
 import com.hyp.response.Response;
 import com.hyp.service.AddonGroupService;
 import com.hyp.translation.AddonGroupsTranslation;
@@ -26,9 +25,6 @@ public class AddonGroupController extends BaseListController<AddonGroupDto, Addo
 
 	@Autowired
 	public AddonGroupService addonGroupService;
-
-	@Autowired
-	DataMapper dataMapper;
 
 	@GetMapping("/items")
 	public ResponseEntity<Response> getAddonGroupsAndItems() {

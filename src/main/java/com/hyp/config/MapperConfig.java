@@ -1,4 +1,4 @@
-package com.hyp.mapper;
+package com.hyp.config;
 
 import org.modelmapper.Conditions;
 import org.modelmapper.ModelMapper;

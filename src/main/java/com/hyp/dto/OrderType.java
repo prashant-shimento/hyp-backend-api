@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
-public class OrderType {
-	private int orderTypeId;
+public class OrderType extends BaseDto {
 	private String orderType;
 }

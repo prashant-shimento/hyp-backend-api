@@ -16,9 +16,7 @@ import lombok.NoArgsConstructor;
 @Document(collection = "address")
 @JsonInclude(Include.NON_NULL)
 public class Address extends BaseEntity {
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 1L;
 	@Field("address_type")
 	private String addressType;
@@ -43,6 +41,9 @@ public class Address extends BaseEntity {
 
 	@Field("pincode")
 	private String pincode;
+	
+	@Field("customer_id")
+	private String customerId;
 
 	private Location location;
 
@@ -53,5 +54,7 @@ public class Address extends BaseEntity {
 		private double latitude;
 		private double longitude;
 	}
+	
+	
 
 }

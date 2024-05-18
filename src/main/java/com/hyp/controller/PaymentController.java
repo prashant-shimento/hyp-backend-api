@@ -110,7 +110,6 @@ public class PaymentController {
 
 	@PostMapping("/webhook/razorpay")
 	public ResponseEntity<Response> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
-		Response response;
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":

@@ -15,7 +15,6 @@ import com.hyp.dto.OrderDto;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.RiderStatusType;
-import com.hyp.mapper.DataMapper;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
@@ -25,6 +24,7 @@ import com.hyp.service.CustomerService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
+import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
 import jakarta.validation.Valid;
@@ -37,7 +37,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 	OrderService orderService;
 
 	@Autowired
-	DataMapper dataMapper;
+	OrderTranslation orderTranslation;
 
 	@Autowired
 	RestaurantService restaurantService;
@@ -59,7 +59,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		Response response;
 		try {
 			Order createdOrder = orderService.create(orderDto);
-			OrderDto createdOrderDto = dataMapper.toOrderDto(createdOrder);
+			OrderDto createdOrderDto = orderTranslation.getDto(createdOrder);
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {

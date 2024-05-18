@@ -18,7 +18,9 @@ public class QueryUtils {
 		ALLOWED_API_PARAMS.put("Order", Constants.ORDER_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Customer", Constants.CUSTOMER_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Item", Constants.ITEM_API_PARAMS);
-
+		ALLOWED_API_PARAMS.put("Address", Constants.ADDRESS_API_PARAMS);
+		ALLOWED_API_PARAMS.put("Delivery", Constants.DELIVERY_API_PARAMS);
+		ALLOWED_API_PARAMS.put("Content", Constants.CONTENT_API_PARAMS);
 	}
 
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {

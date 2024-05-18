@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hyp.dto.LoginDto;
 import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
-import com.hyp.mapper.DataMapper;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
@@ -38,9 +36,6 @@ public class LoginController {
 
 	@Autowired
 	OtpService otpService;
-
-	@Autowired
-	DataMapper dataMapper;
 	
 	@Autowired
     private Environment env;
@@ -115,8 +110,7 @@ public class LoginController {
 
 	@GetMapping("/config")
     public Map<String, Object> getConfig() {
-        Map<String, Object> configMap = new HashMap();
-        
+        Map<String, Object> configMap = new HashMap<String, Object>();
         configMap.put("sms.url", env.getProperty("sms.url"));
         configMap.put("sms.key", env.getProperty("sms.key"));
         configMap.put("delivery.pidge.url", env.getProperty("delivery.pidge.url"));

@@ -3,8 +3,7 @@ package com.hyp.dto;
 import lombok.Data;
 
 @Data
-public class CategoryDto {
-	private String categoryId;
+public class CategoryDto extends BaseDto {
 	private String active;
 	private String categoryRank;
 	private String parentCategoryId;
