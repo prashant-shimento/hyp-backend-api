@@ -11,9 +11,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -31,7 +31,7 @@ public abstract class BaseController<DTO, T, ID> {
 
 	@Autowired
 	protected BaseTranslationService<DTO, T> translationService;
-	
+
 	protected Class<T> entity;
 
 	@SuppressWarnings("unchecked")
@@ -74,7 +74,7 @@ public abstract class BaseController<DTO, T, ID> {
 	}
 
 	@PostMapping
-	public ResponseEntity<Response> create(@RequestBody  @Valid DTO dto) {
+	public ResponseEntity<Response> create(@RequestBody @Valid DTO dto) {
 		try {
 			T entity = translationService.getEntity(dto);
 			T savedEntity = service.save(entity);
@@ -88,14 +88,14 @@ public abstract class BaseController<DTO, T, ID> {
 		}
 	}
 
-	@PutMapping("/{id}")
+	@PatchMapping("/{id}")
 	public ResponseEntity<Response> update(@PathVariable ID id, @RequestBody DTO dto) {
 		try {
-			if (service.findById(id) != null) {
-				T entity = translationService.getEntity(dto);
-				T updatedEntity = service.save(entity);
+			T existingEntity = service.findById(id);
+			if (existingEntity != null) {
+				translationService.updateEntityFromDto(dto, existingEntity);
+				T updatedEntity = service.save(existingEntity);
 				dto = translationService.getDto(updatedEntity);
-				// Need to revisit returning list logic
 				Response response = new Response(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {
@@ -107,27 +107,6 @@ public abstract class BaseController<DTO, T, ID> {
 		}
 	}
 
-//	@PatchMapping("/{id}")
-//    public ResponseEntity<Response> update(@PathVariable ID id, @RequestBody DTO dto) {
-//        try {
-//            T entity = service.findById(id);
-//            if (entity == null) {
-//                return ResponseEntity.notFound().build();
-//            }
-//
-//            // Update entity properties from DTO
-//            BeanUtils.copyProperties(dto, entity);
-//
-//            T updatedEntity = service.save(entity);
-//            DTO updatedDto = translationService.getDto(updatedEntity);
-//            Response response = new Response(Collections.singletonList(updatedDto), false, "success");
-//            return ResponseEntity.ok(response);
-//        } catch (Exception ex) {
-//            Response response = new Response(null, true, ex.getMessage());
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-//        }
-//    }
-	
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Response> delete(@PathVariable ID id) {
 		try {

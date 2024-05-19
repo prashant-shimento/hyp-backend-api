@@ -9,4 +9,6 @@ public interface BaseTranslationService<DTO, Entity> {
 	DTO getDto(Entity entity);
 	
 	List<DTO> getDtoList(List<Entity> entities);
+	
+	void updateEntityFromDto(DTO dto, Entity entity);
 }

@@ -26,6 +26,11 @@ public abstract class BaseTranslationServiceImpl<DTO, T> implements BaseTranslat
 		return entities.stream().map(this::getDto).collect(Collectors.toList());
 	}
 
+	@Override
+	public void updateEntityFromDto(DTO dto, T entity) {
+		modelMapper.map(dto, entity);
+	}
+
 	protected abstract Class<DTO> getDtoClass();
 
 	protected abstract Class<T> getEntityClass();
