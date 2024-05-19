@@ -1,5 +1,8 @@
 package com.hyp.dto;
 
+
+import com.hyp.model.Location;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -36,10 +39,7 @@ public class AddressDto extends BaseDto {
 	@NotBlank(message = "Pincode is mandatory")
 	private String pincode;
 
-	@NotNull(message = "Latitude is mandatory")
-	private Double latitude;
-
-	@NotNull(message = "Longitude is mandatory")
-	private Double longitude;
+	@NotNull(message = "Location is mandatory")
+	private Location location;
 
 }

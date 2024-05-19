@@ -64,9 +64,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	OrderTranslation orderTranslation;
 
 	@Autowired
-	SequenceService sequenceService;
-
-	@Autowired
 	AddressService addressService;
 
 	@Autowired
@@ -128,7 +125,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 
 		Order order = orderTranslation.getEntity(orderDto);
-		order.setId(sequenceService.generateSequence(Order.SEQUENCE_NAME));
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());

@@ -61,9 +61,9 @@ public class LocationController {
 			}
 			AddressDto addressPlaceData = MapDataTranslation.getPlaceDatatoAddress(rawPlaceData);
 
-			if (!locationService.isLocationDeliverable(addressPlaceData.getLatitude(), addressPlaceData.getLongitude(),
-					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLongitude(),
-					restaurant.getDeliveryRadius())) {
+			if (!locationService.isLocationDeliverable(addressPlaceData.getLocation().getLatitude(),
+					addressPlaceData.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
 				response = new Response(null, true, "Location not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}
@@ -95,9 +95,9 @@ public class LocationController {
 			}
 			AddressDto addressPlaceData = MapDataTranslation.getGeocodeDatatoAddress(geocodingResults);
 
-			if (!locationService.isLocationDeliverable(addressPlaceData.getLatitude(), addressPlaceData.getLongitude(),
-					restaurant.getLocation().getLatitude(), restaurant.getLocation().getLongitude(),
-					restaurant.getDeliveryRadius())) {
+			if (!locationService.isLocationDeliverable(addressPlaceData.getLocation().getLatitude(),
+					addressPlaceData.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
 				response = new Response(null, true, "Location Not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}

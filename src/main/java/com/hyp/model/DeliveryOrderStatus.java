@@ -133,12 +133,6 @@ public class DeliveryOrderStatus {
 	}
 
 	@Data
-	public static class Location {
-		private double latitude;
-		private double longitude;
-	}
-
-	@Data
 	public static class Rider {
 		private String id;
 		private String name;

@@ -14,10 +14,4 @@ public class DeliveryRiderLocation {
 		private String name;
 		private String mobile;
 	}
-
-	@Data
-	public static class Location {
-		private double latitude;
-		private double longitude;
-	}
 }

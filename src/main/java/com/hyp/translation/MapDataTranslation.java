@@ -10,6 +10,7 @@ import com.google.maps.model.AddressType;
 import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
 import com.hyp.dto.AddressDto;
+import com.hyp.model.Location;
 
 @Component
 public class MapDataTranslation {
@@ -27,8 +28,8 @@ public class MapDataTranslation {
 			JsonNode location = jsonNode.get("location");
 
 			address = new AddressDto();
-			address.setLatitude(location.get("latitude").asDouble());
-			address.setLongitude(location.get("longitude").asDouble());
+			address.setLocation(
+					new Location(location.get("latitude").asDouble(), location.get("longitude").asDouble()));
 
 			for (JsonNode component : addressComponents) {
 				String longText = component.get("longText").asText();
@@ -95,8 +96,7 @@ public class MapDataTranslation {
 						AddressComponent[] addressComponents = geocodingResult.addressComponents;
 						LatLng location = geocodingResult.geometry.location;
 						address = new AddressDto();
-						address.setLatitude(location.lat);
-						address.setLongitude(location.lng);
+						address.setLocation(new Location(location.lat, location.lng));
 						for (AddressComponent addressComponent : addressComponents) {
 							String longText = addressComponent.longName;
 							AddressComponentType[] addressComponentTypes = addressComponent.types;

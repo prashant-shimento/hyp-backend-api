@@ -6,10 +6,10 @@ import java.util.List;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.hyp.annotation.GenerateId;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
 
@@ -28,11 +28,9 @@ import lombok.ToString;
 @Document(collection = "orders")
 public class Order {
 
-	@Transient
-	public static final String SEQUENCE_NAME = "order_sequence";
-
 	@Id
 	@Field("id")
+	@GenerateId(sequenceName = "order_sequence")
 	private String id;
 
 	@Field("customer_id")

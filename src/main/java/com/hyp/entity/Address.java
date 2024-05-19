@@ -1,10 +1,17 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.annotation.GenerateId;
+import com.hyp.model.Location;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,9 +22,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Document(collection = "address")
 @JsonInclude(Include.NON_NULL)
-public class Address extends BaseEntity {
-
-	private static final long serialVersionUID = 1L;
+public class Address {
+	
+	@Id
+	@GenerateId(sequenceName = "address_sequence")
+	private String id;
+	
 	@Field("address_type")
 	private String addressType;
 
@@ -46,15 +56,16 @@ public class Address extends BaseEntity {
 	private String customerId;
 
 	private Location location;
-
-	@Data
-	@AllArgsConstructor
-	@NoArgsConstructor
-	public static class Location {
-		private double latitude;
-		private double longitude;
-	}
 	
-	
+	@Field("created_at")
+	@CreatedDate
+	private LocalDateTime createdAt;
 
+	@Field("updated_at")
+	@LastModifiedDate
+	private LocalDateTime updatedAt;
+
+	@Field("restaurant_id")
+	private String restaurantId;
+	
 }

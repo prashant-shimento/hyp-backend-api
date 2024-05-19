@@ -7,6 +7,8 @@ import java.util.List;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.hyp.model.Location;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -100,15 +102,6 @@ public class Restaurant extends BaseEntity {
 	public static class DeliveryHours {
 		private LocalTime from;
 		private LocalTime to;
-	}
-
-	@Getter
-	@Setter
-	@NoArgsConstructor
-	@AllArgsConstructor
-	public static class Location {
-		private double latitude;
-		private double longitude;
 	}
 
 	@Getter

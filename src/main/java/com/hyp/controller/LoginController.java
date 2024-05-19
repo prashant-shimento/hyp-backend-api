@@ -48,7 +48,6 @@ public class LoginController {
 			Customer customer = customerService.findByMobile(loginDto.getMobile());
 			if (customer == null) {
 				customer = new Customer();
-				customer.setId(CommonUtils.genId());
 				customer.setName(loginDto.getName());
 				customer.setMobile(loginDto.getMobile());
 				customer = customerService.save(customer);
