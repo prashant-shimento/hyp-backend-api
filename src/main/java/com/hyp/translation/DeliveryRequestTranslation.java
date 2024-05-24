@@ -27,7 +27,7 @@ public class DeliveryRequestTranslation {
 		List<String> orderIds = new ArrayList<>();
 		orderIds.add(delivery.getDeliveryOrderId());
 		return new DeliveryFulfillRequest(orderIds, delivery.getService(), true, delivery.getNetworkId(),
-				delivery.getNetworkToken());
+				delivery.getNetworkToken(), null);
 	}
 
 	public static DeliveryQuoteRequest getQuoteRequest(Restaurant restaurant, Address address) {

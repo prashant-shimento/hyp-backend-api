@@ -13,12 +13,17 @@ public interface Constants {
 	String PET_POOJA = "PET_POOJA";
 	String PIDGE = "PIDGE";
 	String SYSTEM = "SYSTEM";
+	String API = "API";
+	String SMART = "SMART";
+
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id","name","mobile","createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id","status","customerId","createdAt","totalAmount","orderType","orderTime");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id","itemName","inStock","itemAllowVariation","itemCategoryId","itemAllowAddon","itemAttributeId","status");
 	List<String> ADDRESS_API_PARAMS = Arrays.asList("id","customerId","addressType");
 	List<String> DELIVERY_API_PARAMS = Arrays.asList("id","networkId","status","orderId","service","deliveryOrderId","channel");
 	List<String> CONTENT_API_PARAMS = Arrays.asList("id","type");
+	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id","name","variationId","variationAllowAddon");
+
 
 	// Constants for logging API integration
 		String INBOUND_API_LOG = "InboundAPILog";

@@ -2,7 +2,8 @@ package com.hyp.controller;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Optional;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
@@ -79,7 +81,8 @@ public class DeliveryController {
 				Order order = orderService.findById(delivery.getOrderId());
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
-				if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
+				if (deliveryOrderData.getFulfillment().getTrackCode() != null
+						&& order.getDeliveryTrackingLink() == null) {
 					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
 					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
 					orderService.save(order);
@@ -124,10 +127,19 @@ public class DeliveryController {
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
-			Optional<DeliveryQuote.DeliveryNetworks> secondLowestQuote = deliveryQuote.getData().getItems().stream()
-					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).skip(1).findFirst();
+			List<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
+					.filter(item -> item.isPickupNow())
+					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice()))
+					.collect(Collectors.toList());
 
-			response = new Response(Collections.singletonList(secondLowestQuote), false, "Delivery Quotes Fetched");
+			if (filteredQuotes.size() == 1) {
+				response = new Response(Collections.singletonList(filteredQuotes.get(0)), false,
+						"Only one pickupNow quote available");
+			} else {
+				response = new Response(Collections.singletonList(filteredQuotes.get(1)), false,
+						"Delivery Quotes Fetched");
+			}
+
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
@@ -149,6 +161,37 @@ public class DeliveryController {
 			DeliveryRiderLocation deliveryRiderLocation = deliveryService.getRiderCurrentLocation(orderId);
 
 			response = new Response(Collections.singletonList(deliveryRiderLocation), false, "Delivery Quotes Fetched");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
+	@PostMapping("/fulfill/{orderId}")
+	public ResponseEntity<Response> smartFulfill(@PathVariable String orderId,
+			@RequestParam(defaultValue = "", required = false) String fulfillType) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+
+			if (order.getStatus().equals(OrderStatusType.ERROR)
+					|| order.getStatus().equals(OrderStatusType.DELIVERY_ERROR)) {
+				if (fulfillType.equalsIgnoreCase("smart")) {
+					orderService.processDeliverySmartFulfill(delivery, Constants.SMART);
+				} else {
+					orderService.processDeliveryFulfill(delivery, Constants.API);
+				}
+				orderService.updateOrderStatus(orderId, OrderStatusType.READY_FOR_DELIVERY);
+			}
+
+			response = new Response(Collections.singletonList(delivery), false, "Delivery Fullfilled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

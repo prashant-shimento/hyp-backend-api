@@ -91,6 +91,7 @@ public class PosOrderRequestTranslation {
 			posRiderUpdateRequest.setOrderId(order.getId());
 			posRiderUpdateRequest.setRiderData(riderDetails);
 			posRiderUpdateRequest.setStatus(String.valueOf(riderStatus));
+			posRiderUpdateRequest.setExternalOrderId(CommonUtils.emptyIfNullOrZeroToString(null));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

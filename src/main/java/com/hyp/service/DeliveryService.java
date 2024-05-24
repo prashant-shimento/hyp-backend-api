@@ -38,6 +38,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Value("${delivery.pidge.token}")
 	private String token;
+	
+	@Value("${delivery.pidge.smart.id}")
+	private String smartId;
 
 	@Autowired
 	DeliveryRepository deliveryRepository;
@@ -234,6 +237,30 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new DeliveryException("Error in cancelDeliveryOrder: " + e.getMessage());
+		}
+	}
+	
+	
+	public void initiateSmartFulfill(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
+		String endpoint = "/v1.0/store/channel/vendor/order/fulfill/smart";
+
+		try {
+			deliveryFulfillRequest.setSmartId(smartId);
+			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryFulfillRequest));
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+					.build();
+			Mono<Object> responses = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
+						HttpStatus statusCode = (HttpStatus) response.statusCode();
+						System.out.println("Status code: " + statusCode);
+						return Mono.just(statusCode);
+					});
+
+			responses.subscribe();
+		} catch (Exception e) {
+			e.printStackTrace();
+			String errorMessage = "Error in initiateSmartFulfill: " + e.getMessage();
+			throw new DeliveryException(errorMessage);
 		}
 	}
 }

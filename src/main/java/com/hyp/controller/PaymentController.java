@@ -58,6 +58,36 @@ public class PaymentController {
 		}
 	}
 
+	@PostMapping("/consume/{orderId}")
+	public ResponseEntity<Response> verifyPayment(@PathVariable String orderId) {
+		Response response;
+		try {
+			Payment payment = paymentService.findByOrderId(orderId);
+			if (payment == null) {
+				throw new Exception("Payment not found " + orderId);
+			}
+			String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+			if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
+				Order order = orderService.findById(orderId);
+				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
+						|| order.getStatus().equals(OrderStatusType.PAYMENT_FAILED)
+						|| order.getStatus().equals(OrderStatusType.ERROR)
+						|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
+					orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+					orderService.processOrder(order);
+					response = new Response(Collections.singletonList(order), false, "Order Payment Consumed Successfully");
+				}
+			}
+			response = new Response(Collections.singletonList(payment), false, "Payment Already Done Successfully");
+			return ResponseEntity.ok(response);
+
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
 	@PostMapping("/verify/{paymentId}")
 	public ResponseEntity<Response> verifyPayment(@PathVariable("paymentId") String paymentId,
 			@RequestBody RazorpayVerifyDto razorPayDto) {
@@ -108,7 +138,7 @@ public class PaymentController {
 		}
 	}
 
-	@PostMapping("/webhook/razorpay")
+	@PostMapping("/callback")
 	public ResponseEntity<Response> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
 		try {
 			switch (razorPayEventDto.getEvent()) {
@@ -140,25 +170,32 @@ public class PaymentController {
 
 	private void handleOrderPaidEvent(RazorpayEventDto razorPayEventDto) throws Exception {
 		System.out.println("handleOrderPaidEvent");
-
 		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 		Order order = orderService.findById(payment.getOrderId());
-		orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-		orderService.processOrder(order);
+		if(order.getStatus().equals(OrderStatusType.PAYMENT_PENDING) || 
+				order.getStatus().equals(OrderStatusType.PROCESSING)) {
+			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+			orderService.processOrder(order);
+		}
 
 	}
 
 	private void handlePaymentEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
 		System.out.println("handlePaymentEvent");
-
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
-		orderService.updateOrderStatus(payment.getOrderId(), orderStatus);
 		payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 		payment.setPaymentId(paymentId);
 		paymentService.save(payment);
+		
+		Order order = orderService.findById(payment.getOrderId());
+		if(order.getStatus().equals(OrderStatusType.PAYMENT_PENDING) || 
+				order.getStatus().equals(OrderStatusType.PROCESSING)) {
+			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+			orderService.processOrder(order);
+		}
 	}
 
 	private void handleRefundEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {

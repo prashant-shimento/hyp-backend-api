@@ -56,6 +56,17 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);
 		}
 	}
+	
+	public String fetchOrderStatus(String orderId) {
+		try {
+			RazorpayClient razorpayClient = new RazorpayClient(razorPayKey, razorPaySecret);
+			Order order = razorpayClient.orders.fetch(orderId);
+			return order.get("status");
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error fetchOrderStatus: " + e.getMessage(), e);
+		}
+	}
 
 	public Payment findByPaymentOrderId(String paymentOrderId) {
 		return paymentRepository.findByPaymentOrderId(paymentOrderId);

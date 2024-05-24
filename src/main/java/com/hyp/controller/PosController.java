@@ -84,8 +84,7 @@ public class PosController {
 		restaurantService.update(restaurant);
 		response = new PosResponse.Builder().httpCode(HttpStatus.OK.value())
 				.message("Store Status updated successfully for store restID").status("success").build();
-		updateStatus.setMessage("Store Status updated successfully for store restID");
-		updateStatus.setStatus("success");
+		System.out.println(new JSONObject(response).toString());
 		return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 	}
 
@@ -105,7 +104,7 @@ public class PosController {
 				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Stock Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
-		System.out.println(response.toString());
+		System.out.println(new JSONObject(response).toString());
 		return ResponseEntity.ok(response);
 	}
 

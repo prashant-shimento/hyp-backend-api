@@ -196,31 +196,9 @@ public class PosServiceImpl implements PosService {
 		try {
 			for (String id : stockRequest.getItemID()) {
 				if (stockRequest.getType().equalsIgnoreCase("item")) {
-					Item item = itemService.findById(id);
-					if (item != null) {
-						item.setInStock(stockRequest.isInStock());
-						if (!stockRequest.isInStock() && stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")) {
-							item.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getCustomTurnOnTime(),
-									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-						} else if (!stockRequest.isInStock()) {
-							item.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getAutoTurnOnTime(),
-									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-						}
-						itemService.update(item);
-					}
+					updateItemStock(id, stockRequest);
 				} else {
-					AddonItem addOnItem = addonItemService.findById(id);
-					if (addOnItem != null) {
-						addOnItem.setActive(stockRequest.isInStock() ? "1" : "0");
-						if (!stockRequest.isInStock() && stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")) {
-							addOnItem.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getCustomTurnOnTime(),
-									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-						} else if (!stockRequest.isInStock()) {
-							addOnItem.setAutoTurnOnTime(LocalDateTime.parse(stockRequest.getAutoTurnOnTime(),
-									DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-						}
-						addonItemService.update(addOnItem);
-					}
+					updateAddonItemStock(id, stockRequest);
 				}
 			}
 			return true;
@@ -228,5 +206,34 @@ public class PosServiceImpl implements PosService {
 			e.printStackTrace();
 			return false;
 		}
+	}
+
+	private void updateItemStock(String id, PosStockRequest stockRequest) {
+		Item item = itemService.findById(id);
+		if (item != null) {
+			item.setActive(stockRequest.isInStock() ? "1" : "0");
+			if (!stockRequest.isInStock()) {
+				item.setAutoTurnOnTime(parseAutoTurnOnTime(stockRequest));
+			}
+			itemService.update(item);
+		}
+	}
+
+	private void updateAddonItemStock(String id, PosStockRequest stockRequest) {
+		AddonItem addOnItem = addonItemService.findById(id);
+		if (addOnItem != null) {
+			addOnItem.setActive(stockRequest.isInStock() ? "1" : "0");
+			if (!stockRequest.isInStock()) {
+				addOnItem.setAutoTurnOnTime(parseAutoTurnOnTime(stockRequest));
+			}
+			addonItemService.update(addOnItem);
+		}
+	}
+
+	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {
+		String turnOnTime = stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")
+				? stockRequest.getCustomTurnOnTime()
+				: stockRequest.getAutoTurnOnTime();
+		return LocalDateTime.parse(turnOnTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 	}
 }

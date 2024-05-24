@@ -6,7 +6,7 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class VariationsDto extends BaseDto {
+public class VariationDto extends BaseDto {
 	private String name;
 	private String groupName;
 	private String status;

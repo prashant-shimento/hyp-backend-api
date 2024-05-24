@@ -65,7 +65,6 @@ public class LocationService {
 			Mono<PlacePredictionData> placePredictionResponse = webClient.post()
 					.body(BodyInserters.fromValue(predictionRequest)).retrieve().bodyToMono(PlacePredictionData.class);
 			placePredictionResponse.subscribe(response -> {
-				System.out.println("Response: " + response);
 				Instant responseTime = Instant.now();
 				try {
 					apiRequestResponseLogService.save(new ApiLog("Get Prediction Location API", apiUrl,
@@ -105,7 +104,6 @@ public class LocationService {
 					.defaultHeaders(headers -> headers.set("X-Goog-FieldMask", "*")).build();
 			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
-				System.out.println("Response: " + response);
 				Instant responseTime = Instant.now();
 				apiRequestResponseLogService.save(new ApiLog("Get Place Details API", url, Constants.OUTBOUND_API_LOG,
 						"GET", "", response, requestTime, responseTime, Duration.between(requestTime, responseTime),
@@ -120,7 +118,7 @@ public class LocationService {
 			return placeResponse.block();
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new RuntimeException("Error in getLocationPrediction: " + e.getMessage(), e);
+			throw new RuntimeException("Error in getPlaceDetails: " + e.getMessage(), e);
 		}
 	}
 
@@ -132,7 +130,6 @@ public class LocationService {
 			WebClient webClient = WebClient.builder().baseUrl(url).build();
 			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
-				System.out.println("Response: " + response);
 				Instant responseTime = Instant.now();
 				apiRequestResponseLogService.save(
 						new ApiLog("Geocoding API", url, Constants.OUTBOUND_API_LOG, "GET", "", response, requestTime,
@@ -147,7 +144,7 @@ public class LocationService {
 			return placeResponse.block();
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new RuntimeException("Error in getPlaceByGeocode: " + e.getMessage(), e);
+			throw new RuntimeException("Error in getPlaceByGeocodeByRest: " + e.getMessage(), e);
 		}
 	}
 
@@ -158,7 +155,6 @@ public class LocationService {
 			LatLng latLng = new LatLng(latitude, longitude);
 			GeocodingResult[] results = GeocodingApi.reverseGeocode(context, latLng).await();
 			Instant responseTime = Instant.now();
-
 			apiRequestResponseLogService.save(new ApiLog("Get place by Geocoding AP", "", Constants.INBOUND_API_LOG, "GET", "",
 					results.toString(), requestTime, responseTime, Duration.between(requestTime, responseTime),
 					ApiStatus.SUCCESSFUL));

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.hyp.dto.LoginDto;
 import com.hyp.dto.VerificationRequestDto;
@@ -23,6 +24,8 @@ import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 import com.hyp.util.CommonUtils;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/login")
@@ -40,6 +43,8 @@ public class LoginController {
 	@Autowired
     private Environment env;
 
+	@Autowired
+	HttpServletRequest httpRequest;
     
 	@PostMapping("/otp")
 	public ResponseEntity<Response> userLogin(@RequestBody LoginDto loginDto) {
@@ -125,6 +130,12 @@ public class LoginController {
         configMap.put("razorpay.secret", env.getProperty("razorpay.secret"));
         configMap.put("app.domain", env.getProperty("app.domain"));
         configMap.put("spring.data.mongodb.uri", env.getProperty("spring.data.mongodb.uri"));
+        String scheme = httpRequest.getScheme();
+        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(httpRequest)
+        	    .replacePath(null)
+        	    .build()
+        	    .toUriString();
+        configMap.put("domain", httpRequest.getRequestURL().toString() +"======" + scheme + "======" + baseUrl);
 
         return configMap;
     }
