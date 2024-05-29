@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -79,6 +80,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
+	
+	@Autowired
+	SimpMessagingTemplate messageTemplate;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -166,6 +170,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 			order = this.update(order);
+			
 			return order;
 
 		} catch (DeliveryException e) {
@@ -203,6 +208,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				deliveryService.save(delivery);
 			}
 
+
 		} catch (RequestTranslationException e) {
 			// Need to handle Payment Refund or Retry Mechanism
 			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());
@@ -223,6 +229,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
 		this.save(order);
+		messageTemplate.convertAndSend("/topic/order-status", orderStatus);
 	}
 
 	@Scheduled(fixedRate = 60000)

@@ -1,5 +1,7 @@
 package com.hyp.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -7,12 +9,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PosStatusRequest {
 
-	private String restID;
+	@JsonProperty("restID")
+	private String restaurantId;
     private String status;
-    private String store_status;
-    private String turn_on_time;
+	@JsonProperty("store_status")
+    private String storeStatus;
+	@JsonProperty("turn_on_time")
+    private String turnOnTime;
     private String reason;
-    private String http_code;
+	@JsonProperty("http_code")
+    private String httpCode;
     private String message;
 
 }

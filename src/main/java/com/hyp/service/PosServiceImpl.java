@@ -194,7 +194,7 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public boolean updateStock(PosStockRequest stockRequest) {
 		try {
-			for (String id : stockRequest.getItemID()) {
+			for (String id : stockRequest.getItemId()) {
 				if (stockRequest.getType().equalsIgnoreCase("item")) {
 					updateItemStock(id, stockRequest);
 				} else {

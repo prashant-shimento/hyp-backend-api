@@ -2,6 +2,8 @@ package com.hyp.request;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,10 +11,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PosStockRequest {
 
-	private String restID;
+	@JsonProperty("restID")
+	private String restaurantId;
     private boolean inStock;
     private String type;
-    private List<String> itemID;
+	@JsonProperty("itemID")
+    private List<String> itemId;
     private String autoTurnOnTime;
     private String customTurnOnTime;
     private String code;
