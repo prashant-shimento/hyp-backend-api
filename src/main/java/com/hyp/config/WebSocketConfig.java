@@ -19,7 +19,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:4200")
+        .setAllowedOrigins("https://rasyumm.hyperapps.cloud", "https://rasyumm.hyperapps.in", "https://app.rasyumm.com",
+        		"http://localhost:4200")
                 .withSockJS();
     }
 }
