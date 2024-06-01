@@ -2,6 +2,9 @@ package com.hyp.service;
 
 import org.springframework.stereotype.Service;
 
+import com.hyp.entity.Delivery;
+import com.hyp.entity.Order;
+import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.exception.PosException;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosOrderRequest;
@@ -21,5 +24,9 @@ public interface PosService {
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 
 	public boolean updateStock(PosStockRequest stockRequest);
+	
+	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus);
+	
+	public void updatePosRiderStatus(Delivery delivery, Order order);
 
 }

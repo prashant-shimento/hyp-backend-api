@@ -13,10 +13,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import com.hyp.entity.Delivery;
-import com.hyp.entity.Order;
-import com.hyp.entity.Restaurant;
-import com.hyp.enums.DeliveryFulfillStatusType;
-import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
@@ -24,10 +20,6 @@ import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
-import com.hyp.request.PosRiderUpdateRequest;
-import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
-import com.hyp.translation.PosOrderRequestTranslation;
-
 import reactor.core.publisher.Mono;
 
 @Service
@@ -46,31 +38,25 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	DeliveryRepository deliveryRepository;
 
 	@Autowired
-	PosService posService;
-
-	@Autowired
 	RestaurantService restaurantService;
 
 	@Autowired
 	ApiRequestResponseLogService apiRequestResponseLogService;
 
 	@Autowired
-	PosOrderRequestTranslation posOrderRequestTranslation;
-
-	@Autowired
 	RetryTemplate retryTemplate;
 
-	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {
-		return fullFillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP
-				|| fullFillStatus == DeliveryFulfillStatusType.REACHED_PICKUP
-				|| fullFillStatus == DeliveryFulfillStatusType.PICKED_UP
-				|| fullFillStatus == DeliveryFulfillStatusType.DELIVERED;
+	public Delivery findByOrderId(String orderId) {
+		return deliveryRepository.findByOrderId(orderId);
 	}
 
+	public Delivery findByDeliveryOrderId(String deliveryOrderId) {
+		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
+	}
+	
 	public String createDeliveryOrder(DeliveryOrderRequest deliveryOrderRequest) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order";
 		try {
-
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(deliveryOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
 					.build();
@@ -159,8 +145,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			Mono<Object> responses = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
 						HttpStatus statusCode = (HttpStatus) response.statusCode();
-						// Do something with the status code
-
 						System.out.println("Status code: " + statusCode);
 						return Mono.just(statusCode);
 					});
@@ -196,28 +180,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	public Delivery findByOrderId(String orderId) {
-		return deliveryRepository.findByOrderId(orderId);
-	}
-
-	public Delivery findByDeliveryOrderId(String deliveryOrderId) {
-		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
-	}
-
-	public void updatePosRiderStatus(Delivery delivery, Order order) {
-		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		RiderDetails riderDetails = new RiderDetails(delivery.getFulfillment().getRider().getName(),
-				delivery.getFulfillment().getRider().getMobile());
-
-		RiderStatusType riderStatus = RiderStatusType
-				.getRiderStatusByDeliveryRider(delivery.getFulfillment().getStatus());
-
-		PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation
-				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
-
-		posService.updatePosRiderStatus(posRiderUpdateRequest);
-	}
-
 	public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/cancel";
 
@@ -227,9 +189,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint).exchangeToMono(response -> {
 				HttpStatus statusCode = (HttpStatus) response.statusCode();
-				// Do something with the status code
 				System.out.println("Status code: " + statusCode);
-
 				return Mono.just(statusCode);
 			});
 

@@ -18,8 +18,12 @@ import com.hyp.constants.Constants;
 import com.hyp.constants.Constants.ApiStatus;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.ApiLog;
+import com.hyp.entity.Delivery;
 import com.hyp.entity.Item;
+import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.DeliveryFulfillStatusType;
+import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.PosException;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
@@ -27,7 +31,9 @@ import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosStockRequest;
+import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.translation.PosDataRequestTranslation;
+import com.hyp.translation.PosOrderRequestTranslation;
 
 import reactor.core.publisher.Mono;
 
@@ -50,6 +56,9 @@ public class PosServiceImpl implements PosService {
 	private final AddonGroupService addonGroupService;
 	private final CategoryService categoryService;
 	private final ItemService itemService;
+	
+	@Autowired
+	PosOrderRequestTranslation posOrderRequestTranslation;
 
 	public PosServiceImpl(AttributeService attributeService, CategoryService categoryService, TaxService taxService,
 			OrderTypeService orderTypeService, VariationService variationService, RestaurantService restaurantService,
@@ -236,4 +245,26 @@ public class PosServiceImpl implements PosService {
 				: stockRequest.getAutoTurnOnTime();
 		return LocalDateTime.parse(turnOnTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 	}
+	
+	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {
+		return fullFillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP
+				|| fullFillStatus == DeliveryFulfillStatusType.REACHED_PICKUP
+				|| fullFillStatus == DeliveryFulfillStatusType.PICKED_UP
+				|| fullFillStatus == DeliveryFulfillStatusType.DELIVERED;
+	}
+	
+	public void updatePosRiderStatus(Delivery delivery, Order order) {
+		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+		RiderDetails riderDetails = new RiderDetails(delivery.getFulfillment().getRider().getName(),
+				delivery.getFulfillment().getRider().getMobile());
+
+		RiderStatusType riderStatus = RiderStatusType
+				.getRiderStatusByDeliveryRider(delivery.getFulfillment().getStatus());
+
+		PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation
+				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
+
+		this.updatePosRiderStatus(posRiderUpdateRequest);
+	}
+
 }

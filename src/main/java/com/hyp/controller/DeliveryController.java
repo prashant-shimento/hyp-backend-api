@@ -26,7 +26,6 @@ import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
-import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.response.Response;
@@ -63,10 +62,9 @@ public class DeliveryController {
 	LocationService locationService;
 
 	@PostMapping("/callback")
-	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderStatus) {
+	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderData) {
 		Response response;
 		try {
-			DeliveryOrderData deliveryOrderData = deliveryOrderStatus.getData();
 			Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
 			if (delivery == null) {
 				response = new Response(null, true, "Delivery Id not found " + deliveryOrderData.getId());
@@ -87,8 +85,8 @@ public class DeliveryController {
 					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
 					orderService.save(order);
 				}
-				if (deliveryService.isPosUpdateRequired(fullFillStatus)) {
-					deliveryService.updatePosRiderStatus(delivery, order);
+				if (posService.isPosUpdateRequired(fullFillStatus)) {
+					posService.updatePosRiderStatus(delivery, order);
 				}
 				deliveryService.save(delivery);
 			}
