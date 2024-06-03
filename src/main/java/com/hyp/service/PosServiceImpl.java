@@ -1,7 +1,5 @@
 package com.hyp.service;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -12,12 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hyp.constants.Constants;
-import com.hyp.constants.Constants.ApiStatus;
 import com.hyp.entity.AddonItem;
-import com.hyp.entity.ApiLog;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Item;
 import com.hyp.entity.Order;
@@ -44,7 +38,7 @@ public class PosServiceImpl implements PosService {
 	private String baseUrl;
 
 	@Autowired
-	ApiRequestResponseLogService apiRequestResponseLogService;
+	ApiLogService apiRequestResponseLogService;
 
 	private final RestaurantService restaurantService;
 	private final TaxService taxService;
@@ -133,8 +127,6 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
 		try {
-			Instant requestTime = Instant.now();
-
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/update_order_status";
@@ -142,22 +134,8 @@ public class PosServiceImpl implements PosService {
 					.body(BodyInserters.fromValue(posOrderUpdateRequest)).retrieve().bodyToMono(String.class);
 			updateOrderResponse.subscribe(response -> {
 				System.out.println("Response: " + response);
-				Instant responseTime = Instant.now();
-				try {
-					apiRequestResponseLogService.save(
-							new ApiLog("Update POS Order API", baseUrl + endpoint, Constants.OUTBOUND_API_LOG, "POST",
-									new ObjectMapper().writeValueAsString(posOrderUpdateRequest), response, requestTime,
-									responseTime, Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
-
-				} catch (JsonProcessingException e) {
-					e.printStackTrace();
-				}
 			}, error -> {
 				System.err.println("Error response: " + error.getMessage());
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(new ApiLog("Update POS Order API", baseUrl + endpoint,
-						Constants.OUTBOUND_API_LOG, "POST", posOrderUpdateRequest.toString(), error.getMessage(),
-						requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
 			});
 			return updateOrderResponse.toString();
 		} catch (Exception e) {
@@ -169,7 +147,6 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {
-			Instant requestTime = Instant.now();
 			System.out.println("Request " + new ObjectMapper().writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/rider_status_update";
@@ -177,21 +154,8 @@ public class PosServiceImpl implements PosService {
 					.body(BodyInserters.fromValue(posRiderUpdateRequest)).retrieve().bodyToMono(String.class);
 			riderUpdateResponse.subscribe(response -> {
 				System.out.println("Response: " + response);
-				Instant responseTime = Instant.now();
-				try {
-					apiRequestResponseLogService.save(new ApiLog("Update POS Rider Status API", baseUrl + endpoint,
-							Constants.OUTBOUND_API_LOG, "POST",
-							new ObjectMapper().writeValueAsString(posRiderUpdateRequest), response, requestTime,
-							responseTime, Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
-				} catch (JsonProcessingException e) {
-					e.printStackTrace();
-				}
 			}, error -> {
 				System.err.println("Error response: " + error.getMessage());
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(new ApiLog("Update POS Rider Status API", baseUrl + endpoint,
-						Constants.OUTBOUND_API_LOG, "POST", posRiderUpdateRequest.toString(), error.getMessage(),
-						requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
 			});
 			return riderUpdateResponse.toString();
 		} catch (Exception e) {

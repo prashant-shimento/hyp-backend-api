@@ -195,9 +195,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (posService.createPosOrder(posOrderRequest)) {
 				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
 						.getDeliveryOrderRequest(restaurant, address, customer, order);
-
 				String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
-
 				Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
 				delivery.setId(CommonUtils.genId());
 				delivery.setDeliveryOrderId(deliveryOrderId);
@@ -207,8 +205,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
 				deliveryService.save(delivery);
 			}
-
-
 		} catch (RequestTranslationException e) {
 			// Need to handle Payment Refund or Retry Mechanism
 			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());

@@ -23,6 +23,9 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RazorpaySignatureVerifier;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @RestController
 @RequestMapping("/payment")
 public class PaymentController {
@@ -97,14 +100,9 @@ public class PaymentController {
 			if (payment == null) {
 				throw new Exception("Payment not found " + paymentId);
 			}
-			if (!razorPaySignatureVerifier.verifySignature(
-					payment.getOrderId() + "|" + razorPayDto.getRazorpayPaymentId(), razorPayDto.getRazorpaySignature(),
-					razorPaySecret)) {
-				throw new Exception("Signature Verification failed ");
+			if(paymentService.verifySignature(razorPayDto)) {
+				paymentService.fetchOrderStatus(paymentId);
 			}
-			payment.setSignature(razorPayDto.getRazorpaySignature());
-			payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
-			paymentService.save(payment);
 			response = new Response(Collections.singletonList(payment), false, "Payment Verified Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
@@ -143,9 +141,11 @@ public class PaymentController {
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":
+				log.info("payment paid event processing");
 				handleOrderPaidEvent(razorPayEventDto);
 				break;
 			case "payment.captured":
+				log.info("payment capture event processing");
 				handlePaymentEvent(razorPayEventDto, OrderStatusType.PROCESSING);
 				break;
 			case "payment.failed":
@@ -169,7 +169,6 @@ public class PaymentController {
 	}
 
 	private void handleOrderPaidEvent(RazorpayEventDto razorPayEventDto) throws Exception {
-		System.out.println("handleOrderPaidEvent");
 		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 		Order order = orderService.findById(payment.getOrderId());
@@ -182,7 +181,6 @@ public class PaymentController {
 	}
 
 	private void handlePaymentEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
-		System.out.println("handlePaymentEvent");
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
@@ -199,12 +197,15 @@ public class PaymentController {
 	}
 
 	private void handleRefundEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
-		System.out.println("handleRefundCalled");
 		String paymentId = razorPayEventDto.getPayload().getRefund().getEntity().getPayment_id();
 		Payment payment = paymentService.findByPaymentId(paymentId);
 		orderService.updateOrderStatus(payment.getOrderId(), orderStatus);
 		payment.getRefund().setStatus(razorPayEventDto.getPayload().getRefund().getEntity().getStatus());
 		paymentService.save(payment);
+	}
+	
+	private void processPaymentStatus() {
+		
 	}
 
 }

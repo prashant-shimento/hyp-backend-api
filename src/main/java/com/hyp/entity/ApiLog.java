@@ -2,28 +2,30 @@ package com.hyp.entity;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
-
+import java.time.LocalDateTime;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import com.hyp.constants.Constants.ApiStatus;
-
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+@AllArgsConstructor 
 @Getter
 @Setter
 @ToString
+@Builder
 @Document(collection = "api_logs")
-public class ApiLog extends BaseEntity {
+public class ApiLog {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-
+	@Id
+	private String id;
+	
 	@Field(name = "name")
 	private String name;
 
@@ -52,23 +54,18 @@ public class ApiLog extends BaseEntity {
 	private Duration duration;
 
 	@Field(name = "status")
-	private ApiStatus status;
+	private int status;
+	
+	@Field("created_at")
+	@CreatedDate
+	private LocalDateTime createdAt;
 
-	public ApiLog(String name, String url, String type, String method, String request, String response,
-			Instant requestTime, Instant responseTime, Duration duration, ApiStatus status) {
-		super();
-		this.setId(UUID.randomUUID().toString());
-		this.name = name;
-		this.url = url;
-		this.type = type;
-		this.method = method;
-		this.request = request;
-		this.response = response;
-		this.requestTime = requestTime;
-		this.responseTime = responseTime;
-		this.duration = duration != null ? duration : Duration.ZERO;
-		this.status = status;
-	}
+	@Field("updated_at")
+	@LastModifiedDate
+	private LocalDateTime updatedAt;
+
+	@Field("restaurant_id")
+	private String restaurantId;
 
 }
 

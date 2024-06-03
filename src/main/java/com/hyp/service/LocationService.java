@@ -1,6 +1,5 @@
 package com.hyp.service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,15 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.maps.GeoApiContext;
 import com.google.maps.GeocodingApi;
 import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
-import com.hyp.constants.Constants;
-import com.hyp.constants.Constants.ApiStatus;
-import com.hyp.entity.ApiLog;
 import com.hyp.model.PlacePredictionData;
 import com.hyp.request.PredictionRequest;
 
@@ -32,7 +26,7 @@ public class LocationService {
 	private String googleApiKey;
 
 	@Autowired
-	ApiRequestResponseLogService apiRequestResponseLogService;
+	ApiLogService apiRequestResponseLogService;
 
 	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
 			double restaurantLongitude, double radius) {
@@ -52,7 +46,6 @@ public class LocationService {
 
 	public PlacePredictionData getLocationPrediction(String search) {
 		try {
-			Instant requestTime = Instant.now();
 			PredictionRequest predictionRequest = new PredictionRequest();
 			predictionRequest.setInput(search);
 			List<String> region = new ArrayList<>();
@@ -65,27 +58,10 @@ public class LocationService {
 			Mono<PlacePredictionData> placePredictionResponse = webClient.post()
 					.body(BodyInserters.fromValue(predictionRequest)).retrieve().bodyToMono(PlacePredictionData.class);
 			placePredictionResponse.subscribe(response -> {
-				Instant responseTime = Instant.now();
-				try {
-					apiRequestResponseLogService.save(new ApiLog("Get Prediction Location API", apiUrl,
-							Constants.OUTBOUND_API_LOG, "GET", new ObjectMapper().writeValueAsString(predictionRequest),
-							new ObjectMapper().writeValueAsString(response), requestTime, responseTime,
-							Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
-				} catch (JsonProcessingException e) {
-					e.printStackTrace();
-				}
+
 			}, error -> {
 				System.err.println("Error response: " + error.getMessage());
-				Instant responseTime = Instant.now();
 
-				try {
-					apiRequestResponseLogService.save(new ApiLog("Get Prediction Location API", apiUrl,
-							Constants.OUTBOUND_API_LOG, "GET", new ObjectMapper().writeValueAsString(predictionRequest),
-							error.getMessage(), requestTime, responseTime, Duration.between(requestTime, responseTime),
-							ApiStatus.FAILURE));
-				} catch (JsonProcessingException e) {
-					e.printStackTrace();
-				}
 			});
 			return placePredictionResponse.block();
 		} catch (Exception e) {
@@ -96,7 +72,6 @@ public class LocationService {
 
 	public String getPlaceDetails(String placeId) {
 		try {
-			Instant requestTime = Instant.now();
 
 			String url = "https://places.googleapis.com/v1/places/" + placeId;
 			WebClient webClient = WebClient.builder().baseUrl(url)
@@ -104,16 +79,10 @@ public class LocationService {
 					.defaultHeaders(headers -> headers.set("X-Goog-FieldMask", "*")).build();
 			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(new ApiLog("Get Place Details API", url, Constants.OUTBOUND_API_LOG,
-						"GET", "", response, requestTime, responseTime, Duration.between(requestTime, responseTime),
-						ApiStatus.SUCCESSFUL));
+				
 			}, error -> {
 				System.err.println("Error response: " + error.getMessage());
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(new ApiLog("Get Place Details API", url, Constants.OUTBOUND_API_LOG,
-						"GET", "", error.getMessage(), requestTime, responseTime,
-						Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
+				
 			});
 			return placeResponse.block();
 		} catch (Exception e) {
@@ -130,16 +99,10 @@ public class LocationService {
 			WebClient webClient = WebClient.builder().baseUrl(url).build();
 			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(
-						new ApiLog("Geocoding API", url, Constants.OUTBOUND_API_LOG, "GET", "", response, requestTime,
-								responseTime, Duration.between(requestTime, responseTime), ApiStatus.SUCCESSFUL));
+				
 			}, error -> {
 				System.err.println("Error response: " + error.getMessage());
-				Instant responseTime = Instant.now();
-				apiRequestResponseLogService.save(new ApiLog("Geocoding API", url, Constants.OUTBOUND_API_LOG, "GET",
-						"", error.getMessage(), requestTime, responseTime, Duration.between(requestTime, responseTime),
-						ApiStatus.FAILURE));
+				
 			});
 			return placeResponse.block();
 		} catch (Exception e) {
@@ -150,23 +113,12 @@ public class LocationService {
 
 	public GeocodingResult[] getPlaceByGeocodebyClient(double latitude, double longitude) {
 		try {
-			Instant requestTime = Instant.now();
 			GeoApiContext context = new GeoApiContext.Builder().apiKey(googleApiKey).build();
 			LatLng latLng = new LatLng(latitude, longitude);
 			GeocodingResult[] results = GeocodingApi.reverseGeocode(context, latLng).await();
-			Instant responseTime = Instant.now();
-			apiRequestResponseLogService.save(new ApiLog("Get place by Geocoding AP", "", Constants.INBOUND_API_LOG, "GET", "",
-					results.toString(), requestTime, responseTime, Duration.between(requestTime, responseTime),
-					ApiStatus.SUCCESSFUL));
-
 			return results;
 		} catch (Exception e) {
 			e.printStackTrace();
-			Instant requestTime = Instant.now();
-			Instant responseTime = Instant.now();
-			apiRequestResponseLogService
-					.save(new ApiLog("Get Geocoding API", "", Constants.INBOUND_API_LOG, "GET", "", e.getMessage(),
-							requestTime, responseTime, Duration.between(requestTime, responseTime), ApiStatus.FAILURE));
 			throw new RuntimeException("Error in getPlaceByGeocodebyClient: " + e.getMessage(), e);
 		}
 	}

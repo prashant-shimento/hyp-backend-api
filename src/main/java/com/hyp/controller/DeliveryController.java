@@ -21,11 +21,8 @@ import com.hyp.entity.Address;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.DeliveryFulfillStatusType;
-import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.DeliveryOrderStatus;
-import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.response.Response;
@@ -38,7 +35,9 @@ import com.hyp.service.RestaurantService;
 import com.hyp.translation.DeliveryRequestTranslation;
 
 import io.swagger.v3.oas.annotations.Hidden;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/delivery")
 public class DeliveryController {
@@ -63,38 +62,19 @@ public class DeliveryController {
 
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderData) {
+		Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
 		Response response;
 		try {
-			Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
 			if (delivery == null) {
 				response = new Response(null, true, "Delivery Id not found " + deliveryOrderData.getId());
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			delivery.setStatus(DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus()));
-			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
-					|| delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
-				DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
-				DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
-				delivery.setFulfillment(deliveryFulfill);
-				Order order = orderService.findById(delivery.getOrderId());
-				orderService.updateOrderStatus(order.getId(),
-						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
-				if (deliveryOrderData.getFulfillment().getTrackCode() != null
-						&& order.getDeliveryTrackingLink() == null) {
-					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
-					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
-					orderService.save(order);
-				}
-				if (posService.isPosUpdateRequired(fullFillStatus)) {
-					posService.updatePosRiderStatus(delivery, order);
-				}
-				deliveryService.save(delivery);
-			}
+			deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
 			response = new Response(null, false, "Success");
 			return ResponseEntity.ok().build();
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in updateDeliveryOrderStatus "+e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -141,6 +121,7 @@ public class DeliveryController {
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
+			log.error("Exception occurred in getDeliveryQuote "+e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -162,7 +143,7 @@ public class DeliveryController {
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in getRiderLocation "+e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -193,8 +174,34 @@ public class DeliveryController {
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in smartFulfill "+e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+
+	@PostMapping("/consume/{orderId}")
+	public ResponseEntity<Response> consumeDeliveryCallback(@PathVariable String orderId) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			if (delivery == null) {
+				response = new Response(null, true, "Delivery Id not found ");
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			deliveryService.processDeliveryCallback(delivery,
+					deliveryService.getDeliveryStatus(delivery.getDeliveryOrderId()));
+			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			log.error("Exception occurred in consumeDeliveryCallback "+e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
 }

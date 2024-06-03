@@ -4,6 +4,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 import com.hyp.entity.ApiLog;
 
-public interface ApiRequestResponseLogRepository extends MongoRepository<ApiLog, String> {
+public interface ApiLogRepository extends MongoRepository<ApiLog, String> {
 
 }

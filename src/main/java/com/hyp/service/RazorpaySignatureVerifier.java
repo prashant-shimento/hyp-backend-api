@@ -16,7 +16,6 @@ public class RazorpaySignatureVerifier {
 
     public boolean verifySignature(String payload, String signature, String secretKey) {
         try {
-            // Calculate HMAC SHA256 hash of the payload using the API secret
             Mac mac = Mac.getInstance(ALGORITHM);
             SecretKeySpec secretKeySpec = new SecretKeySpec(secretKey.getBytes(), ALGORITHM);
             mac.init(secretKeySpec);
@@ -24,7 +23,6 @@ public class RazorpaySignatureVerifier {
             String calculatedSignature = Base64.getEncoder().encodeToString(hashBytes);
             return calculatedSignature.equals(signature);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            // Handle exceptions
             e.printStackTrace();
             return false;
         }
