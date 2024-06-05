@@ -69,19 +69,9 @@ public class PaymentController {
 			if (payment == null) {
 				throw new Exception("Payment not found " + orderId);
 			}
-			String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
-			if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
-				Order order = orderService.findById(orderId);
-				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
-						|| order.getStatus().equals(OrderStatusType.PAYMENT_FAILED)
-						|| order.getStatus().equals(OrderStatusType.ERROR)
-						|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
-					orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-					orderService.processOrder(order);
-					response = new Response(Collections.singletonList(order), false, "Order Payment Consumed Successfully");
-				}
-			}
-			response = new Response(Collections.singletonList(payment), false, "Payment Already Done Successfully");
+			Order order = orderService.findById(orderId);
+			processPaymentStatus(order, payment);
+			response = new Response(Collections.singletonList(order), false, "Order Payment Consumed Successfully");
 			return ResponseEntity.ok(response);
 
 		} catch (Exception e) {
@@ -91,20 +81,20 @@ public class PaymentController {
 		}
 	}
 
-	@PostMapping("/verify/{paymentId}")
-	public ResponseEntity<Response> verifyPayment(@PathVariable("paymentId") String paymentId,
+	@PostMapping("/verify/{orderId}")
+	public ResponseEntity<Response> verifyPayment(@PathVariable String orderId,
 			@RequestBody RazorpayVerifyDto razorPayDto) {
 		Response response;
 		try {
-			Payment payment = paymentService.findById(paymentId);
+			Payment payment = paymentService.findByOrderId(orderId);
 			if (payment == null) {
-				throw new Exception("Payment not found " + paymentId);
+				throw new Exception("Payment not found " + orderId);
 			}
-			if(paymentService.verifySignature(razorPayDto)) {
-				paymentService.fetchOrderStatus(paymentId);
+			Order order = orderService.findById(orderId);
+			if (paymentService.verifySignature(razorPayDto)) {
+				processPaymentStatus(order, payment);
 			}
-			response = new Response(Collections.singletonList(payment), false, "Payment Verified Successfully");
-			return ResponseEntity.ok(response);
+			return ResponseEntity.ok().build();
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
 			e.printStackTrace();
@@ -172,8 +162,8 @@ public class PaymentController {
 		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 		Order order = orderService.findById(payment.getOrderId());
-		if(order.getStatus().equals(OrderStatusType.PAYMENT_PENDING) || 
-				order.getStatus().equals(OrderStatusType.PROCESSING)) {
+		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
+				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 			orderService.processOrder(order);
 		}
@@ -187,10 +177,10 @@ public class PaymentController {
 		payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 		payment.setPaymentId(paymentId);
 		paymentService.save(payment);
-		
+
 		Order order = orderService.findById(payment.getOrderId());
-		if(order.getStatus().equals(OrderStatusType.PAYMENT_PENDING) || 
-				order.getStatus().equals(OrderStatusType.PROCESSING)) {
+		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
+				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 			orderService.processOrder(order);
 		}
@@ -203,9 +193,18 @@ public class PaymentController {
 		payment.getRefund().setStatus(razorPayEventDto.getPayload().getRefund().getEntity().getStatus());
 		paymentService.save(payment);
 	}
-	
-	private void processPaymentStatus() {
-		
+
+	private void processPaymentStatus(Order order, Payment payment) {
+		String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+		if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
+			if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
+					|| order.getStatus().equals(OrderStatusType.PAYMENT_FAILED)
+					|| order.getStatus().equals(OrderStatusType.ERROR)
+					|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
+				orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+				orderService.processOrder(order);
+			}
+		}
 	}
 
 }

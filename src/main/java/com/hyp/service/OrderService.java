@@ -80,7 +80,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
-	
+
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
 
@@ -170,7 +170,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 			order = this.update(order);
-			
+
 			return order;
 
 		} catch (DeliveryException e) {
@@ -231,9 +231,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	@Scheduled(fixedRate = 60000)
 	public void scheduleDeliveryFullfill() throws DeliveryException {
 		LocalDateTime currentTime = LocalDateTime.now();
-
 		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
-			int minPrepTime = Integer.parseInt(order.getMinPrepTime());
+			int minPrepTime = order.getMinPrepTime().equalsIgnoreCase("") ? 10
+					: Integer.parseInt(order.getMinPrepTime());
 			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : minPrepTime - 5;
 			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
 			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
@@ -279,7 +279,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		DeliveryNetworks selectedNetwork = null;
 		try {
 			DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
-			List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems();
+			List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems().stream()
+					.filter(items -> items.isPickupNow()).collect(Collectors.toList());
 
 			Optional<DeliveryNetworks> matchingNetworkOpt = deliveryNetworks.stream()
 					.filter(network -> network.getNetworkId() == delivery.getNetworkId()).findFirst();

@@ -232,6 +232,8 @@ public class PosDataRequestTranslation {
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
 		restaurant.setDeliveryHours(getDeliveryHours(restaurantRequest));
+		restaurant.setDeliveryRadius(50);
+		restaurant.setPincode(null); //TODO: Need to check logic to extract PINCODE
 		return restaurant;
 	}
 
