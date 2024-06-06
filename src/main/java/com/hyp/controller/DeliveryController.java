@@ -105,19 +105,13 @@ public class DeliveryController {
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
-			List<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
+			DeliveryQuote.DeliveryNetworks filteredQuotes = deliveryQuote.getData().getItems().stream()
 					.filter(item -> item.isPickupNow())
 					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice()))
-					.collect(Collectors.toList());
+					.findFirst().get();
 
-			if (filteredQuotes.size() == 1) {
-				response = new Response(Collections.singletonList(filteredQuotes.get(0)), false,
-						"Only one pickupNow quote available");
-			} else {
-				response = new Response(Collections.singletonList(filteredQuotes.get(1)), false,
-						"Delivery Quotes Fetched");
-			}
-
+			response = new Response(Collections.singletonList(filteredQuotes), false,
+					"Delivery Quotes Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

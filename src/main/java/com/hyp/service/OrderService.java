@@ -158,8 +158,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				}
 			}
 
-			if (newOrderStatus == OrderStatusType.CANCELLED && oldOrderStatus == OrderStatusType.ACCEPTED) {
-				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
+			if (newOrderStatus == OrderStatusType.CANCELLED) {
+				paymentService.createRefund(order.getId(), order.getTotalAmount(),	 true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());

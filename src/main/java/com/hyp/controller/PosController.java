@@ -1,9 +1,5 @@
 package com.hyp.controller;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +40,6 @@ public class PosController {
 
 	@PostMapping("/menu")
 	public ResponseEntity<PosResponse> saveMenuData(@RequestBody PosDataRequest posDataRequest) {
-		JSONObject jb = new JSONObject(posDataRequest);
-		System.out.println(jb.toString());
 		boolean result = posDataService.savePosData(posDataRequest);
 		PosResponse response = new PosResponse.Builder()
 				.httpCode(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
@@ -56,8 +50,6 @@ public class PosController {
 
 	@PostMapping("/status/get")
 	public ResponseEntity<PosResponse> getStatus(@RequestBody PosStatusRequest getStatus) {
-		JSONObject jb = new JSONObject(getStatus);
-		System.out.println(jb.toString());
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(getStatus.getRestaurantId());
 		PosResponse response = new PosResponse.Builder()
 				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
@@ -69,8 +61,6 @@ public class PosController {
 
 	@PostMapping("/status/update")
 	public ResponseEntity<PosResponse> updateStatus(@RequestBody PosStatusRequest updateStatus) {
-		JSONObject jb = new JSONObject(updateStatus);
-		System.out.println(jb.toString());
 		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
 		if (restaurant == null) {
@@ -78,25 +68,17 @@ public class PosController {
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
-
-		restaurant.setActive(updateStatus.getStoreStatus().equalsIgnoreCase("1") ? true : false);
-		if (!restaurant.isActive()) {
-			restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurnOnTime(),
-					DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-		}
-		restaurant.setStatusReason(updateStatus.getReason());
-		restaurantService.update(restaurant);
+		boolean result = posDataService.updateRestaurant(updateStatus);
 		messageTemplate.convertAndSend("/topic/store-status", updateStatus);
-		response = new PosResponse.Builder().httpCode(HttpStatus.OK.value())
-				.message("Store Status updated successfully for store restID").status("success").build();
-		System.out.println(new JSONObject(response).toString());
-		return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+		response = new PosResponse.Builder()
+				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
+				.message(result ? "Restaurant Updated Successfully" : "Something Went Wrong")
+				.status(result ? "success" : "failed").build();
+		return ResponseEntity.ok(response);
 	}
 
 	@PostMapping("/stock")
 	public ResponseEntity<PosResponse> updateStock(@RequestBody PosStockRequest stockRequest) {
-		JSONObject jb = new JSONObject(stockRequest);
-		System.out.println(jb.toString());
 		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(stockRequest.getRestaurantId());
 		if (restaurant == null) {
@@ -110,14 +92,11 @@ public class PosController {
 				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Stock Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
-		System.out.println(new JSONObject(response).toString());
 		return ResponseEntity.ok(response);
 	}
 
 	@PostMapping("/order/callback")
 	public ResponseEntity<PosResponse> orderCallBack(@RequestBody PosCallbackRequest posCallbackRequest) {
-		JSONObject jb = new JSONObject(posCallbackRequest);
-		System.out.println(jb.toString());
 		PosResponse response = null;
 		try {
 			orderService.processCallback(posCallbackRequest);

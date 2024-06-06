@@ -62,7 +62,7 @@ public class PaymentController {
 	}
 
 	@PostMapping("/consume/{orderId}")
-	public ResponseEntity<Response> verifyPayment(@PathVariable String orderId) {
+	public ResponseEntity<Response> consumePayment(@PathVariable String orderId) {
 		Response response;
 		try {
 			Payment payment = paymentService.findByOrderId(orderId);
@@ -131,11 +131,9 @@ public class PaymentController {
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":
-				log.info("payment paid event processing");
 				handleOrderPaidEvent(razorPayEventDto);
 				break;
 			case "payment.captured":
-				log.info("payment capture event processing");
 				handlePaymentEvent(razorPayEventDto, OrderStatusType.PROCESSING);
 				break;
 			case "payment.failed":
@@ -162,6 +160,7 @@ public class PaymentController {
 		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 		Order order = orderService.findById(payment.getOrderId());
+		log.info("payment paid event processing for order = " + order.getId());
 		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
 				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
@@ -174,21 +173,16 @@ public class PaymentController {
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
+		log.info("payment capture event processing for order=" + payment.getOrderId());
 		payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 		payment.setPaymentId(paymentId);
 		paymentService.save(payment);
-
-		Order order = orderService.findById(payment.getOrderId());
-		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
-				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
-			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-			orderService.processOrder(order);
-		}
 	}
 
 	private void handleRefundEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
 		String paymentId = razorPayEventDto.getPayload().getRefund().getEntity().getPayment_id();
 		Payment payment = paymentService.findByPaymentId(paymentId);
+		log.info("payment refund event processing for order=" + payment.getOrderId());
 		orderService.updateOrderStatus(payment.getOrderId(), orderStatus);
 		payment.getRefund().setStatus(razorPayEventDto.getPayload().getRefund().getEntity().getStatus());
 		paymentService.save(payment);

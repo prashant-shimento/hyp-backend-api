@@ -8,4 +8,5 @@
 #Handle Custom Exceptions for Integrators
 #Alert Mechanism for Delivery API Error
 #Reduce OrderTax payload in Order
-
+#Set Default OTP for Internal Users
+#Payment Cancellation and Payment Pending

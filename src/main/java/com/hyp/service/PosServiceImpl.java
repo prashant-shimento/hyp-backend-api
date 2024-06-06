@@ -26,6 +26,7 @@ import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosStockRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
+import com.hyp.request.PosStatusRequest;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
@@ -50,7 +51,7 @@ public class PosServiceImpl implements PosService {
 	private final AddonGroupService addonGroupService;
 	private final CategoryService categoryService;
 	private final ItemService itemService;
-	
+
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
 
@@ -207,16 +208,16 @@ public class PosServiceImpl implements PosService {
 		String turnOnTime = stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")
 				? stockRequest.getCustomTurnOnTime()
 				: stockRequest.getAutoTurnOnTime();
-		return LocalDateTime.parse(turnOnTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+		return LocalDateTime.parse(turnOnTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
 	}
-	
+
 	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {
 		return fullFillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP
 				|| fullFillStatus == DeliveryFulfillStatusType.REACHED_PICKUP
 				|| fullFillStatus == DeliveryFulfillStatusType.PICKED_UP
 				|| fullFillStatus == DeliveryFulfillStatusType.DELIVERED;
 	}
-	
+
 	public void updatePosRiderStatus(Delivery delivery, Order order) {
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 		RiderDetails riderDetails = new RiderDetails(delivery.getFulfillment().getRider().getName(),
@@ -229,6 +230,25 @@ public class PosServiceImpl implements PosService {
 				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
 
 		this.updatePosRiderStatus(posRiderUpdateRequest);
+	}
+
+	@Override
+	public boolean updateRestaurant(PosStatusRequest updateStatus) {
+		try {
+			Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
+			restaurant.setActive(updateStatus.getStoreStatus().equalsIgnoreCase("1") ? true : false);
+			if (!restaurant.isActive() && updateStatus.getTurnOnTime() != null
+					&& !updateStatus.getTurnOnTime().isEmpty()) {
+				restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurnOnTime(),
+						DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+			}
+			restaurant.setStatusReason(updateStatus.getReason());
+			restaurantService.update(restaurant);
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 }

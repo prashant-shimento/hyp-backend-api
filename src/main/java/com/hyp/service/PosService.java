@@ -10,6 +10,7 @@ import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
+import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
 
 @Service
@@ -22,6 +23,8 @@ public interface PosService {
 	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
 
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
+
+	public boolean updateRestaurant(PosStatusRequest updateStatus);
 
 	public boolean updateStock(PosStockRequest stockRequest);
 	
