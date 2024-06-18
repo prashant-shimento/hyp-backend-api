@@ -13,7 +13,7 @@ public class PosStatusRequest {
 	private String restaurantId;
     private String status;
 	@JsonProperty("store_status")
-    private String storeStatus;
+	private String storeStatus;
 	@JsonProperty("turn_on_time")
     private String turnOnTime;
     private String reason;

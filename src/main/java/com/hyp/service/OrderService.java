@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -32,10 +33,12 @@ import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
+import com.hyp.response.Response;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
+import com.hyp.util.ValidationUtils;
 
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
@@ -84,6 +87,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
 
+	@Autowired
+	LocationService locationService;
+
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
@@ -95,7 +101,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
 			throw new Exception("Delivery Address not found " + orderDto.getDeliveryDetails().getAddressId());
 		}
+		
+		Restaurant restaurant = restaurantService.findById(orderDto.getRestaurantId());
+		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
+			throw new Exception("Order cannot be processed: Outside delivery hours.");
+		}
 
+		Address address = addressService.findById(orderDto.getDeliveryDetails().getAddressId());
+		if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
+				address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+				restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+			throw new Exception("Location Not Deliverable");
+		}
+		
 		if (orderDto.getOrderDiscount() != null) {
 			for (OrderDto.OrderDiscount discount : orderDto.getOrderDiscount()) {
 				if (!discountService.isExistsById(discount.getId())) {
@@ -111,6 +129,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				}
 			}
 		}
+		
 		for (OrderItem orderItem : orderDto.getOrderItems()) {
 
 			if (orderItem.getVariationId() != null) {
@@ -148,7 +167,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				throw new Exception("Order not found " + posCallbackRequest.getOrderId());
 			}
 			Order order = this.findById(posCallbackRequest.getOrderId());
-			OrderStatusType oldOrderStatus = order.getStatus();
 			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
 
 			if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
@@ -159,7 +177,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 
 			if (newOrderStatus == OrderStatusType.CANCELLED) {
-				paymentService.createRefund(order.getId(), order.getTotalAmount(),	 true);
+				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
@@ -225,7 +243,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
 		this.save(order);
-		messageTemplate.convertAndSend("/topic/order-status", orderStatus);
+		messageTemplate.convertAndSend("/topic/order-status/"+orderId, orderStatus);
 	}
 
 	@Scheduled(fixedRate = 60000)

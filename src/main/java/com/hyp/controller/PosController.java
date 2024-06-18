@@ -69,7 +69,7 @@ public class PosController {
 			return ResponseEntity.ok(response);
 		}
 		boolean result = posDataService.updateRestaurant(updateStatus);
-		messageTemplate.convertAndSend("/topic/store-status", updateStatus);
+		messageTemplate.convertAndSend("/topic/restaurant-status", updateStatus);
 		response = new PosResponse.Builder()
 				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Restaurant Updated Successfully" : "Something Went Wrong")
