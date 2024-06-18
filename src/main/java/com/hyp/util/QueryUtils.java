@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
@@ -28,6 +29,7 @@ public class QueryUtils {
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
 		Integer limit = null;
 		Integer offset = null;
+		Sort sort = Sort.by(Sort.Direction.DESC, "created_at");
 
 		for (String key : requestParam.keySet()) {
 			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
@@ -95,6 +97,10 @@ public class QueryUtils {
 
 		query.limit(limit != null ? limit : 10);
 		query.skip(offset != null ? offset * limit : 0);
+		
+		if (sort != null) {
+			query.with(sort);
+		}
 		
 		return query;
 

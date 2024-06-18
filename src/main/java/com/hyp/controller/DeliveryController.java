@@ -3,10 +3,12 @@ package com.hyp.controller;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,7 +84,7 @@ public class DeliveryController {
 	@GetMapping("/quote/{restaurantId}")
 	public ResponseEntity<Response> getDeliveryQuote(@PathVariable("restaurantId") String restaurantId,
 			@RequestParam("addressId") String addressId) {
-		Response response;
+		Response response = null;
 		try {
 			Restaurant restaurant = restaurantService.findById(restaurantId);
 			if (restaurant == null) {
@@ -105,14 +107,13 @@ public class DeliveryController {
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
-			DeliveryQuote.DeliveryNetworks filteredQuotes = deliveryQuote.getData().getItems().stream()
+			Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
 					.filter(item -> item.isPickupNow())
 					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice()))
-					.findFirst().get();
-
-			response = new Response(Collections.singletonList(filteredQuotes), false,
-					"Delivery Quotes Fetched");
-			return ResponseEntity.ok(response);
+					.findFirst();
+			return filteredQuotes.isPresent() ? ResponseEntity.ok(new Response(Collections.singletonList(filteredQuotes.get()), false,
+					"Delivery Quotes Fetched")) : ResponseEntity.notFound().build();
+			
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in getDeliveryQuote "+e.getMessage());
