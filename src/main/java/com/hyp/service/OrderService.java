@@ -188,7 +188,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 			order = this.update(order);
-
+			messageTemplate.convertAndSend("/topic/order-status", order);
 			return order;
 
 		} catch (DeliveryException e) {
@@ -243,7 +243,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
 		this.save(order);
-		messageTemplate.convertAndSend("/topic/order-status/"+orderId, orderStatus);
+		messageTemplate.convertAndSend("/topic/order-status", order);
 	}
 
 	@Scheduled(fixedRate = 60000)
