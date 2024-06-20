@@ -18,6 +18,9 @@ import com.hyp.service.BaseService;
 import com.hyp.service.BaseTranslationService;
 import com.hyp.util.QueryUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public abstract class BaseListController<DTO, T, ID> {
 
 	@Autowired
@@ -44,6 +47,7 @@ public abstract class BaseListController<DTO, T, ID> {
 		if (query == null) {
 			return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
 		}
+		log.info("getAll Query " + query.toString());
 		List<T> entities = service.findByQuery(entity, query);
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");

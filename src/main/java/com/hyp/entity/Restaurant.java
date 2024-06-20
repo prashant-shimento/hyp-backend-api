@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 
 import lombok.AllArgsConstructor;
@@ -94,6 +95,9 @@ public class Restaurant extends BaseEntity {
 	
 	@Field("delivery_radius")
 	private double deliveryRadius;
+	
+	@Field("delivery_partner")
+	private DeliveryPartner deliveryPartner;
 
 	@Getter
 	@Setter

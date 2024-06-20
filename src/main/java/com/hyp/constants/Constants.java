@@ -23,6 +23,7 @@ public interface Constants {
 	List<String> DELIVERY_API_PARAMS = Arrays.asList("id","networkId","status","orderId","service","deliveryOrderId","channel");
 	List<String> CONTENT_API_PARAMS = Arrays.asList("id","type");
 	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id","name","variationId","variationAllowAddon");
+	List<String> DATE_API_PARAMS = Arrays.asList("createdAt","orderTime");
 
 
 	// Constants for logging API integration

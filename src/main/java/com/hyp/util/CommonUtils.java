@@ -1,7 +1,10 @@
 package com.hyp.util;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Random;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
@@ -52,6 +55,16 @@ public class CommonUtils {
 		int identifier = random.nextInt(1000000);
 		String referenceId = prefix + timestamp + String.format("%04d", identifier);
 		return referenceId;
+	}
+	
+	public static Date getISODate(String date) {
+		try {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+            return dateFormat.parse(date);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return null;
+        }
 	}
 
 }

@@ -41,6 +41,9 @@ public class QueryUtils {
 		}
 
 		Query query = new Query();
+		if (sort != null) {
+			query.with(sort);
+		}
 
 		for (Map.Entry<String, String> entry : requestParam.entrySet()) {
 			String key = entry.getKey();
@@ -53,55 +56,53 @@ public class QueryUtils {
 				offset = Integer.parseInt(value);
 			}
 
-			
+			query.limit(limit != null ? limit : 10);
+			query.skip(offset != null ? offset * limit : 0);
 
 			String[] parts = key.split("_");
 			String fieldName = parts[0];
 			String operator = parts[1];
 
+			Object parsedValue = parseValue(fieldName, value, operator);
+			if (parsedValue == null) {
+				return query;
+			}
+
 			switch (operator) {
 			case "eq":
-				query.addCriteria(Criteria.where(fieldName).is(value));
+				query.addCriteria(Criteria.where(fieldName).is(parsedValue));
 				break;
 			case "in":
-				query.addCriteria(Criteria.where(fieldName).in((Object[]) value.split(",")));
+				query.addCriteria(Criteria.where(fieldName).in((Object[]) parsedValue));
 				break;
 			case "nin":
-				query.addCriteria(Criteria.where(fieldName).nin((Object[]) value.split(",")));
+				query.addCriteria(Criteria.where(fieldName).nin((Object[]) parsedValue));
 				break;
 			case "neq":
-				query.addCriteria(Criteria.where(fieldName).ne(value));
+				query.addCriteria(Criteria.where(fieldName).ne(parsedValue));
 				break;
 			case "gt":
-				query.addCriteria(Criteria.where(fieldName).gt(value));
+				query.addCriteria(Criteria.where(fieldName).gt(parsedValue));
 				break;
 			case "lt":
-				query.addCriteria(Criteria.where(fieldName).lt(value));
+				query.addCriteria(Criteria.where(fieldName).lt(parsedValue));
 				break;
 			case "gte":
-				query.addCriteria(Criteria.where(fieldName).gte(value));
+				query.addCriteria(Criteria.where(fieldName).gte(parsedValue));
 				break;
 			case "lte":
-				query.addCriteria(Criteria.where(fieldName).lte(value));
+				query.addCriteria(Criteria.where(fieldName).lte(parsedValue));
 				break;
 			case "like":
-				query.addCriteria(Criteria.where(fieldName).regex(".*" + value + ".*"));
+				query.addCriteria(Criteria.where(fieldName).regex(".*" + parsedValue + ".*"));
 				break;
 			case "nlike":
-				query.addCriteria(Criteria.where(fieldName).not().regex(".*" + value + ".*"));
+				query.addCriteria(Criteria.where(fieldName).not().regex(".*" + parsedValue + ".*"));
 				break;
 			default:
-				return null;
+				return query;
 			}
 		}
-
-		query.limit(limit != null ? limit : 10);
-		query.skip(offset != null ? offset * limit : 0);
-		
-		if (sort != null) {
-			query.with(sort);
-		}
-		
 		return query;
 
 	}
@@ -112,5 +113,33 @@ public class QueryUtils {
 
 	public static List<String> getAllowedParameters(String className) {
 		return ALLOWED_API_PARAMS.getOrDefault(className, Arrays.asList("id"));
+	}
+
+	private static Object parseValue(String fieldName, String value, String operator) {
+		if (Constants.DATE_API_PARAMS.contains(fieldName)) {
+			return CommonUtils.getISODate(value);
+		}
+		switch (operator) {
+		case "eq":
+		case "neq":
+		case "like":
+		case "nlike":
+			return value;
+		case "in":
+		case "nin":
+			return value.split(",");
+		case "gt":
+		case "lt":
+		case "gte":
+		case "lte":
+			try {
+				return Integer.parseInt(value);
+			} catch (NumberFormatException e) {
+				e.printStackTrace();
+				return null;
+			}
+		default:
+			return null;
+		}
 	}
 }
