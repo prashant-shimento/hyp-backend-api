@@ -104,8 +104,8 @@ public class Restaurant extends BaseEntity {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class DeliveryHours {
-		private LocalTime from;
-		private LocalTime to;
+		private String from;
+		private String to;
 	}
 
 	@Getter

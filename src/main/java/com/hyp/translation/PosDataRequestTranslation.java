@@ -23,6 +23,7 @@ import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.entity.Tax;
 import com.hyp.entity.Variation;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
@@ -36,14 +37,16 @@ import com.hyp.request.PosDataRequest.OrderTypeRequest;
 import com.hyp.request.PosDataRequest.RestaurantRequest;
 import com.hyp.request.PosDataRequest.TaxRequest;
 import com.hyp.request.PosDataRequest.VariationRequest;
+import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
+
+import io.micrometer.common.util.StringUtils;
 
 @Component
 public class PosDataRequestTranslation {
 
 	public static PosData getPosData(PosDataRequest posDataRequest) {
 		PosData posData = PosData.builder()
-				.restaurant(PosDataRequestTranslation.translateToRestaurant(posDataRequest.getRestaurants().get(0)))
 				.orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
 				.attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
 				.discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
@@ -55,7 +58,8 @@ public class PosDataRequestTranslation {
 				// Get Variations details from item
 				.variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
 						posDataRequest.getItems()))
-				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems(), posDataRequest)).build();
+				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems(), posDataRequest))
+				.build();
 		return posData;
 	}
 
@@ -202,11 +206,11 @@ public class PosDataRequestTranslation {
 						.collect(Collectors.toSet()).stream().collect(Collectors.toList());
 	}
 
-	public static Restaurant translateToRestaurant(RestaurantRequest restaurantRequest) {
+	public static Restaurant translateToRestaurant(RestaurantRequest restaurantRequest, Restaurant existingRestaurant) {
 		if (restaurantRequest == null) {
 			return null;
 		}
-		Restaurant restaurant = new Restaurant();
+		Restaurant restaurant = existingRestaurant != null ? existingRestaurant : new Restaurant();
 		restaurant.setId(restaurantRequest.getRestaurantid());
 		restaurant.setActive(restaurantRequest.getActive().equalsIgnoreCase("1") ? true : false);
 		restaurant.setCurrencyHtml(restaurantRequest.getDetails().getCurrency_html());
@@ -227,13 +231,35 @@ public class PosDataRequestTranslation {
 		restaurant.setCalculateTaxOnPacking(restaurantRequest.getDetails().getCalculatetaxondelivery());
 		restaurant.setDeliveryCharge(restaurantRequest.getDetails().getDeliverycharge());
 		restaurant.setMinimumDeliveryTime(restaurantRequest.getDetails().getMinimumdeliverytime());
-		restaurant.setLocation(new Location(Double.valueOf(restaurantRequest.getDetails().getLatitude()),
-				Double.valueOf(restaurantRequest.getDetails().getLongitude())));
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
-		restaurant.setDeliveryHours(getDeliveryHours(restaurantRequest));
-		restaurant.setDeliveryRadius(50);
-		restaurant.setPincode(null); //TODO: Need to check logic to extract PINCODE
+
+		if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
+			restaurant.setLocation(existingRestaurant.getLocation());
+		} else {
+			restaurant.setLocation(new Location(Double.valueOf(restaurantRequest.getDetails().getLatitude()),
+					Double.valueOf(restaurantRequest.getDetails().getLongitude())));
+		}
+		if (existingRestaurant != null && existingRestaurant.getDeliveryHours() != null) {
+			restaurant.setDeliveryHours(existingRestaurant.getDeliveryHours());
+		} else {
+			restaurant.setDeliveryHours(getDeliveryHours(restaurantRequest));
+		}
+		if (existingRestaurant != null && existingRestaurant.getDeliveryRadius() != 0) {
+			restaurant.setDeliveryRadius(existingRestaurant.getDeliveryRadius());
+		} else {
+			restaurant.setDeliveryRadius(10);
+		}
+		if (existingRestaurant != null && !StringUtils.isEmpty(existingRestaurant.getPincode())) {
+			restaurant.setPincode(existingRestaurant.getPincode());
+		} else {
+			restaurant.setPincode(CommonUtils.extractPincode(restaurantRequest.getDetails().getAddress()));
+		}
+		if (existingRestaurant != null && existingRestaurant.getDeliveryPartner() != null) {
+			restaurant.setDeliveryPartner(existingRestaurant.getDeliveryPartner());
+		} else {
+			restaurant.setDeliveryPartner(DeliveryPartner.SELF);
+		}
 		return restaurant;
 	}
 
@@ -244,18 +270,12 @@ public class PosDataRequestTranslation {
 		String fromTime2 = restaurantRequest.getDetails().getDeliveryhoursfrom2();
 		String toTime2 = restaurantRequest.getDetails().getDeliveryhoursto2();
 
-		deliveryHoursList.add(new DeliveryHours(ValidationUtils.validateLocalTime(fromTime1),
-				ValidationUtils.validateLocalTime(toTime1)));
-		deliveryHoursList.add(new DeliveryHours(ValidationUtils.validateLocalTime(fromTime2),
-				ValidationUtils.validateLocalTime(toTime2)));
+		deliveryHoursList.add(new DeliveryHours(ValidationUtils.validateTimeString(fromTime1),
+				ValidationUtils.validateTimeString(toTime1)));
+		deliveryHoursList.add(new DeliveryHours(ValidationUtils.validateTimeString(fromTime2),
+				ValidationUtils.validateTimeString(toTime2)));
 
 		return deliveryHoursList;
-	}
-
-	public static List<Restaurant> translateToRestaurantList(List<RestaurantRequest> restaurantRequestList) {
-		return restaurantRequestList == null ? Collections.emptyList()
-				: restaurantRequestList.stream().map(PosDataRequestTranslation::translateToRestaurant)
-						.collect(Collectors.toList());
 	}
 
 	public static Category translateToCategory(CategoryRequest categoryRequest) {

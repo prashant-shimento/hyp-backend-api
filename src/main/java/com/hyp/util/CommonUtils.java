@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -66,5 +68,20 @@ public class CommonUtils {
             return null;
         }
 	}
+	
+	public static String extractPincode(String address) {
+        if (address == null || address.isEmpty()) {
+            return null;
+        }
+        String pinCodePattern = "\\b\\d{6}\\b";
+        Pattern pattern = Pattern.compile(pinCodePattern);
+        Matcher matcher = pattern.matcher(address);
+
+        String lastMatch = null;
+        while (matcher.find()) {
+            lastMatch = matcher.group();
+        }
+        return lastMatch;
+    }
 
 }

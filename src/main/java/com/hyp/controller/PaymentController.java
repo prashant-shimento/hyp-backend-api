@@ -196,6 +196,8 @@ public class PaymentController {
 					|| order.getStatus().equals(OrderStatusType.ERROR)
 					|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
 				orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+				payment.setStatus(paymentStatus);
+				paymentService.save(payment);
 				orderService.processOrder(order);
 			}
 		}

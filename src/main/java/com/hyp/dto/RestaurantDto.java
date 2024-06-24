@@ -2,6 +2,11 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import com.hyp.entity.Restaurant.DeliveryHours;
+import com.hyp.entity.Restaurant.RestaurantTax;
+import com.hyp.enums.DeliveryPartner;
+import com.hyp.model.Location;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,28 +23,20 @@ public class RestaurantDto extends BaseDto {
 	private String restaurantName;
 	private String address;
 	private String contact;
-	private Double latitude;
-	private Double longitude;
 	private String landmark;
-	private String city3;
+	private String city;
 	private String state;
+	private String pincode;
 	private String minimumOrderAmount;
 	private String minimumDeliveryTime;
 	private String deliveryCharge;
-	private String deliveryHoursFrom1;
-	private String deliveryHoursTo1;
-	private String deliveryHoursFrom2;
-	private String deliveryHoursTo2;
-	private String scApplicableOn;
-	private String scType;
-	private String scCalculateOn;
-	private String scValue;
-	private String taxOnSc;
-	private int calculateTaxOnPacking;
-	private String pcTaxesId;
+	private List<DeliveryHours> deliveryHours;
+	private DeliveryPartner deliveryPartner;
+	private double deliveryRadius;
+	private RestaurantTax tax;
 	private int calculateTaxOnDelivery;
-	private String dcTaxesId;
 	private String packagingApplicableOn;
 	private String packagingCharge;
 	private String packagingChargeType;
+	private Location location;
 }

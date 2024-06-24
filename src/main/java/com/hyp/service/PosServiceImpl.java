@@ -3,7 +3,6 @@ package com.hyp.service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -76,18 +75,13 @@ public class PosServiceImpl implements PosService {
 	@Transactional
 	public boolean savePosData(PosDataRequest posDataRequest) {
 		try {
-
+			Restaurant existingRestaurant = restaurantService
+					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
 			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
-            Restaurant incomingRestaurant = posData.getRestaurant();
-
-			Restaurant existingRestaurantOpt = restaurantService.findById(posData.getRestaurant().getId());
-            if(existingRestaurantOpt != null) {
-            	BeanUtils.copyProperties(incomingRestaurant, existingRestaurantOpt);
-            	restaurantService.save(existingRestaurantOpt);            	
-            }else {
-    			restaurantService.save(incomingRestaurant);
-            }
-			saveEntities(incomingRestaurant, posData);
+			Restaurant restaurant = PosDataRequestTranslation
+					.translateToRestaurant(posDataRequest.getRestaurants().get(0), existingRestaurant);
+			restaurantService.save(restaurant);
+			saveEntities(restaurant, posData);
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();

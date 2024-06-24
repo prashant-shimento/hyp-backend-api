@@ -1,24 +1,34 @@
 package com.hyp.util;
 
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import com.hyp.entity.Restaurant.DeliveryHours;
 
 public class ValidationUtils {
 
-	public static LocalTime validateLocalTime(String timeString) {
+	public static String validateTimeString(String timeString) {
 		if (timeString == null || timeString.isEmpty()) {
-			return LocalTime.MIDNIGHT;
+			return "00:00";
 		}
-		return LocalTime.parse(timeString);
+		try {
+			LocalTime.parse(timeString, DateTimeFormatter.ofPattern("HH:mm"));
+			return timeString;
+		} catch (DateTimeParseException e) {
+			throw new IllegalArgumentException("Invalid time format, expected HH:mm");
+		}
 	}
 
 	public static boolean isWithinDeliveryHours(List<DeliveryHours> deliveryHours) {
 		LocalTime now = LocalTime.now();
 
 		for (DeliveryHours deliveryHour : deliveryHours) {
-			if (now.isAfter(deliveryHour.getFrom()) && now.isBefore(deliveryHour.getTo())) {
+			LocalTime from = LocalTime.parse(deliveryHour.getFrom());
+			LocalTime to = LocalTime.parse(deliveryHour.getTo());
+
+			if (now.isAfter(from) && now.isBefore(to)) {
 				return true;
 			}
 		}

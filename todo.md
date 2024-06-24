@@ -11,3 +11,7 @@
 #Set Default OTP for Internal Users
 #Payment Cancellation and Payment Pending
 #Implement Logging Monitoring for Backend & Frontend
+#Pincode not coming on the Location Search & Frontend
+#Pidge Expiration
+#Generate Link Content API
+#Offer API Implementation
