@@ -12,6 +12,7 @@
 #Payment Cancellation and Payment Pending
 #Implement Logging Monitoring for Backend & Frontend
 #Pincode not coming on the Location Search & Frontend
-#Pidge Expiration
+#Handle Pidge Token Expiration
 #Generate Link Content API
 #Offer API Implementation
+#Check If system supports two restaurants at a time
