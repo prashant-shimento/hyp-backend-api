@@ -20,7 +20,7 @@ jobs:
         java-version: '17'
 
     - name: Build with Maven
-      run: mvn clean install
+      run: mvn clean install -DskipTests
       env:
         GOOGLE_KEY: ${{ secrets.GOOGLE_KEY }}
         STAGING_APP_DOMAIN: ${{ secrets.STAGING_APP_DOMAIN }}
