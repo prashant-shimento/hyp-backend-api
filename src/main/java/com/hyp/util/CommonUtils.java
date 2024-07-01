@@ -2,6 +2,7 @@ package com.hyp.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
@@ -58,30 +59,38 @@ public class CommonUtils {
 		String referenceId = prefix + timestamp + String.format("%04d", identifier);
 		return referenceId;
 	}
-	
+
 	public static Date getISODate(String date) {
 		try {
-            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
-            return dateFormat.parse(date);
-        } catch (ParseException e) {
-            e.printStackTrace();
-            return null;
-        }
+			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+			return dateFormat.parse(date);
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
-	
+
 	public static String extractPincode(String address) {
-        if (address == null || address.isEmpty()) {
-            return null;
-        }
-        String pinCodePattern = "\\b\\d{6}\\b";
-        Pattern pattern = Pattern.compile(pinCodePattern);
-        Matcher matcher = pattern.matcher(address);
+		if (address == null || address.isEmpty()) {
+			return null;
+		}
+		String pinCodePattern = "\\b\\d{6}\\b";
+		Pattern pattern = Pattern.compile(pinCodePattern);
+		Matcher matcher = pattern.matcher(address);
 
-        String lastMatch = null;
-        while (matcher.find()) {
-            lastMatch = matcher.group();
-        }
-        return lastMatch;
-    }
+		String lastMatch = null;
+		while (matcher.find()) {
+			lastMatch = matcher.group();
+		}
+		return lastMatch;
+	}
 
+	public static boolean isToday(LocalDate localDate) {
+		return LocalDate.now().equals(localDate);
+	}
+
+	public static LocalDateTime getLocalDateTimeFromString(String dateString, String format) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+		return LocalDateTime.parse(dateString, formatter);
+	}
 }
