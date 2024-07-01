@@ -2,13 +2,9 @@ package com.hyp.controller;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -158,9 +154,9 @@ public class DeliveryController {
 			if (order.getStatus().equals(OrderStatusType.ERROR)
 					|| order.getStatus().equals(OrderStatusType.DELIVERY_ERROR)) {
 				if (fulfillType.equalsIgnoreCase("smart")) {
-					orderService.processDeliverySmartFulfill(delivery, Constants.SMART);
+					deliveryService.processDeliverySmartFulfill(delivery, Constants.SMART);
 				} else {
-					orderService.processDeliveryFulfill(delivery, Constants.API);
+					deliveryService.processDeliveryFulfill(delivery, Constants.API);
 				}
 				orderService.updateOrderStatus(orderId, OrderStatusType.READY_FOR_DELIVERY);
 			}

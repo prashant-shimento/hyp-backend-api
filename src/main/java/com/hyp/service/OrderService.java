@@ -1,13 +1,10 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -27,13 +24,10 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
-import com.hyp.model.DeliveryQuote;
-import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
-import com.hyp.response.Response;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
@@ -172,7 +166,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					processDeliveryFulfill(delivery, Constants.PET_POOJA);
+					deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
 				}
 			}
 
@@ -260,85 +254,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		for (Order order : ordersToProcess) {
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
 			if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-				processDeliveryFulfill(delivery, Constants.SYSTEM);
+				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
 			}
 		}
 
 	}
-
-	public void processDeliveryFulfill(Delivery delivery, String fulfillmentType) throws DeliveryException {
-		try {
-
-			DeliveryNetworks selectedNetwork = getServicabilityToken(delivery);
-			if (selectedNetwork != null) {
-				String token = selectedNetwork.getToken();
-				delivery.setNetworkToken(token);
-				deliveryService.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
-				delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
-				delivery.setFulfillmentType(fulfillmentType);
-				delivery.setFulfillmentAt(LocalDateTime.now());
-				delivery.setNetworkId(selectedNetwork.getNetworkId());
-				delivery.setService(selectedNetwork.getService());
-				delivery.setPickupNow(selectedNetwork.isPickupNow());
-				deliveryService.save(delivery);
-			} else {
-				throw new DeliveryException(
-						"No matching network found with the specified networkId or minimum price network");
-			}
-
-		} catch (DeliveryException e) {
-			this.updateOrderStatus(delivery.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			throw new DeliveryException(
-					"Exception Occured while processDeliveryFulfill in Delivery Service " + e.getMessage());
-		}
-	}
-
-	public DeliveryNetworks getServicabilityToken(Delivery delivery) throws DeliveryException {
-		DeliveryNetworks selectedNetwork = null;
-		try {
-			DeliveryQuote deliveryQuote = deliveryService.getServiceability(delivery.getDeliveryOrderId());
-			List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems().stream()
-					.filter(items -> items.isPickupNow()).collect(Collectors.toList());
-
-			Optional<DeliveryNetworks> matchingNetworkOpt = deliveryNetworks.stream()
-					.filter(network -> network.getNetworkId() == delivery.getNetworkId()).findFirst();
-
-			Optional<DeliveryNetworks> minPriceNetworkOpt = deliveryNetworks.stream()
-					.filter(network -> network.getQuote() != null)
-					.min(Comparator.comparingDouble(network -> network.getQuote().getPrice()));
-
-			if (matchingNetworkOpt.isPresent() && minPriceNetworkOpt.isPresent()) {
-				DeliveryNetworks matchingNetwork = matchingNetworkOpt.get();
-				DeliveryNetworks minPriceNetwork = minPriceNetworkOpt.get();
-				selectedNetwork = (minPriceNetwork.getQuote().getPrice() < matchingNetwork.getQuote().getPrice())
-						? minPriceNetwork
-						: matchingNetwork;
-			} else if (matchingNetworkOpt.isPresent()) {
-				selectedNetwork = matchingNetworkOpt.get();
-			} else if (minPriceNetworkOpt.isPresent()) {
-				selectedNetwork = minPriceNetworkOpt.get();
-			}
-
-		} catch (DeliveryException e) {
-			this.updateOrderStatus(delivery.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			throw new DeliveryException(
-					"Exception Occured while getServicabilityToken in Delivery Service " + e.getMessage());
-		}
-		return selectedNetwork;
-	}
-
-	public void processDeliverySmartFulfill(Delivery delivery, String fulfillmentType) throws DeliveryException {
-		try {
-			deliveryService.initiateSmartFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
-			delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
-			delivery.setFulfillmentType(fulfillmentType);
-			delivery.setFulfillmentAt(LocalDateTime.now());
-			deliveryService.save(delivery);
-		} catch (DeliveryException e) {
-			this.updateOrderStatus(delivery.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			throw new DeliveryException(
-					"Exception Occured while processDeliverySmartFulfill in Delivery Service " + e.getMessage());
-		}
-	}
-
 }

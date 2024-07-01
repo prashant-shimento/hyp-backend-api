@@ -1,10 +1,8 @@
 package com.hyp.service;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -24,9 +22,6 @@ public class LocationService {
 
 	@Value("${google.api.key}")
 	private String googleApiKey;
-
-	@Autowired
-	ApiLogService apiRequestResponseLogService;
 
 	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
 			double restaurantLongitude, double radius) {
@@ -95,7 +90,6 @@ public class LocationService {
 		try {
 			String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + latitude + "," + longitude
 					+ "&key=" + googleApiKey;
-			Instant requestTime = Instant.now();
 			WebClient webClient = WebClient.builder().baseUrl(url).build();
 			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
 			placeResponse.subscribe(response -> {
