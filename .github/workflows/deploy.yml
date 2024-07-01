@@ -3,8 +3,8 @@ name: Deploy to Staging and Production
 on:
   push:
     branches:
-      - staging
-      - prod
+      - 
+      - 
 
 jobs:
   build:
