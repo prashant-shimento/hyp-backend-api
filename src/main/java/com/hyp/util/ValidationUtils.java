@@ -1,6 +1,8 @@
 package com.hyp.util;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -22,7 +24,9 @@ public class ValidationUtils {
 	}
 
 	public static boolean isWithinDeliveryHours(List<DeliveryHours> deliveryHours) {
-		LocalTime now = LocalTime.now();
+        ZonedDateTime nowUTC = ZonedDateTime.now(ZoneId.of("UTC"));
+        ZonedDateTime nowIST = nowUTC.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
+		LocalTime now = nowIST.toLocalTime();
 
 		for (DeliveryHours deliveryHour : deliveryHours) {
 			LocalTime from = LocalTime.parse(deliveryHour.getFrom());
