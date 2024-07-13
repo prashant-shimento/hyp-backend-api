@@ -154,7 +154,6 @@ public class OrderDto extends BaseDto {
 	public static class DeliveryDetails {
 		@NotBlank(message = "Address ID cannot be blank")
 		private String addressId;
-		@NotBlank(message = "Service name cannot be blank")
 		private String service;
 		private String pickUpNow;
 		private double networkId;

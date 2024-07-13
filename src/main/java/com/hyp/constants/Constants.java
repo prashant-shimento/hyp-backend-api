@@ -19,14 +19,14 @@ public interface Constants {
 
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id", "status", "customerId", "createdAt", "totalAmount", "orderType",
-			"orderTime");
+			"orderTime","restaurantId");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id", "itemName", "inStock", "itemAllowVariation", "itemCategoryId",
-			"itemAllowAddon", "itemAttributeId", "status");
-	List<String> ADDRESS_API_PARAMS = Arrays.asList("id", "customerId", "addressType");
+			"itemAllowAddon", "itemAttributeId", "status","restaurantId");
+	List<String> ADDRESS_API_PARAMS = Arrays.asList("id", "customerId", "addressType","restaurantId");
 	List<String> DELIVERY_API_PARAMS = Arrays.asList("id", "networkId", "status", "orderId", "service",
-			"deliveryOrderId", "channel");
-	List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type");
-	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id", "name", "variationId", "variationAllowAddon");
+			"deliveryOrderId", "channel","restaurantId");
+	List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type","restaurantId");
+	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id", "name", "variationId", "variationAllowAddon","restaurantId");
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
 
 	// Constants for logging API integration
