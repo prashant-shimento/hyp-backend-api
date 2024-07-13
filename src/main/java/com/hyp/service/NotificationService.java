@@ -45,7 +45,7 @@ public class NotificationService {
 		try {
 			FacebookMessage facebookMessageBody = FacebookMessage.builder().messaging_product("whatsapp")
 					.recipient_type("individual").to(mobileNumber).type("template").template(FacebookMessage.Template
-							.builder().name("rasyumm").language(new FacebookMessage.Template.Language("en")).build())
+							.builder().name("hey_rasyumm").language(new FacebookMessage.Template.Language("en")).build())
 					.build();
 
 			WebClient webClient = WebClient.builder().baseUrl(facebookGraphApiUrl)
