@@ -36,19 +36,23 @@ public class LoggingFilterConfig extends OncePerRequestFilter {
 		String requestBody = getRequestPayload(requestWrapper);
 		String responseBody = getResponsePayload(responseWrapper);
 
-		ObjectMapper objectMapper = new ObjectMapper();
-		JsonNode responseJsonNode = objectMapper.readTree(responseBody);
+		log.info("requestBody Processed: {}", requestBody);
 
-		Map<String, Object> logData = new HashMap<>();
-		logData.put("method", request.getMethod());
-		logData.put("uri", request.getRequestURI());
-		logData.put("requestPayload", requestBody);
-		logData.put("responseStatus", response.getStatus());
-		logData.put("responsePayload", responseJsonNode);
-		logData.put("timeTaken", timeTaken);
-		String logJson = objectMapper.writeValueAsString(logData);
+		log.info("Response Processed: {}", responseBody);
+		//Commented Temporarily
+//		ObjectMapper objectMapper = new ObjectMapper();
+//		JsonNode responseJsonNode = objectMapper.readTree(responseBody);
+//
+//		Map<String, Object> logData = new HashMap<>();
+//		logData.put("method", request.getMethod());
+//		logData.put("uri", request.getRequestURI());
+//		logData.put("requestPayload", requestBody);
+//		logData.put("responseStatus", response.getStatus());
+//		logData.put("responsePayload", responseJsonNode);
+//		logData.put("timeTaken", timeTaken);
+//		String logJson = objectMapper.writeValueAsString(logData);
 
-		log.info("Request and Response Processed: {}", logJson);
+//		log.info("Request and Response Processed: {}", logJson);
 
 		responseWrapper.copyBodyToResponse();
 	}
