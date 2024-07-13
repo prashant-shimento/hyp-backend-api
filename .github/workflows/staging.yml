@@ -98,8 +98,12 @@ jobs:
         echo "${{ secrets.STAGING_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.STAGING_VPS_USER }}@${{ secrets.STAGING_VPS_HOST }} << 'EOF'
-          docker stop $(docker ps -q --filter ancestor=lognathp/hyp-backend-api:staging)
-          docker rm $(docker ps -a -q --filter ancestor=lognathp/hyp-backend-api:staging)
+          CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:staging)
+          if [ ! -z '$CONTAINER_ID' ]; then
+          	docker stop $CONTAINER_ID
+          	docker logs $CONTAINER_ID > home/logs/$CONTAINER_NAME-$(date +%F-%H-%M-%S).log
+          	docker rm $CONTAINER_ID
+          fi
           docker rmi lognathp/hyp-backend-api:staging
           docker pull lognathp/hyp-backend-api:staging
           docker run -p 9090:9090 -d lognathp/hyp-backend-api:staging
