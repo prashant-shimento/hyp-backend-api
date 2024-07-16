@@ -9,5 +9,5 @@ import com.hyp.repository.ContentRepository;
 @Service
 public class ContentService extends BaseServiceImpl<Content, String> {
 	@Autowired
-	ContentRepository featureContentRepository;
+	ContentRepository contentRepository;
 }

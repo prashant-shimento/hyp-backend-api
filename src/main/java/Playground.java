@@ -3,10 +3,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.hyp.util.EncryptionUtils;
+
 public class Playground {
 
 	public static void main(String[] args) throws Exception {
 
+		String str = "to be encrypted";
+		String encStr = EncryptionUtils.encrypt(str);
+		System.out.println("Encrypted Data "+ encStr);
+		String decStr = EncryptionUtils.decrypt(encStr);
+		System.out.println("Decrypted Data "+ decStr);
+	}
+	
+	public void queryParamTest() throws Exception {
+		
 		Map<String, String> params = new HashMap<>();
 		params.put("order_eqs", "123");
 		params.put("status_in", "completed,processed");
@@ -19,7 +30,6 @@ public class Playground {
 				throw new Exception("Invalid Paramers");
 			}
 		}
-
 	}
 
 	public static boolean isValidQueryParamOperator(String operator) {
