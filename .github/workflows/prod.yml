@@ -43,6 +43,7 @@ jobs:
         CHAT_IO_URL: ${{ secrets.CHAT_IO_URL }}
         FACEBOOK_ACCESS_TOKEN: ${{ secrets.FACEBOOK_ACCESS_TOKEN }}
         FACEBOOK_GRAPH_API_URL: ${{ secrets.FACEBOOK_GRAPH_API_URL }}
+        APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
 
     - name: Create .env file
       run: |
@@ -67,6 +68,7 @@ jobs:
         echo "CHAT_IO_URL=${{ secrets.CHAT_IO_URL }}" >> .env
         echo "FACEBOOK_ACCESS_TOKEN=${{ secrets.FACEBOOK_ACCESS_TOKEN }}" >> .env
         echo "FACEBOOK_GRAPH_API_URL=${{ secrets.FACEBOOK_GRAPH_API_URL }}" >> .env
+        echo "APP_SECRET_KEY=${{ secrets.APP_SECRET_KEY }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
@@ -98,12 +100,9 @@ jobs:
         echo "${{ secrets.PRODUCTION_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
-          CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
-          if [ ! -z '$CONTAINER_ID' ]; then
-          	docker stop $CONTAINER_ID
-          	docker logs $CONTAINER_ID > home/logs/$CONTAINER_NAME-$(date +%F).log
-          	docker rm $CONTAINER_ID
-          fi
+          docker stop $(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
+          docker logs $(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production) > home/logs/hyp-backend-api-$(date +%F).log
+          docker rm $(docker ps -a -q --filter ancestor=lognathp/hyp-backend-api:production)
           docker rmi lognathp/hyp-backend-api:production
           docker pull lognathp/hyp-backend-api:production
           docker run -p 9090:9090 -d lognathp/hyp-backend-api:production
