@@ -101,7 +101,7 @@ jobs:
           CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:staging)
           if [ ! -z '$CONTAINER_ID' ]; then
           	docker stop $CONTAINER_ID
-          	docker logs $CONTAINER_ID > home/logs/$CONTAINER_NAME-$(date +%F-%H-%M-%S).log
+          	docker logs $CONTAINER_ID > home/logs/$CONTAINER_NAME-$(date +%F).log
           	docker rm $CONTAINER_ID
           fi
           docker rmi lognathp/hyp-backend-api:staging

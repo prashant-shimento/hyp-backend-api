@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.entity.Category;
@@ -23,10 +24,10 @@ public class MenuController {
 	private final CategoryService categoryService;
 
 	@GetMapping("/category")
-	public ResponseEntity<Response> getCategoryItems() {
+	public ResponseEntity<Response> getCategoryItems(@RequestParam String restaurantId) {
 		Response response = new Response();
 		try {
-			List<Category> categories = categoryService.getAllCategoryItems();
+			List<Category> categories = categoryService.getAllCategoryItems(restaurantId);
 			response.setData(categories);
 			response.setMessage("Categories retrieved successfully.");
 			return ResponseEntity.ok(response);

@@ -98,8 +98,12 @@ jobs:
         echo "${{ secrets.PRODUCTION_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
-          docker stop $(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
-          docker rm $(docker ps -a -q --filter ancestor=lognathp/hyp-backend-api:production)
+          CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
+          if [ ! -z '$CONTAINER_ID' ]; then
+          	docker stop $CONTAINER_ID
+          	docker logs $CONTAINER_ID > home/logs/$CONTAINER_NAME-$(date +%F).log
+          	docker rm $CONTAINER_ID
+          fi
           docker rmi lognathp/hyp-backend-api:production
           docker pull lognathp/hyp-backend-api:production
           docker run -p 9090:9090 -d lognathp/hyp-backend-api:production

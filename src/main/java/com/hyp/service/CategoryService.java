@@ -31,8 +31,10 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 	}
 
-	public List<Category> getAllCategoryItems() {
-		Aggregation aggregation = Aggregation.newAggregation(getCategoryItemsLookupOperation());
+	public List<Category> getAllCategoryItems(String restaurantId) {
+		Criteria criteria = Criteria.where("restaurant_id").is(restaurantId);
+		Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
+				getCategoryItemsLookupOperation());
 		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 	}
 	
