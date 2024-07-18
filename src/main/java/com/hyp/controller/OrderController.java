@@ -5,6 +5,7 @@ import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,6 +62,26 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Order createdOrder = orderService.create(orderDto);
 			OrderDto createdOrderDto = orderTranslation.getDto(createdOrder);
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PatchMapping("/{orderId}")
+	public ResponseEntity<Response> update(@PathVariable String orderId, @RequestBody OrderDto orderDto) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if(order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			orderTranslation.updateEntityFromDto(orderDto, order);
+			orderService.save(order);
+			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
