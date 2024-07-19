@@ -103,8 +103,8 @@ public class FeedbackService extends BaseServiceImpl<Feedback, String> {
 	}
 
 	private void updateExistingFeedback(ChatData chatData, Feedback feedback) {
-		LocalDateTime lastFeedbackAt = CommonUtils.getLocalDateTimeFromString(feedback.getLastFeedbackAt(),
-				"yyyy-MM-dd HH:mm:ss");
+		String actualDateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS";
+	    LocalDateTime lastFeedbackAt = CommonUtils.getLocalDateTimeFromString(feedback.getLastFeedbackAt(), actualDateFormat);
 		if (!CommonUtils.isToday(lastFeedbackAt.toLocalDate())) {
 			feedback.setLastFeedbackAt(chatData.getLastMessageDateTimeUTC());
 			feedback.setHasBeenNotified(false);
