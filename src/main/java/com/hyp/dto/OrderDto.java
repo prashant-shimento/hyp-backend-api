@@ -2,24 +2,23 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@ToString
+@Data
+@EqualsAndHashCode(callSuper=false)
 @NoArgsConstructor
+@JsonInclude(Include.NON_NULL)
 public class OrderDto extends BaseDto {
 
 	@NotBlank(message = "Customer ID cannot be blank")
@@ -45,25 +44,25 @@ public class OrderDto extends BaseDto {
 	private String expectedDeliveryTime;
 	private String status;
 	@Positive(message = "Total amount must be positive")
-	private double totalAmount;
+	private Double totalAmount;
 	@PositiveOrZero(message = "Discount amount must be non-negative")
-	private double grandTotalAmount;
+	private Double grandTotalAmount;
 	@PositiveOrZero(message = "Grand Total amount must be non-negative")
-	private double discountAmount;
+	private Double discountAmount;
 	@PositiveOrZero(message = "Tax amount must be positive")
-	private double taxAmount;
+	private Double taxAmount;
 	@PositiveOrZero(message = "Delivery charge must be positive")
-	private double deliveryCharge;
+	private Double deliveryCharge;
 	@PositiveOrZero(message = "Delivery charge tax amount must be positive")
-	private double dcTaxAmount;
+	private Double dcTaxAmount;
 	@PositiveOrZero(message = "Packaging charge must be positive")
-	private double packagingCharge;
+	private Double packagingCharge;
 	@PositiveOrZero(message = "Packaging charge tax amount must be positive")
-	private double pcTaxAmount;
+	private Double pcTaxAmount;
 	@PositiveOrZero(message = "Service charge must be positive")
-	private double serviceCharge;
+	private Double serviceCharge;
 	@PositiveOrZero(message = "Service charge tax amount must be positive")
-	private double scTaxAmount;
+	private Double scTaxAmount;
 	@Valid
 	private List<OrderDiscount> orderDiscount;
 	private String discountType;
@@ -80,14 +79,14 @@ public class OrderDto extends BaseDto {
 		private String name;
 		private String description;
 		@PositiveOrZero(message = "OrderItem discount must be positive")
-		private double itemDiscount;
+		private Double itemDiscount;
 		@Positive(message = "OrderItem Final price must be positive")
-		private double finalPrice;
+		private Double finalPrice;
 		@Positive(message = "OrderItem Quantity must be positive")
 		private int quantity;
 		@NotNull(message = "OrderItem Price must be specified")
 		@Positive(message = "OrderItem Price must be positive")
-		private double price;
+		private Double price;
 		private String variationName;
 		private String variationId;
 		private List<OrderItemTax> orderItemTax;
@@ -106,7 +105,7 @@ public class OrderDto extends BaseDto {
 		@PositiveOrZero(message = " OrderAddonItem Quantity must be positive")
 		private int quantity;
 		@Positive(message = "OrderAddonItem price must be positive")
-		private double price;
+		private Double price;
 
 	}
 
@@ -120,10 +119,10 @@ public class OrderDto extends BaseDto {
 		private String title;
 		private String type;
 		@Positive(message = "OrderTax price must be positive")
-		private double price;
+		private Double price;
 		@PositiveOrZero(message = "OrderTax amount must be positive")
-		private double tax;
-		private double restaurantLiableAmt;
+		private Double tax;
+		private Double restaurantLiableAmt;
 	}
 
 	@Data
@@ -135,7 +134,7 @@ public class OrderDto extends BaseDto {
 		private String title;
 		private String type;
 		@Positive(message = "OrderDiscount price must be positive")
-		private double price;
+		private Double price;
 	}
 
 	@Data
@@ -146,7 +145,7 @@ public class OrderDto extends BaseDto {
 		@NotBlank(message = "OrderItemTax name cannot be blank")
 		private String name;
 		@PositiveOrZero(message = "OrderItemTax amount must be positive")
-		private double amount;
+		private Double amount;
 	}
 
 	@Data
@@ -156,6 +155,6 @@ public class OrderDto extends BaseDto {
 		private String addressId;
 		private String service;
 		private String pickUpNow;
-		private double networkId;
+		private Double networkId;
 	}
 }
