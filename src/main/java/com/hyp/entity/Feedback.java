@@ -24,5 +24,6 @@ public class Feedback extends BaseEntity {
 	private String lastFeedbackAt;
 	private String lastFeedback;
 	private Boolean hasBeenNotified;
+	private String business;
 
 }

@@ -9,6 +9,7 @@ import com.hyp.entity.Feedback;
 public interface FeedbackRepository extends MongoRepository<Feedback, String> {
 
 	Feedback findByMobileNumber(String mobileNumber);
-	
-	List<Feedback> findByHasBeenNotified(boolean hasBeenNotified);
+
+	List<Feedback> findByHasBeenNotifiedAndBusiness(boolean hasBeenNotified, String business);
+
 }

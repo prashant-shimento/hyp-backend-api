@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,8 +11,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.hyp.entity.Feedback;
+import com.hyp.entity.Partner;
 import com.hyp.request.FacebookMessageRequest;
-import com.hyp.request.FacebookMessageRequest.Language;
+import com.hyp.enums.PartnerType;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -22,37 +22,51 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class NotificationService {
 
-	@Value("${facebook.graph.api.url}")
-	private String facebookGraphApiUrl;
-
-	@Value("${facebook.access.token}")
-	private String accessToken;
-
 	@Autowired
 	private FeedbackService feedbackService;
 
+	@Autowired
+	private PartnerService partnerService;
+
+	@Autowired
+	private WebClient.Builder webClientBuilder;
+
 	@Scheduled(cron = "0 0 12,18,23 * * ?")
 	public void sendFeedbackMessageAndUpdateFlag() {
-		List<Feedback> feedbacks = feedbackService.findByHasBeenNotified(false);
-		for (Feedback feedback : feedbacks) {
-			sendFeedbackMessage(feedback.getMobileNumber());
-			feedback.setHasBeenNotified(true);
-			feedback.setLastFeedbackAt(LocalDateTime.now().toString());
-			feedbackService.save(feedback);
+		List<Partner> partners = partnerService.findByPartnerType(PartnerType.NOTIFICATION);
+		for (Partner partner : partners) {
+			List<Feedback> feedbacks = feedbackService.findByHasBeenNotifiedAndBusiness(false, partner.getConfigs().getOrDefault("Business", null));
+			log.debug("Found feedbacks: " + feedbacks.size());
+			for (Feedback feedback : feedbacks) {
+				sendFeedbackMessage(feedback.getMobileNumber(), partner);
+				feedback.setHasBeenNotified(true);
+				feedback.setLastFeedbackAt(LocalDateTime.now().toString());
+				feedbackService.save(feedback);
+			}
 		}
 	}
 
-	public void sendFeedbackMessage(String mobileNumber) {
+	public void sendFeedbackMessage(String mobileNumber, Partner partner) {
 		try {
-			FacebookMessageRequest facebookMessageBody = FacebookMessageRequest.builder().messagingProduct("whatsapp")
-					.recipientType("individual").to(mobileNumber).type("template").template(FacebookMessageRequest.Template
-							.builder().name("hey_rasyumm").language(Language.builder().code("en").build()).build())
-					.build();
+			
 
-			WebClient webClient = WebClient.builder().baseUrl(facebookGraphApiUrl)
+			String apiUrl = constructFacebookGraphApiUrl(partner);
+			String accessToken = partner.getConfigs().get("AccessToken");
+			String templateName = partner.getConfigs().get("templateName");
+
+			WebClient webClient = webClientBuilder.baseUrl(apiUrl)
 					.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).build();
-
+            FacebookMessageRequest facebookMessageBody = FacebookMessageRequest.builder()
+                    .messagingProduct("whatsapp")
+                    .recipientType("individual")
+                    .to(mobileNumber)
+                    .type("template")
+                    .template(FacebookMessageRequest.Template.builder()
+                            .name(templateName)
+                            .language(new FacebookMessageRequest.Language("en"))
+                            .build())
+                    .build();
 			Mono<String> responseMono = webClient.post().bodyValue(facebookMessageBody).retrieve()
 					.bodyToMono(String.class);
 
@@ -66,4 +80,14 @@ public class NotificationService {
 			log.error("Exception occurred on sendFeedbackMessage: ", e);
 		}
 	}
+
+	private String constructFacebookGraphApiUrl(Partner partner) {
+		String facebookBusinessId = partner.getConfigs().get("faceBookBusinessId");
+		String baseUrl = "https://graph.facebook.com/v19.0";
+		String endpoint = String.format("/%s/messages", facebookBusinessId);
+		return baseUrl + endpoint;
+	}
+	
+	
+	
 }

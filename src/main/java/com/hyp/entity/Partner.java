@@ -42,7 +42,7 @@ public class Partner {
 	private String name;
 	private PartnerType type;
 	private boolean isIntegrated;
-	private Map<String, List<String>> configs;
+	private Map<String, String> configs;
 	@Field("api_config")
 	private ApiConfig apiConfigs;
 

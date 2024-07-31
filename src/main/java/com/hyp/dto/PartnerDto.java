@@ -29,7 +29,7 @@ public class PartnerDto extends BaseDto {
 	
 	private boolean isIntegrated;
 	
-	private Map<String, List<String>> configs;
+	private Map<String, String> configs;
 	
 	private ApiConfig apiConfigs;
 }
