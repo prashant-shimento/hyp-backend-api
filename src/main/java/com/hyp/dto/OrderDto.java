@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.entity.Attribute;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -91,6 +92,8 @@ public class OrderDto extends BaseDto {
 		private String variationId;
 		private List<OrderItemTax> orderItemTax;
 		private List<OrderAddonItem> orderAddonItems;
+		private Attribute itemAttribute;
+
 	}
 
 	@Data

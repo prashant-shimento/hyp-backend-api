@@ -2,6 +2,8 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import com.hyp.entity.Tax;
+
 import lombok.Data;
 
 @Data
@@ -31,4 +33,6 @@ public class ItemDto extends BaseDto {
     private String isRecommend;
     private String gstType;
     private String itemCategoryId;
+	private List<Tax> taxes;
+
 }

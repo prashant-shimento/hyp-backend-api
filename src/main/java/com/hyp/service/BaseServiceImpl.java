@@ -1,7 +1,9 @@
 package com.hyp.service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -10,7 +12,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
+import com.hyp.entity.Attribute;
 import com.hyp.entity.BaseEntity;
+import com.hyp.entity.Item;
+import com.hyp.entity.Order;
+import com.hyp.entity.Tax;
 
 @Service
 public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
@@ -73,6 +79,46 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
 	@Override
 	public List<T> findByQuery(Class<T> entityClass, Query query) {
-		return mongoTemplate.find(query,entityClass);
+		return mongoTemplate.find(query, entityClass);
+	}
+
+	public T populateReferences(T entity) {
+		if (entity instanceof Item) {
+			Item item = (Item) entity;
+			item.setTaxes(lookupByIds(Tax.class, item.getItemTax(), "taxes"));
+		}
+		if (entity instanceof Order) {
+			Order order = (Order) entity;
+			for (Order.OrderItem orderItem : order.getOrderItems()) {
+				if(orderItem.getItemAttribute() == null) {
+					Item item = lookupById(Item.class, orderItem.getId(), "items");
+					if (item != null) {
+						if (item.getItemAttributeId() != null) {
+							Attribute attribute = lookupById(Attribute.class, item.getItemAttributeId(), "attributes");
+							orderItem.setItemAttribute(attribute);
+						}
+					}
+				}
+			}
+		}
+		return entity;
+	}
+
+	private <E> List<E> lookupByIds(Class<E> entityClass, List<String> ids, String collectionName) {
+		if (ids == null || ids.isEmpty()) {
+			return Collections.emptyList();
+		}
+		Query query = Query.query(Criteria.where("_id").in(ids));
+		return mongoTemplate.find(query, entityClass, collectionName);
+	}
+
+	private <E> E lookupById(Class<E> entityClass, String id, String collectionName) {
+		Query query = Query.query(Criteria.where("_id").in(id));
+		return mongoTemplate.findOne(query, entityClass, collectionName);
+	}
+
+	public List<T> findByQueryWithReferences(Class<T> entityClass, Query query) {
+		List<T> entities = mongoTemplate.find(query, entityClass);
+		return entities.stream().map(this::populateReferences).collect(Collectors.toList());
 	}
 }

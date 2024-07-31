@@ -27,5 +27,7 @@ public interface BaseService<T, ID> {
     public T findByField(Class<T> entityClass, String fieldName, Object value);
     
     public List<T> findByQuery(Class<T> entityClass, Query query);
+    
+    public List<T> findByQueryWithReferences(Class<T> entityClass, Query query);
 
 }

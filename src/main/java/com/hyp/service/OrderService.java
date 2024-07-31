@@ -99,7 +99,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	MetaService metaService;
-
+	
+	@Autowired
+	AttributeService attributeService;
+	
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
@@ -156,6 +159,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 						throw new Exception("AddonItem not found " + orderAddonItem.getAddonItemId());
 					}
 				}
+			}
+			if (orderItem.getVariationId() == null) {
+				orderItem.setItemAttribute(
+						attributeService.findById(itemService.findById(orderItem.getId()).getItemAttributeId()));
 			}
 		}
 

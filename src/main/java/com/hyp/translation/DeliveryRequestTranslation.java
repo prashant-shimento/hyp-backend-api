@@ -95,7 +95,7 @@ public class DeliveryRequestTranslation {
 		receiverDetail.setEmail(customer.getEmail());
 		List<Trip> trips = new ArrayList<>();
 		Trip trip = new Trip();
-		trip.setReferenceId(CommonUtils.generateReferenceId("PGO"));
+		trip.setReferenceId(order.getId());
 		trip.setReceiverDetail(receiverDetail);
 		trip.setSourceOrderId(order.getId());
 		trip.setBillAmount(order.getTotalAmount());

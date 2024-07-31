@@ -153,6 +153,8 @@ public class Order {
 		@Field("order_addon_items")
 		private List<OrderAddonItem> orderAddonItems;
 
+		@Field("item_attribute")
+		private Attribute itemAttribute;
 	}
 
 	@Data
@@ -226,5 +228,8 @@ public class Order {
 		@Field("network_id")
 		private int networkId;
 	}
+	
+	
+
 
 }
