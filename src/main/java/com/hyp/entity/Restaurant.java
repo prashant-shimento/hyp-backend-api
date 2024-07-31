@@ -98,7 +98,10 @@ public class Restaurant extends BaseEntity {
 	
 	@Field("delivery_partner")
 	private DeliveryPartner deliveryPartner;
-
+	
+	@Field("support_contact")
+	private String supportContact;
+	
 	@Getter
 	@Setter
 	@NoArgsConstructor

@@ -12,7 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.hyp.entity.Feedback;
-import com.hyp.model.FacebookMessage;
+import com.hyp.request.FacebookMessageRequest;
+import com.hyp.request.FacebookMessageRequest.Language;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -43,9 +44,9 @@ public class NotificationService {
 
 	public void sendFeedbackMessage(String mobileNumber) {
 		try {
-			FacebookMessage facebookMessageBody = FacebookMessage.builder().messaging_product("whatsapp")
-					.recipient_type("individual").to(mobileNumber).type("template").template(FacebookMessage.Template
-							.builder().name("hey_rasyumm").language(new FacebookMessage.Template.Language("en")).build())
+			FacebookMessageRequest facebookMessageBody = FacebookMessageRequest.builder().messagingProduct("whatsapp")
+					.recipientType("individual").to(mobileNumber).type("template").template(FacebookMessageRequest.Template
+							.builder().name("hey_rasyumm").language(Language.builder().code("en").build()).build())
 					.build();
 
 			WebClient webClient = WebClient.builder().baseUrl(facebookGraphApiUrl)

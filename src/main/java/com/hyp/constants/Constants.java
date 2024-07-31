@@ -37,6 +37,15 @@ public interface Constants {
 		SUCCESSFUL, FAILURE
 	}
 
+	String META_WHATSAPP = "whatsapp";
+	String META_RECIPIENT_TYPE = "";
+	String TEMPLATE = "template";
+	String META_ORDER_CONFIRMED_TEMPLATE = "order_confirmation";
+	String META_ORDER_PICKEDUP_TEMPLATE = "order_pickedup";
+	String META_ORDER_DELIVERED_TEMPLATE = "order_delivered";
+
+	
+			
 	String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
 	String FACEBOOK_MESSAGE = "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";
 }
