@@ -24,34 +24,32 @@ public class MetaService {
 
 	@Value("${notification.meta.app}")
 	private String acctId;
-	
+
 	@Value("${notification.meta.token}")
 	private String token;
 
 	@Value("${notification.meta.phone}")
 	private String phoneId;
-	
+
 	@Value("${notification.meta.acct}")
 	private String businessId;
-	
+
 	@Autowired
 	ObjectMapper objectMapper;
-	
+
 	public FacebookMessageResponse sendMessage(FacebookMessageRequest facebookMessage) throws NotificationException {
 		try {
 
 			log.info("sendMessage Request {}", objectMapper.writeValueAsString(facebookMessage));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
 					.build();
-			String endpoint = "/"+phoneId+"/messages";
+			String endpoint = "/" + phoneId + "/messages";
 			Mono<FacebookMessageResponse> quoteResponseMono = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(facebookMessage)).retrieve().bodyToMono(FacebookMessageResponse.class);
-			quoteResponseMono.subscribe(response -> {
-			}, error -> {
-				log.error("Error response: " + error.getMessage());
-			});
-			log.info("sendMessage Response {}", objectMapper.writeValueAsString(quoteResponseMono.block()));
-			return quoteResponseMono.block();
+					.body(BodyInserters.fromValue(facebookMessage)).retrieve()
+					.bodyToMono(FacebookMessageResponse.class);
+			FacebookMessageResponse facebookMessageResponse = quoteResponseMono.block();
+			log.info("sendMessage Response {}", objectMapper.writeValueAsString(facebookMessageResponse));
+			return facebookMessageResponse;
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new NotificationException("Error in sendMessage: " + e.getMessage());
