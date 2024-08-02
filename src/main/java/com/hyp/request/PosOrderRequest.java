@@ -205,11 +205,15 @@ public class PosOrderRequest extends PosBaseRequest {
 		private String gstLiability;
 		@JsonProperty("item_tax")
 		private List<ItemTax> itemTax;
+		@JsonProperty("item_discount")
 		private String itemDiscount;
 		private String price;
+		@JsonProperty("final_price")
 		private String finalPrice;
 		private String quantity;
+		@JsonProperty("variation_name")
 		private String variationName;
+		@JsonProperty("variation_id")
 		private String variationId;
 		@JsonProperty("AddonItem")
 		private AddonItemOrderRequest addonItems;
