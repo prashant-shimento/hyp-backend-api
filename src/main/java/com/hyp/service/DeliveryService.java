@@ -29,6 +29,7 @@ import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
+import com.hyp.model.DeliveryOrderStatusResponse;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryFulfillRequest;
@@ -247,15 +248,15 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	@Retryable(retryFor = { Exception.class })
-	public DeliveryOrderStatus getDeliveryStatus(String deliveryOrderId) throws DeliveryException {
+	public DeliveryOrderStatusResponse getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
 		try {
 
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
 					.build();
 			String endpoint = "v1.0/store/channel/vendor/order/" + deliveryOrderId;
 			log.info("getDeliveryStatus endPoint {}", endpoint);
-			Mono<DeliveryOrderStatus> deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
-					.bodyToMono(DeliveryOrderStatus.class);
+			Mono<DeliveryOrderStatusResponse> deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
+					.bodyToMono(DeliveryOrderStatusResponse.class);
 			deliveryOrderStatusResponse.subscribe(response -> {
 				log.info("Response: " + response);
 
@@ -298,8 +299,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				if (posService.isPosUpdateRequired(fullFillStatus)) {
 					posService.updatePosRiderStatus(delivery, order);
 				}
-				this.save(delivery);
 			}
+			this.save(delivery);
 		} catch (Exception e) {
 			throw new DeliveryException("Error occurred in processDeliveryCallback " + e.getMessage());
 		}

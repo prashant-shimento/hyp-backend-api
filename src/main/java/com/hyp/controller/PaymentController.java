@@ -92,6 +92,8 @@ public class PaymentController {
 			}
 			Order order = orderService.findById(orderId);
 			if (paymentService.verifySignature(razorPayDto)) {
+				payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
+				payment.setSignature(razorPayDto.getRazorpaySignature());
 				processPaymentStatus(order, payment);
 			}
 			return ResponseEntity.ok().build();
@@ -114,7 +116,10 @@ public class PaymentController {
 			if (payment == null) {
 				throw new Exception("Payment not found " + refundDto.getOrderId());
 			}
-
+			if(order.getStatus().equals(OrderStatusType.REFUND_COMPLETED) ||
+					order.getStatus().equals(OrderStatusType.REFUND_INITIATED)){
+				throw new Exception("Refund Already " + order.getStatus());
+			}
 			payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), true);
 			paymentService.save(payment);
 			response = new Response(Collections.singletonList(payment), false, "Refund Intiated");

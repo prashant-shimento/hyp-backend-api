@@ -40,7 +40,7 @@ public class MetaService {
 	public FacebookMessageResponse sendMessage(FacebookMessageRequest facebookMessage) throws NotificationException {
 		try {
 
-			log.info("getDeliveryQuote Request {}", objectMapper.writeValueAsString(facebookMessage));
+			log.info("sendMessage Request {}", objectMapper.writeValueAsString(facebookMessage));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
 					.build();
 			String endpoint = "/"+phoneId+"/messages";
@@ -50,7 +50,7 @@ public class MetaService {
 			}, error -> {
 				log.error("Error response: " + error.getMessage());
 			});
-			log.info("getDeliveryQuote Response {}", objectMapper.writeValueAsString(quoteResponseMono.block()));
+			log.info("sendMessage Response {}", objectMapper.writeValueAsString(quoteResponseMono.block()));
 			return quoteResponseMono.block();
 		} catch (Exception e) {
 			e.printStackTrace();

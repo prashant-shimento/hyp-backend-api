@@ -3,8 +3,6 @@ package com.hyp.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,7 +35,6 @@ import com.hyp.request.PosOrderRequest;
 import com.hyp.request.FacebookMessageRequest.Component;
 import com.hyp.request.FacebookMessageRequest.Language;
 import com.hyp.request.FacebookMessageRequest.Parameter;
-import com.hyp.request.FacebookMessageRequest.Template;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
@@ -99,10 +96,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	MetaService metaService;
-	
+
 	@Autowired
 	AttributeService attributeService;
-	
+
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
@@ -186,33 +183,32 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			Order order = this.findById(posCallbackRequest.getOrderId());
 			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
 			Customer customer = customerService.findById(order.getCustomerId());
-
-			if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
+			order.setStatus(newOrderStatus);
+			if (newOrderStatus == OrderStatusType.ACCEPTED) {
+				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
+				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
+				this.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
+						Arrays.asList(customer.getName(), restaurant.getRestaurantName(), restaurant.getCity(),
+								order.getId(), restaurant.getContact(), restaurant.getSupportContact()),
+						null);
+				order = this.update(order);
+			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
 				}
-			}
-
-			if (newOrderStatus == OrderStatusType.CANCELLED) {
+				order = this.update(order);
+			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
 				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
-				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
+						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
 					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+					delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
+					deliveryService.save(delivery);
 				}
 			}
-
-			order.setStatus(newOrderStatus);
-			order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
-			order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-			order = this.update(order);
 			messageTemplate.convertAndSend("/topic/order-status", order);
-
-			this.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
-					Arrays.asList(customer.getName(), restaurant.getRestaurantName(), restaurant.getCity(),
-							order.getId(), restaurant.getContact(), restaurant.getSupportContact()),
-					null);
-
 			return order;
 
 		} catch (DeliveryException e) {

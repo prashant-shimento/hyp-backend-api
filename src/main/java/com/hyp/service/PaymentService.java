@@ -118,11 +118,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setRefund(paymentRefund);
 
 			this.save(payment);
-			orderService.updateOrderStatus(orderId, OrderStatusType.REFUND_INITIATED);
+			orderService.updateOrderStatus(orderId, OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();
-			throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);
+			throw new RuntimeException("Error creating refund order: " + e.getMessage(), e);
 		}
 	}
 

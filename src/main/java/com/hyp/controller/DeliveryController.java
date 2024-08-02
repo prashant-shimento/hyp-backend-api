@@ -21,6 +21,7 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.DeliveryOrderStatus;
+import com.hyp.model.DeliveryOrderStatusResponse;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.response.Response;
@@ -184,8 +185,8 @@ public class DeliveryController {
 				response = new Response(null, true, "Delivery Id not found ");
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			deliveryService.processDeliveryCallback(delivery,
-					deliveryService.getDeliveryStatus(delivery.getDeliveryOrderId()));
+			DeliveryOrderStatusResponse deliverOrderStatusResponse = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+			deliveryService.processDeliveryCallback(delivery,deliverOrderStatusResponse.getData());
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
