@@ -302,6 +302,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			}
 			this.save(delivery);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new DeliveryException("Error occurred in processDeliveryCallback " + e.getMessage());
 		}
 	}

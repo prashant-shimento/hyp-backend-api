@@ -30,8 +30,10 @@ import com.hyp.request.PosStatusRequest;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Service
 public class PosServiceImpl implements PosService {
 
@@ -51,6 +53,9 @@ public class PosServiceImpl implements PosService {
 	private final AddonGroupService addonGroupService;
 	private final CategoryService categoryService;
 	private final ItemService itemService;
+
+	private static final DateTimeFormatter FORMATTER_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static final DateTimeFormatter FORMATTER_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
@@ -211,7 +216,14 @@ public class PosServiceImpl implements PosService {
 		String turnOnTime = stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")
 				? stockRequest.getCustomTurnOnTime()
 				: stockRequest.getAutoTurnOnTime();
-		return LocalDateTime.parse(turnOnTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+		if (turnOnTime.length() == 19) {
+			return LocalDateTime.parse(turnOnTime, FORMATTER_WITH_SECONDS);
+		} else if (turnOnTime.length() == 19) {
+			return LocalDateTime.parse(turnOnTime, FORMATTER_WITHOUT_SECONDS);
+		} else {
+			log.error("Invalid TurnOnTime passed " + turnOnTime);
+			return LocalDateTime.now();
+		}
 	}
 
 	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {

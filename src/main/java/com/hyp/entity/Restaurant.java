@@ -1,9 +1,11 @@
 package com.hyp.entity;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -22,11 +24,11 @@ import lombok.ToString;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "restaurants")
-public class Restaurant extends BaseEntity {
-
-	private static final long serialVersionUID = 1L;
-
+public class Restaurant {
 	
+	@Id
+	@Field("id")
+	private String id;
 
 	private boolean active;
 
@@ -101,6 +103,14 @@ public class Restaurant extends BaseEntity {
 	
 	@Field("support_contact")
 	private String supportContact;
+	
+	@Field("created_at")
+	@CreatedDate
+	private LocalDateTime createdAt;
+
+	@Field("updated_at")
+	@LastModifiedDate
+	private LocalDateTime updatedAt;
 	
 	@Getter
 	@Setter

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.hyp.constants.Constants;
 import com.hyp.dto.RazorpayVerifyDto;
 import com.hyp.entity.Payment;
+import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.repository.PaymentRepository;
 import com.hyp.util.CommonUtils;
@@ -32,16 +33,23 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	@Autowired
 	OrderService orderService;
+	
+	@Autowired
+	RestaurantService restaurantService;
 
 	public Payment createPaymentOrder(String orderId, double amount) {
 		try {
 			RazorpayClient razorpayClient = new RazorpayClient(razorPayKey, razorPaySecret);
+			Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
 			JSONObject orderRequest = new JSONObject();
 			orderRequest.put("amount", CommonUtils.getISOAmount(amount));
 			orderRequest.put("currency", "INR");
 			orderRequest.put("receipt", CommonUtils.genId());
+			JSONObject notes = new JSONObject();
+			notes.put("restaurant", restaurant.getId() +":"+restaurant.getRestaurantName());
+			orderRequest.put("notes", notes);
 			Order order = razorpayClient.orders.create(orderRequest);
-
+			
 			Payment payment = new Payment();
 			payment.setId(CommonUtils.genId());
 			payment.setPaymentOrderId(order.get("id"));

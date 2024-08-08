@@ -41,7 +41,9 @@ import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
 
 import io.micrometer.common.util.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 public class PosDataRequestTranslation {
 
@@ -430,7 +432,9 @@ public class PosDataRequestTranslation {
 		item.setPrice(itemRequest.getPrice());
 		item.setMinimumPreparationTime(itemRequest.getMinimumpreparationtime());
 		item.setItemAddonBasedOn(itemRequest.getItemaddonbasedon());
-		item.setItemImageUrl(itemRequest.getItem_image_url());
+		String trimmedImageUrl = trimImageUrl(itemRequest.getItem_image_url());
+		item.setItemImageUrl(trimmedImageUrl);
+
 		item.setItemName(itemRequest.getItemname());
 		item.setCuisine(itemRequest.getCuisine());
 		item.setActive(itemRequest.getActive());
@@ -449,6 +453,25 @@ public class PosDataRequestTranslation {
 		item.setAddon(getAddonIdList(itemRequest.getAddon()));
 
 		return item;
+	}
+
+	private static String trimImageUrl(String imageUrl) {
+		if (imageUrl == null || imageUrl.isEmpty()) {
+			return imageUrl;
+		}
+		try {
+			String[] extensions = { ".jpg", ".png", ".jpeg" };
+			for (String extension : extensions) {
+				int index = imageUrl.indexOf(extension);
+				if (index != -1) {
+					return imageUrl.substring(0, index + extension.length());
+				}
+			}
+		} catch (Exception e) {
+			log.error("Error occurred while trimming image URL: " + e.getMessage());
+			return imageUrl;
+		}
+		return imageUrl;
 	}
 
 	public static List<String> getVariationIdList(List<VariationRequest> variationRequestLst) {
