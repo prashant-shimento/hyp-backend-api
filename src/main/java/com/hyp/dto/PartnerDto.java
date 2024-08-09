@@ -26,10 +26,10 @@ public class PartnerDto extends BaseDto {
 
 	@NotNull(message = "Type is required")
 	private PartnerType type;
-	
+
 	private boolean isIntegrated;
-	
+
 	private Map<String, String> configs;
-	
+
 	private ApiConfig apiConfigs;
 }

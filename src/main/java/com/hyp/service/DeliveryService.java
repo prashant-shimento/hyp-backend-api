@@ -1,6 +1,8 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -26,15 +28,16 @@ import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryOrderStatus;
-import com.hyp.model.DeliveryQuote;
-import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import com.hyp.model.DeliveryOrderStatusResponse;
+import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
+import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
+import com.hyp.request.MailNotificationRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
 
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +76,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Autowired
 	OrderService orderService;
+
+	@Autowired
+	MailService mailService;
 
 	public Delivery findByOrderId(String orderId) {
 		return deliveryRepository.findByOrderId(orderId);
@@ -276,7 +282,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			delivery.setStatus(DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus()));
 			Order order = orderService.findById(delivery.getOrderId());
-			
+
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(DeliveryFulfillStatusType.CANCELLED));
@@ -302,11 +308,22 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			}
 			this.save(delivery);
 		} catch (Exception e) {
+			// alert mechanism.
+			MailNotificationRequest notificationRequest = new MailNotificationRequest("Delivery Error Notification",
+					String.format(
+							"An exception occurred while creating an order in the Delivery Service.\n"
+									+ "Order ID: %s\n" + "Error Details: %s\n" + "Time of Error (IST): %s",
+							delivery.getOrderId(), e.getMessage(), LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+									.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))));
+
+			mailService.sendNotificationEmail(notificationRequest);
+
 			e.printStackTrace();
-			throw new DeliveryException("Error occurred in processDeliveryCallback " + e.getMessage());
+
+			throw new DeliveryException("Error occurred in processDeliveryCallback: " + e.getMessage());
+
 		}
 	}
-	
 
 	public void processDeliveryFulfill(Delivery delivery, String fulfillmentType) throws DeliveryException {
 		try {
@@ -382,11 +399,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					"Exception Occured while processDeliverySmartFulfill in Delivery Service " + e.getMessage());
 		}
 	}
-	
 
 	@Retryable(retryFor = { Exception.class })
 	public void unAllocateOrderFulfill(String deliveryOrderId) throws DeliveryException {
-		String endpoint = "/v1.0/store/channel/vendor/"+deliveryOrderId+"/fulfillment/cancel";
+		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/fulfillment/cancel";
 		try {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
 					.build();

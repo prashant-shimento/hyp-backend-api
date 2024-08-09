@@ -1,6 +1,8 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -30,11 +32,12 @@ import com.hyp.exception.RequestTranslationException;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.FacebookMessageRequest;
-import com.hyp.request.PosCallbackRequest;
-import com.hyp.request.PosOrderRequest;
 import com.hyp.request.FacebookMessageRequest.Component;
 import com.hyp.request.FacebookMessageRequest.Language;
 import com.hyp.request.FacebookMessageRequest.Parameter;
+import com.hyp.request.MailNotificationRequest;
+import com.hyp.request.PosCallbackRequest;
+import com.hyp.request.PosOrderRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
@@ -99,6 +102,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	AttributeService attributeService;
+
+	@Autowired
+	CustomerService customerservice;
+
+	@Autowired
+	PartnerService partnerService;
+	
+	@Autowired
+	MailService mailService;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -213,13 +225,27 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		} catch (DeliveryException e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			// Add Alert Mechanism
+			MailNotificationRequest notificationRequest = new MailNotificationRequest(
+				    "Delivery Error Notification",
+				    String.format(
+				        "An exception occurred while creating an order in the Delivery Service.\n" +
+				        "Order ID: %s\n" +
+				        "Error Details: %s\n" +
+				        "Time of Error (IST): %s",
+				        posCallbackRequest.getOrderId(),
+				        e.getMessage(),
+				        LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+				            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+				    )
+				);
+
+				mailService.sendNotificationEmail(notificationRequest);
+
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
 			throw new RuntimeException("Exception Occured while processCallback Order " + e.getMessage());
 		}
-
 	}
 
 	public void processOrder(Order order) {
@@ -256,7 +282,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		} catch (Exception e) {
 			throw new RuntimeException("Exception Occured while Processing Order " + e.getMessage());
 		}
-
 	}
 
 	public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
