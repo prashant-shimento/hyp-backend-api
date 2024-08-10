@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.hyp.constants.Constants;
 import com.hyp.entity.AddonGroup;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Attribute;
@@ -239,13 +240,13 @@ public class PosDataRequestTranslation {
 		if (existingRestaurant != null && existingRestaurant.getLogoUrl() != null) {
 	        restaurant.setLogoUrl(existingRestaurant.getLogoUrl());
 	    } else {
-	        restaurant.setLogoUrl("https://storage.googleapis.com/hyp-app-bucket/default-image.png");
+	        restaurant.setLogoUrl(Constants.DEFAULT_LOGO);
 	    }
 
 	    if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
 	        restaurant.setFssai(existingRestaurant.getFssai());
 	    } else {
-	        restaurant.setFssai("Default-FSSAI-Number");
+	        restaurant.setFssai("");
 	    }
 
 		if (existingRestaurant != null && existingRestaurant.getLocation() != null) {

@@ -45,6 +45,7 @@ jobs:
         FACEBOOK_GRAPH_API_URL: ${{ secrets.FACEBOOK_GRAPH_API_URL }}
         APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
         NOTIFICATION_META_TOKEN: ${{ secrets.NOTIFICATION_META_TOKEN }}
+        MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
 
     - name: Create .env file
       run: |
@@ -71,6 +72,7 @@ jobs:
         echo "FACEBOOK_GRAPH_API_URL=${{ secrets.FACEBOOK_GRAPH_API_URL }}" >> .env
         echo "APP_SECRET_KEY=${{ secrets.APP_SECRET_KEY }}" >> .env
         echo "NOTIFICATION_META_TOKEN=${{ secrets.NOTIFICATION_META_TOKEN }}" >> .env
+        echo "MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1

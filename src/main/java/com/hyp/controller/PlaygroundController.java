@@ -12,7 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.model.FacebookMessageResponse;
 import com.hyp.request.FacebookMessageRequest;
+import com.hyp.request.MailNotificationRequest;
 import com.hyp.response.Response;
+import com.hyp.service.MailService;
 import com.hyp.service.MetaService;
 
 @RestController
@@ -22,12 +24,29 @@ public class PlaygroundController {
 	@Autowired
 	MetaService metaService;
 	
+	@Autowired
+	MailService mailService;
+	
 	@PostMapping("/meta-message")
 	public ResponseEntity<Response> metaSendMessage(@RequestBody FacebookMessageRequest facebookMessageRequest) {
 		Response response;
 		try {
 			FacebookMessageResponse facebookMessageResponse = metaService.sendMessage(facebookMessageRequest);
 			response = new Response(Collections.singletonList(facebookMessageResponse), false, "Meta Message Sent !");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PostMapping("/send-mail")
+	public ResponseEntity<Response> metaSendMessage(@RequestBody MailNotificationRequest mailNotificationRequest) {
+		Response response;
+		try {
+			mailService.sendNotificationEmail(mailNotificationRequest);
+			response = new Response(null, false, "Mail Sent !");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

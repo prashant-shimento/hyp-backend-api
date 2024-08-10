@@ -45,7 +45,7 @@ public interface Constants {
 	String META_ORDER_DELIVERED_TEMPLATE = "order_delivered";
 	String META_ORDER_CANCELLED_TEMPLATE = "order_cancelled";
 
-	
+	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
 			
 	String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
 	String FACEBOOK_MESSAGE = "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";
