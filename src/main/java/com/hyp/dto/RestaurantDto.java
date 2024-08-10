@@ -39,4 +39,7 @@ public class RestaurantDto extends BaseDto {
 	private String packagingCharge;
 	private String packagingChargeType;
 	private Location location;
+	private String logoUrl;
+	private String fssai;
+
 }

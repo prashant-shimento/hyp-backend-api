@@ -25,7 +25,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @Document(collection = "restaurants")
 public class Restaurant {
-	
+
 	@Id
 	@Field("id")
 	private String id;
@@ -62,7 +62,7 @@ public class Restaurant {
 	private String state;
 
 	private String landmark;
-	
+
 	private String pincode;
 
 	private Location location;
@@ -76,6 +76,12 @@ public class Restaurant {
 
 	@Field("menu_sharing_code")
 	private String menuSharingCode;
+
+	@Field("logo_url")
+	private String logoUrl;
+
+	@Field("fssai")
+	private String fssai;
 
 	@Field("delivery_hours")
 	private List<DeliveryHours> deliveryHours;
@@ -94,16 +100,16 @@ public class Restaurant {
 
 	@Field("status_reason")
 	private String statusReason;
-	
+
 	@Field("delivery_radius")
 	private double deliveryRadius;
-	
+
 	@Field("delivery_partner")
 	private DeliveryPartner deliveryPartner;
-	
+
 	@Field("support_contact")
 	private String supportContact;
-	
+
 	@Field("created_at")
 	@CreatedDate
 	private LocalDateTime createdAt;
@@ -111,7 +117,7 @@ public class Restaurant {
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
-	
+
 	@Getter
 	@Setter
 	@NoArgsConstructor

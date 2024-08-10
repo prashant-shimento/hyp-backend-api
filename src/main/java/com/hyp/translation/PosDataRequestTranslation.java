@@ -235,6 +235,18 @@ public class PosDataRequestTranslation {
 		restaurant.setMinimumDeliveryTime(restaurantRequest.getDetails().getMinimumdeliverytime());
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
+		
+		if (existingRestaurant != null && existingRestaurant.getLogoUrl() != null) {
+	        restaurant.setLogoUrl(existingRestaurant.getLogoUrl());
+	    } else {
+	        restaurant.setLogoUrl("https://storage.googleapis.com/hyp-app-bucket/default-image.png");
+	    }
+
+	    if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
+	        restaurant.setFssai(existingRestaurant.getFssai());
+	    } else {
+	        restaurant.setFssai("Default-FSSAI-Number");
+	    }
 
 		if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
 			restaurant.setLocation(existingRestaurant.getLocation());
