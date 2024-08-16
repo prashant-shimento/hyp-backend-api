@@ -28,6 +28,7 @@ public interface Constants {
 	List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type","restaurantId");
 	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id", "name", "variationId", "variationAllowAddon","restaurantId");
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
+	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id","restaurantId","categoryName","active");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";
