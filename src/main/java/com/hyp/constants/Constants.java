@@ -19,16 +19,17 @@ public interface Constants {
 
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id", "status", "customerId", "createdAt", "totalAmount", "orderType",
-			"orderTime","restaurantId");
+			"orderTime", "restaurantId");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id", "itemName", "inStock", "itemAllowVariation", "itemCategoryId",
-			"itemAllowAddon", "itemAttributeId", "status","restaurantId");
-	List<String> ADDRESS_API_PARAMS = Arrays.asList("id", "customerId", "addressType","restaurantId");
+			"itemAllowAddon", "itemAttributeId", "status", "restaurantId");
+	List<String> ADDRESS_API_PARAMS = Arrays.asList("id", "customerId", "addressType", "restaurantId");
 	List<String> DELIVERY_API_PARAMS = Arrays.asList("id", "networkId", "status", "orderId", "service",
-			"deliveryOrderId", "channel","restaurantId");
-	List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type","restaurantId");
-	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id", "name", "variationId", "variationAllowAddon","restaurantId");
+			"deliveryOrderId", "channel", "restaurantId");
+	List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type", "restaurantId");
+	List<String> VARIATIONS_API_PARAMS = Arrays.asList("id", "name", "variationId", "variationAllowAddon",
+			"restaurantId");
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
-	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id","restaurantId","categoryName","active");
+	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";
@@ -47,7 +48,7 @@ public interface Constants {
 	String META_ORDER_CANCELLED_TEMPLATE = "order_cancelled";
 
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
-			
+
 	String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
 	String FACEBOOK_MESSAGE = "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";
 }
