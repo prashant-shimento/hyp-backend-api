@@ -3,6 +3,7 @@ package com.hyp.controller;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.constants.Constants;
+import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.Address;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
@@ -32,6 +34,7 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.DeliveryRequestTranslation;
+import com.hyp.translation.DeliveryTranslation;
 
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +42,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 @RequestMapping("/delivery")
-public class DeliveryController {
+public class DeliveryController extends BaseController<DeliveryDto, Delivery, String> {
+	
+	@Autowired
+	DeliveryTranslation deliveryTranslation;
 
 	@Autowired
 	RestaurantService restaurantService;
