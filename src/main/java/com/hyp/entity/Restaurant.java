@@ -77,9 +77,6 @@ public class Restaurant {
 	@Field("menu_sharing_code")
 	private String menuSharingCode;
 
-	@Field("logo_url")
-	private String logoUrl;
-
 	@Field("fssai")
 	private String fssai;
 

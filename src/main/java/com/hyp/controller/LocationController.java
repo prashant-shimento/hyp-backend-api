@@ -1,6 +1,7 @@
 package com.hyp.controller;
 
 import java.util.Collections;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,12 +14,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.google.maps.model.GeocodingResult;
 import com.hyp.dto.AddressDto;
-import com.hyp.entity.Restaurant;
+import com.hyp.entity.Partner;
+import com.hyp.model.PlaceData;
 import com.hyp.model.PlacePredictionData;
+import com.hyp.request.LocationRequest;
 import com.hyp.response.Response;
 import com.hyp.service.LocationService;
-import com.hyp.service.RestaurantService;
+import com.hyp.service.PartnerService;
 import com.hyp.translation.MapDataTranslation;
+
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 @RestController
 @RequestMapping("/location")
@@ -28,7 +33,7 @@ public class LocationController {
 	LocationService locationService;
 
 	@Autowired
-	RestaurantService restaurantService;
+	PartnerService partnerService;
 
 	@GetMapping("/maps/predict")
 	public ResponseEntity<Response> getLocationPrediction(@RequestParam String search) {
@@ -45,30 +50,49 @@ public class LocationController {
 		}
 	}
 
-	@GetMapping("/maps/place/{restaurantId}")
-	public ResponseEntity<Response> getPlace(@PathVariable String restaurantId, @RequestParam String placeId) {
+	@GetMapping("/maps/place/{partnerId}")
+	public ResponseEntity<Response> getPlace(@PathVariable String partnerId,
+			@RequestBody LocationRequest locationRequest) {
 		Response response;
+		AddressDto addressPlaceData;
 		try {
-			Restaurant restaurant = restaurantService.findById(restaurantId);
-			if (restaurantService == null) {
-				response = new Response(null, true, "Restaurant not found " + restaurantId);
+			Partner partner = partnerService.findByIdWithReference(partnerId, Partner.class);
+			if (partner == null) {
+				response = new Response(null, true, "Restaurant Partner not found " + partnerId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			String rawPlaceData = locationService.getPlaceDetails(placeId);
-			if (rawPlaceData == null) {
-				response = new Response(null, true, "Place not found " + placeId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			if (locationRequest.getPlaceId() != null) {
+				String rawPlaceData = locationService.getPlaceDetails(locationRequest.getPlaceId());
+				if (rawPlaceData == null) {
+					response = new Response(null, true, "Place not found " + locationRequest.getPlaceId());
+					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+				}
+				addressPlaceData = MapDataTranslation.getPlaceDatatoAddress(rawPlaceData);
+			} else if (locationRequest.getLatitude() != null && locationRequest.getLongitude() != null) {
+				GeocodingResult[] geocodingResults = locationService
+						.getPlaceByGeocodebyClient(locationRequest.getLatitude(), locationRequest.getLongitude());
+				if (geocodingResults == null) {
+					response = new Response(null, true, "Place not found for given co-ordinates");
+					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+				}
+				addressPlaceData = MapDataTranslation.getGeocodeDatatoAddress(geocodingResults);
+			} else {
+				response = new Response(null, true, "Please provide PlaceId or Co-ordinates");
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 			}
-			AddressDto addressPlaceData = MapDataTranslation.getPlaceDatatoAddress(rawPlaceData);
 
-			if (!locationService.isLocationDeliverable(addressPlaceData.getLocation().getLatitude(),
-					addressPlaceData.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
-					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+			List<String> restaurantList = locationService.getServicableRestaurants(addressPlaceData,
+					partner.getRestaurantDetails());
+
+			if (restaurantList.size() == 0) {
 				response = new Response(null, true, "Location not Deliverable");
 				return ResponseEntity.badRequest().body(response);
 			}
 
-			response = new Response(Collections.singletonList(addressPlaceData), false, "Location Place Data Fetched");
+			response = new Response(
+					Collections.singletonList(
+							PlaceData.builder().address(addressPlaceData).restaurants(restaurantList).build()),
+					false, "Location Place Data Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
@@ -77,37 +101,4 @@ public class LocationController {
 		}
 	}
 
-	@GetMapping("/maps/geocode/{restaurantId}")
-	public ResponseEntity<Response> getGeoCodePlace(@PathVariable String restaurantId, @RequestParam double latitude,
-			@RequestParam double longitude) {
-		Response response;
-		try {
-			Restaurant restaurant = restaurantService.findById(restaurantId);
-			if (restaurantService == null) {
-				response = new Response(null, true, "Restaurant not found " + restaurantId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-
-			GeocodingResult[] geocodingResults = locationService.getPlaceByGeocodebyClient(latitude, longitude);
-			if (geocodingResults == null) {
-				response = new Response(null, true, "Place not found ");
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			AddressDto addressPlaceData = MapDataTranslation.getGeocodeDatatoAddress(geocodingResults);
-
-			if (!locationService.isLocationDeliverable(addressPlaceData.getLocation().getLatitude(),
-					addressPlaceData.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
-					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
-				response = new Response(null, true, "Location Not Deliverable");
-				return ResponseEntity.badRequest().body(response);
-			}
-
-			response = new Response(Collections.singletonList(addressPlaceData), false, "Location Place Data Fetched");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
-	}
 }

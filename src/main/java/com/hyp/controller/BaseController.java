@@ -50,7 +50,7 @@ public abstract class BaseController<DTO, T, ID> {
 		if (query == null) {
 			return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
 		}
-		List<T> entities = service.findByQuery(entity, query);
+		List<T> entities = service.findByQueryWithReferences(entity, query);
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);

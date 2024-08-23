@@ -12,9 +12,10 @@ import com.google.maps.GeoApiContext;
 import com.google.maps.GeocodingApi;
 import com.google.maps.model.GeocodingResult;
 import com.google.maps.model.LatLng;
+import com.hyp.dto.AddressDto;
+import com.hyp.entity.Restaurant;
 import com.hyp.model.PlacePredictionData;
 import com.hyp.request.PredictionRequest;
-
 import reactor.core.publisher.Mono;
 
 @Component
@@ -114,6 +115,23 @@ public class LocationService {
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException("Error in getPlaceByGeocodebyClient: " + e.getMessage(), e);
+		}
+	}
+	
+	public List<String> getServicableRestaurants(AddressDto addressPlaceData, List<Restaurant> restaurants) {
+		List<String> serviceableRestaurants = new ArrayList<>();
+		try {
+			for (Restaurant restaurant : restaurants) {
+				if (this.isLocationDeliverable(addressPlaceData.getLocation().getLatitude(),
+						addressPlaceData.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+						restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+					serviceableRestaurants.add(restaurant.getId());
+				}
+			}
+			return serviceableRestaurants;
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException("Error in getServicableRestaurants: " + e.getMessage(), e);
 		}
 	}
 

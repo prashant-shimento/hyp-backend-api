@@ -16,6 +16,8 @@ import com.hyp.entity.Attribute;
 import com.hyp.entity.BaseEntity;
 import com.hyp.entity.Item;
 import com.hyp.entity.Order;
+import com.hyp.entity.Partner;
+import com.hyp.entity.Restaurant;
 import com.hyp.entity.Tax;
 
 @Service
@@ -101,6 +103,10 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 				}
 			}
 		}
+		if (entity instanceof Partner) {
+			Partner partner = (Partner) entity;
+			partner.setRestaurantDetails(lookupByIds(Restaurant.class, partner.getRestaurants(), "restaurants"));
+		}
 		return entity;
 	}
 
@@ -121,4 +127,11 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		List<T> entities = mongoTemplate.find(query, entityClass);
 		return entities.stream().map(this::populateReferences).collect(Collectors.toList());
 	}
+	
+	@Override
+	public T findByIdWithReference(ID id,Class<T> entityClass) {
+		T entity = mongoTemplate.findById(id, entityClass);
+	    return populateReferences(entity);
+	}
+
 }

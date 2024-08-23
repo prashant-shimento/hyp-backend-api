@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -43,7 +44,6 @@ public class Customer {
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
-
-	@Field("restaurant_id")
-	private String restaurantId;
+	
+	private List<String> restaurants;
 }

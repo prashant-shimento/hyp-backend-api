@@ -14,4 +14,5 @@ public class PartnerController extends BaseController<PartnerDto, Partner, Strin
 
 	@Autowired
 	public PartnerTranslation partnerTranslation;
+	
 }

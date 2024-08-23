@@ -236,12 +236,6 @@ public class PosDataRequestTranslation {
 		restaurant.setMinimumDeliveryTime(restaurantRequest.getDetails().getMinimumdeliverytime());
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
-		
-		if (existingRestaurant != null && existingRestaurant.getLogoUrl() != null) {
-	        restaurant.setLogoUrl(existingRestaurant.getLogoUrl());
-	    } else {
-	        restaurant.setLogoUrl(Constants.DEFAULT_LOGO);
-	    }
 
 	    if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
 	        restaurant.setFssai(existingRestaurant.getFssai());

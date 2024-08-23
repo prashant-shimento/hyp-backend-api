@@ -24,7 +24,7 @@ public class QueryUtils {
 		ALLOWED_API_PARAMS.put("Content", Constants.CONTENT_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Variation", Constants.VARIATIONS_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Category", Constants.CATEGORIES_API_PARAMS);
-
+		ALLOWED_API_PARAMS.put("Partner", Constants.PARTNER_API_PARAMS);
 	}
 
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {

@@ -1,5 +1,6 @@
 package com.hyp.controller;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import com.hyp.constants.Constants;
 import com.hyp.dto.LoginDto;
 import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
@@ -26,17 +26,22 @@ import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 
+import com.hyp.service.RestaurantService;
+
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/login")
 public class LoginController {
 
-	@Value("${INTERNAL_USER_NUMBERS}")
+	@Value("${internal.users.numbers}")
 	private String internalUserNumbers;
 
 	@Autowired
 	public CustomerService customerService;
+
+	@Autowired
+	public RestaurantService restaurantService;
 
 	@Autowired
 	public AddressService addressService;
@@ -61,20 +66,10 @@ public class LoginController {
 				customer.setMobile(loginDto.getMobile());
 				customer = customerService.save(customer);
 			}
-
-			// here we will Check if the customer is an internal user
-			boolean isInternalUser = checkIfInternalUser(customer.getMobile());
-
-			if (isInternalUser) {
-				// Log message for internal users and skip actual OTP sending
-				System.out.println("Default OTP for internal user: OTP sent successfully.");
-				response = new Response(null, false, "OTP Sent Successfully");
-			} else {
-				// Generate and send real OTP for external users
+			if (!checkIfInternalUser(customer.getMobile())) {
 				otpService.sendOtp(customer.getMobile());
-				response = new Response(null, false, "OTP Sent Successfully");
 			}
-
+			response = new Response(null, false, "OTP Sent Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
@@ -87,39 +82,38 @@ public class LoginController {
 	public ResponseEntity<Response> otpVerify(@RequestBody VerificationRequestDto verificationRequest) {
 		Response response;
 		try {
-
-			if (checkIfInternalUser(verificationRequest.getMobile())) {
-				// For internal users
-				Customer customer = customerService.findByMobile(verificationRequest.getMobile());
-				if (customer != null) {
-					customer.setVerified(true);
-					customerService.save(customer);
-					response = new Response(Collections.singletonList(customer), false, "OTP Verified Successfully");
-					return ResponseEntity.ok(response);
-				} else {
-					response = new Response(null, true, "Customer not found");
-					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-				}
-			} else {
-				// For external users, verify against the real OTP
-				int storedOtp = otpService.getOtp(verificationRequest.getMobile());
-				if (verificationRequest.getOtp() == storedOtp) {
-					Customer customer = customerService.findByMobile(verificationRequest.getMobile());
-					if (customer != null) {
-						customer.setVerified(true);
-						customerService.save(customer);
-						response = new Response(Collections.singletonList(customer), false,
-								"OTP Verified Successfully");
-						return ResponseEntity.ok(response);
-					} else {
-						response = new Response(null, true, "Customer not found");
-						return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-					}
-				} else {
-					response = new Response(null, true, "OTP Verification Failed");
-					return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-				}
+			Customer customer = customerService.findByMobile(verificationRequest.getMobile());
+			if (customer == null) {
+				otpService.clearOTP(verificationRequest.getMobile());
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Response(null, true, "Customer not found"));
 			}
+			if (!restaurantService.isExistsById(verificationRequest.getRestaurantId())) {
+				otpService.clearOTP(verificationRequest.getMobile());
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(new Response(null, true, "Restaurant not found"));
+			}
+
+			if (!checkIfInternalUser(verificationRequest.getMobile())) {
+				int storedOtp = otpService.getOtp(verificationRequest.getMobile());
+				if (verificationRequest.getOtp() != storedOtp) {
+					otpService.clearOTP(verificationRequest.getMobile());
+					return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+							.body(new Response(null, true, "OTP Verification Failed"));
+				}
+				otpService.clearOTP(verificationRequest.getMobile());
+
+			}
+			if (customer.getRestaurants() == null) {
+				customer.setRestaurants(new ArrayList<>());
+			}
+			if (!customer.getRestaurants().contains(verificationRequest.getRestaurantId())) {
+				customer.getRestaurants().add(verificationRequest.getRestaurantId());
+			}
+			customer.setVerified(true);
+			customerService.save(customer);
+
+			return ResponseEntity
+					.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
 			e.printStackTrace();
@@ -135,8 +129,10 @@ public class LoginController {
 	public ResponseEntity<Response> otpResend(@PathVariable String mobile) {
 		Response response;
 		try {
-			otpService.clearOTP(mobile);
-			otpService.sendOtp(mobile);
+			if (!checkIfInternalUser(mobile)) {
+				otpService.clearOTP(mobile);
+				otpService.sendOtp(mobile);
+			}
 			response = new Response(null, false, "OTP Sent Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
@@ -168,6 +164,7 @@ public class LoginController {
 		String baseUrl = ServletUriComponentsBuilder.fromRequestUri(httpRequest).replacePath(null).build()
 				.toUriString();
 		configMap.put("domain", httpRequest.getRequestURL().toString() + "======" + scheme + "======" + baseUrl);
+		configMap.put("internal.users.numbers", env.getProperty("internal.users.numbers"));
 
 		return configMap;
 	}

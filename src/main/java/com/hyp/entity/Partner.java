@@ -11,7 +11,6 @@ import javax.persistence.PreUpdate;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -25,12 +24,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
 @Getter
 @Setter
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
+@Slf4j
 @Document(collection = "partners")
 public class Partner {
 
@@ -45,6 +46,15 @@ public class Partner {
 	private Map<String, String> configs;
 	@Field("api_config")
 	private ApiConfig apiConfigs;
+	
+	@Field(name = "domain")
+	private String domain;
+	
+	@Field("logo_url")
+	private String logoUrl;
+	
+	@Field("web_url")
+	private String webUrl;
 
 	@Field("created_at")
 	@CreatedDate
@@ -54,14 +64,20 @@ public class Partner {
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
 	
-	@DBRef(db = "restaurants")
-	private List<Restaurant> restaurants;
+	private List<String> restaurants;
+	
+	private transient List<Restaurant> restaurantDetails;
 	
 	@PrePersist
 	@PreUpdate
 	private void encryptApiConfigData() {
 		try {
+            log.info("Encrypting ApiConfig data: {}", this.configs);
+            System.out.println(this.configs.get("AccessToken"));
+            System.out.println(this.configs.get("faceBookBusinessId"));
+
 			if (this.apiConfigs != null) {
+	            log.info("Encrypting ApiConfig data: {}", this.apiConfigs);
 				this.apiConfigs.setSecret(EncryptionUtils.encrypt(this.apiConfigs.getSecret()));
 				this.apiConfigs.setToken(EncryptionUtils.encrypt(this.apiConfigs.getToken()));
 				this.apiConfigs.setKey(EncryptionUtils.encrypt(this.apiConfigs.getKey()));
@@ -75,6 +91,9 @@ public class Partner {
 	@PostLoad
 	private void decryptApiConfigData() {
 		try {
+			  System.out.println(this.configs.get("AccessToken"));
+	            System.out.println(this.configs.get("faceBookBusinessId"));
+
 			if (this.apiConfigs != null) {
 				this.apiConfigs.setSecret(EncryptionUtils.decrypt(this.apiConfigs.getSecret()));
 				this.apiConfigs.setToken(EncryptionUtils.decrypt(this.apiConfigs.getToken()));

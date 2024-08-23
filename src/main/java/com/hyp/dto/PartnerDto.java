@@ -3,7 +3,10 @@ package com.hyp.dto;
 import java.util.List;
 import java.util.Map;
 
-import com.hyp.enums.ContentType;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.entity.Restaurant;
 import com.hyp.enums.PartnerType;
 import com.hyp.model.ApiConfig;
 
@@ -16,20 +19,36 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PartnerDto extends BaseDto {
+@JsonInclude(Include.NON_NULL)
+public class PartnerDto {
 
+	private String id;
 	@NotBlank(message = "Name is required")
 	private String name;
-
-	@NotBlank(message = "Partner Id is required")
-	private String partnerId;
 
 	@NotNull(message = "Type is required")
 	private PartnerType type;
 
 	private boolean isIntegrated;
+	
+	@NotNull(message = "Domain is required")
+	private String domain;
 
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private Map<String, String> configs;
-
+	
+	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private ApiConfig apiConfigs;
+
+	private List<String> restaurants;
+
+	private String createdAt;
+	private String updatedAt;
+	private List<Restaurant> restaurantDetails;
+	
+	@NotNull(message = "LogoUrl is required")
+	private String logoUrl;
+	
+	@NotNull(message = "WebUrl is required")
+	private String webUrl;
 }

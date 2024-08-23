@@ -20,8 +20,6 @@ import lombok.ToString;
 public class Category extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-//	@Field("category_id")
-//	private String categoryId;
 
 	@Field("parent_category_id")
 	private String parentCategoryId;

@@ -30,6 +30,7 @@ public interface Constants {
 			"restaurantId");
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
 	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
+	List<String> PARTNER_API_PARAMS = Arrays.asList("id","name", "domain", "active", "type");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";

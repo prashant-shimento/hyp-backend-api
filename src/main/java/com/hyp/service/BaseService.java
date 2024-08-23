@@ -30,4 +30,6 @@ public interface BaseService<T, ID> {
     
     public List<T> findByQueryWithReferences(Class<T> entityClass, Query query);
 
+	T findByIdWithReference(ID id, Class<T> entityClass);
+
 }

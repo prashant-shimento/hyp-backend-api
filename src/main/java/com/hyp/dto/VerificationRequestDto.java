@@ -6,4 +6,5 @@ import lombok.Data;
 public class VerificationRequestDto {
 	private String mobile;
 	private int otp;
+	private String restaurantId;
 }
