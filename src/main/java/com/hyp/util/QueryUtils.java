@@ -25,6 +25,7 @@ public class QueryUtils {
 		ALLOWED_API_PARAMS.put("Variation", Constants.VARIATIONS_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Category", Constants.CATEGORIES_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Partner", Constants.PARTNER_API_PARAMS);
+
 	}
 
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
@@ -60,49 +61,55 @@ public class QueryUtils {
 			query.limit(limit != null ? limit : 10);
 			query.skip(offset != null ? offset * limit : 0);
 
-			String[] parts = key.split("_");
-			String fieldName = parts[0];
-			String operator = parts[1];
+			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
 
-			Object parsedValue = parseValue(fieldName, value, operator);
-			if (parsedValue == null) {
-				return query;
+				String[] parts = key.split("_");
+
+				String fieldName = parts[0];
+				String operator = parts[1];
+
+				Object parsedValue = parseValue(fieldName, value, operator);
+				if (parsedValue == null) {
+					return query;
+				}
+
+				switch (operator) {
+				case "eq":
+					query.addCriteria(Criteria.where(fieldName).is(parsedValue));
+					break;
+				case "in":
+					query.addCriteria(Criteria.where(fieldName).in((Object[]) parsedValue));
+					break;
+				case "nin":
+					query.addCriteria(Criteria.where(fieldName).nin((Object[]) parsedValue));
+					break;
+				case "neq":
+					query.addCriteria(Criteria.where(fieldName).ne(parsedValue));
+					break;
+				case "gt":
+					query.addCriteria(Criteria.where(fieldName).gt(parsedValue));
+					break;
+				case "lt":
+					query.addCriteria(Criteria.where(fieldName).lt(parsedValue));
+					break;
+				case "gte":
+					query.addCriteria(Criteria.where(fieldName).gte(parsedValue));
+					break;
+				case "lte":
+					query.addCriteria(Criteria.where(fieldName).lte(parsedValue));
+					break;
+				case "like":
+					query.addCriteria(Criteria.where(fieldName).regex(".*" + parsedValue + ".*"));
+					break;
+				case "nlike":
+					query.addCriteria(Criteria.where(fieldName).not().regex(".*" + parsedValue + ".*"));
+					break;
+				default:
+					return query;
+				}
+
 			}
 
-			switch (operator) {
-			case "eq":
-				query.addCriteria(Criteria.where(fieldName).is(parsedValue));
-				break;
-			case "in":
-				query.addCriteria(Criteria.where(fieldName).in((Object[]) parsedValue));
-				break;
-			case "nin":
-				query.addCriteria(Criteria.where(fieldName).nin((Object[]) parsedValue));
-				break;
-			case "neq":
-				query.addCriteria(Criteria.where(fieldName).ne(parsedValue));
-				break;
-			case "gt":
-				query.addCriteria(Criteria.where(fieldName).gt(parsedValue));
-				break;
-			case "lt":
-				query.addCriteria(Criteria.where(fieldName).lt(parsedValue));
-				break;
-			case "gte":
-				query.addCriteria(Criteria.where(fieldName).gte(parsedValue));
-				break;
-			case "lte":
-				query.addCriteria(Criteria.where(fieldName).lte(parsedValue));
-				break;
-			case "like":
-				query.addCriteria(Criteria.where(fieldName).regex(".*" + parsedValue + ".*"));
-				break;
-			case "nlike":
-				query.addCriteria(Criteria.where(fieldName).not().regex(".*" + parsedValue + ".*"));
-				break;
-			default:
-				return query;
-			}
 		}
 		return query;
 
