@@ -1,19 +1,27 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.hyp.constants.Constants;
 import com.hyp.entity.Feedback;
 import com.hyp.entity.Partner;
 import com.hyp.request.FacebookMessageRequest;
+import com.hyp.request.FacebookMessageRequest.Component;
+import com.hyp.request.FacebookMessageRequest.Language;
+import com.hyp.request.FacebookMessageRequest.Parameter;
 import com.hyp.enums.PartnerType;
+import com.hyp.exception.NotificationException;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -30,6 +38,9 @@ public class NotificationService {
 
 	@Autowired
 	private WebClient.Builder webClientBuilder;
+	
+	@Autowired
+	private MetaService metaService;
 
 	@Scheduled(cron = "0 0 12,18,23 * * ?")
 	public void sendFeedbackMessageAndUpdateFlag() {
@@ -88,6 +99,59 @@ public class NotificationService {
 		return baseUrl + endpoint;
 	}
 	
+	@Async
+	public void sendOrderNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
+		try {
+			List<Parameter> params = new ArrayList<>();
+			for (String param : parameters) {
+				params.add(Parameter.builder().type("text").text(param).build());
+			}
+			Component bodyComponent = Component.builder().type("body").parameters(params).build();
+
+			List<Component> components = new ArrayList<>();
+			components.add(bodyComponent);
+			if (buttonParam != null) {
+				Component buttonComponent = Component.builder().type("button").subType("url").index("0")
+						.parameters(Arrays.asList(Parameter.builder().type("text").text(buttonParam).build())).build();
+				components.add(buttonComponent);
+			}
+
+			FacebookMessageRequest messageRequest = FacebookMessageRequest.builder()
+					.messagingProduct(Constants.META_WHATSAPP).to(mobile).type(Constants.TEMPLATE)
+					.template(FacebookMessageRequest.Template.builder().name(templateName)
+							.language(Language.builder().code("en").build()).components(components).build())
+					.build();
+
+			metaService.sendMessage(messageRequest);
+		} catch (NotificationException e) {
+			log.error("Error occured in sendOrderNotification " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
 	
+	@Async
+	public void sendOrderNotification(String mobile, String templateName, List<String> parameters) {
+		try {
+			List<Parameter> params = new ArrayList<>();
+			for (String param : parameters) {
+				params.add(Parameter.builder().type("text").text(param).build());
+			}
+			Component bodyComponent = Component.builder().type("body").parameters(params).build();
+
+			List<Component> components = new ArrayList<>();
+			components.add(bodyComponent);
+
+			FacebookMessageRequest messageRequest = FacebookMessageRequest.builder()
+					.messagingProduct(Constants.META_WHATSAPP).to(mobile).type(Constants.TEMPLATE)
+					.template(FacebookMessageRequest.Template.builder().name(templateName)
+							.language(Language.builder().code("en").build()).components(components).build())
+					.build();
+
+			metaService.sendMessage(messageRequest);
+		} catch (NotificationException e) {
+			log.error("Error occured in sendOrderNotification " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
 	
 }

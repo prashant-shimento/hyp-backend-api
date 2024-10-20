@@ -296,8 +296,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				delivery.setFulfillment(deliveryFulfill);
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
-				if (deliveryOrderData.getFulfillment().getTrackCode() != null
-						&& order.getDeliveryTrackingLink() == null) {
+				if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
 					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
 					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
 					orderService.save(order);

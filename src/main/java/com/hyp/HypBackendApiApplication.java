@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.servers.Server;
 @SpringBootApplication
 @EnableMongoAuditing
 @EnableScheduling
+@EnableAsync
 @EnableAspectJAutoProxy
 @OpenAPIDefinition(info = @Info(title = "Hyperapps Backend API", version = "1.0", description = "An APIs for Hyperapps Backend"),
 servers = {

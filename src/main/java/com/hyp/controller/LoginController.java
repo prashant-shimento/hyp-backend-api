@@ -34,7 +34,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RequestMapping("/login")
 public class LoginController {
 
-	@Value("${internal.users.numbers}")
+	@Value("${internal.users}")
 	private String internalUserNumbers;
 
 	@Autowired

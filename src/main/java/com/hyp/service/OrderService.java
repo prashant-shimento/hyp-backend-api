@@ -3,12 +3,12 @@ package com.hyp.service;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -26,15 +26,10 @@ import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
-import com.hyp.exception.NotificationException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.DeliveryOrderRequest;
-import com.hyp.request.FacebookMessageRequest;
-import com.hyp.request.FacebookMessageRequest.Component;
-import com.hyp.request.FacebookMessageRequest.Language;
-import com.hyp.request.FacebookMessageRequest.Parameter;
 import com.hyp.request.MailNotificationRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderRequest;
@@ -44,10 +39,7 @@ import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
 
-import lombok.extern.slf4j.Slf4j;
-
 @Service
-@Slf4j
 public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
 	OrderRepository orderRepository;
@@ -108,9 +100,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	PartnerService partnerService;
-	
+
 	@Autowired
 	MailService mailService;
+
+	@Autowired
+	NotificationService notificationService;
+
+	@Value("${whatsapp.alert.mobile}")
+	String alertMobileNum;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -179,7 +177,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
-		return this.save(order);
+		order = this.save(order);
+		Customer customer = customerService.findById(order.getCustomerId());
+		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
+				order.getStatus(), restaurant.getRestaurantName());
+		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
+		for (String mobile : mobileNumbers) {
+			notificationService.sendOrderNotification(mobile, Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+		}
+		return order;
 	}
 
 	public Order processCallback(PosCallbackRequest posCallbackRequest) throws Exception {
@@ -199,10 +205,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (newOrderStatus == OrderStatusType.ACCEPTED) {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-				this.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
-						Arrays.asList(customer.getName(), restaurant.getRestaurantName(), restaurant.getCity(),
-								order.getId(), restaurant.getContact(), restaurant.getSupportContact()),
-						null);
+				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(), restaurant.getContact(),
+						restaurant.getSupportContact());
+				notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
+						parameters);
 				order = this.update(order);
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -225,21 +232,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		} catch (DeliveryException e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			MailNotificationRequest notificationRequest = new MailNotificationRequest(
-				    "Delivery Error Notification",
-				    String.format(
-				        "An exception occurred while creating an order in the Delivery Service.\n" +
-				        "Order ID: %s\n" +
-				        "Error Details: %s\n" +
-				        "Time of Error (IST): %s",
-				        posCallbackRequest.getOrderId(),
-				        e.getMessage(),
-				        LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
-				            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
-				    )
-				);
+			MailNotificationRequest notificationRequest = new MailNotificationRequest("Delivery Error Notification",
+					String.format(
+							"An exception occurred while creating an order in the Delivery Service.\n"
+									+ "Order ID: %s\n" + "Error Details: %s\n" + "Time of Error (IST): %s",
+							posCallbackRequest.getOrderId(), e.getMessage(),
+							LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
+									.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))));
 
-				mailService.sendNotificationEmail(notificationRequest);
+			mailService.sendNotificationEmail(notificationRequest);
 
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
@@ -285,6 +286,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	}
 
 	public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
+		List<String> templateParameters = null;
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
 		this.save(order);
@@ -294,47 +296,20 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Delivery delivery = deliveryService.findByOrderId(order.getId());
 		switch (orderStatus) {
 		case PICKED_UP:
-			this.sendNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
-					Arrays.asList(customer.getName(), order.getId(), delivery.getFulfillment().getRider().getName(),
-							delivery.getFulfillment().getRider().getMobile(), restaurant.getContact(),
-							restaurant.getSupportContact()),
-					delivery.getFulfillment().getTrackCode());
+			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
+					restaurant.getContact(), restaurant.getSupportContact());
+			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
+					templateParameters, delivery.getFulfillment().getTrackCode());
 			break;
 		case DELIVERED:
-			this.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE, Arrays.asList(
-					customer.getName(), order.getId(), restaurant.getContact(), restaurant.getSupportContact()), null);
+			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
+					restaurant.getSupportContact());
+			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
+					templateParameters);
 			break;
 		default:
 			break;
-		}
-	}
-
-	public void sendNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
-		try {
-			List<Parameter> params = new ArrayList<>();
-			for (String param : parameters) {
-				params.add(Parameter.builder().type("text").text(param).build());
-			}
-			Component bodyComponent = Component.builder().type("body").parameters(params).build();
-
-			List<Component> components = new ArrayList<>();
-			components.add(bodyComponent);
-			if (buttonParam != null) {
-				Component buttonComponent = Component.builder().type("button").subType("url").index("0")
-						.parameters(Arrays.asList(Parameter.builder().type("text").text(buttonParam).build())).build();
-				components.add(buttonComponent);
-			}
-
-			FacebookMessageRequest messageRequest = FacebookMessageRequest.builder()
-					.messagingProduct(Constants.META_WHATSAPP).to(mobile).type(Constants.TEMPLATE)
-					.template(FacebookMessageRequest.Template.builder().name(templateName)
-							.language(Language.builder().code("en").build()).components(components).build())
-					.build();
-
-			metaService.sendMessage(messageRequest);
-		} catch (NotificationException e) {
-			log.error("Error occured in sendNotification " + e.getMessage());
-			e.printStackTrace();
 		}
 	}
 

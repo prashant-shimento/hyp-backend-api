@@ -5,10 +5,13 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
@@ -93,4 +96,10 @@ public class CommonUtils {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
 		return LocalDateTime.parse(dateString, formatter);
 	}
+	
+	public static List<String> buildStringList(Object... values) {
+        return Arrays.stream(values)
+                .map(String::valueOf)
+                .collect(Collectors.toList());
+    }
 }

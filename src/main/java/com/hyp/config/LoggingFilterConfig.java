@@ -13,6 +13,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.swagger.v3.oas.models.PathItem.HttpMethod;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,27 +33,28 @@ public class LoggingFilterConfig extends OncePerRequestFilter {
 		long startTime = System.currentTimeMillis();
 		filterChain.doFilter(requestWrapper, responseWrapper);
 		long timeTaken = System.currentTimeMillis() - startTime;
+		String wsEndpoint = "/api/v2/ws";
+		if ((HttpMethod.POST.name().equalsIgnoreCase(request.getMethod())
+				|| HttpMethod.PATCH.name().equalsIgnoreCase(request.getMethod()))
+				&& !request.getRequestURI().contains(wsEndpoint)) {
+			
+			String requestBody = getRequestPayload(requestWrapper);
+			String responseBody = getResponsePayload(responseWrapper);
 
-		String requestBody = getRequestPayload(requestWrapper);
-		String responseBody = getResponsePayload(responseWrapper);
+			ObjectMapper objectMapper = new ObjectMapper();
+			JsonNode responseJsonNode = objectMapper.readTree(responseBody);
 
-		log.info("requestBody Processed: {}", requestBody);
+			Map<String, Object> logData = new HashMap<>();
+			logData.put("method", request.getMethod());
+			logData.put("uri", request.getRequestURI());
+			logData.put("requestPayload", requestBody);
+			logData.put("responseStatus", response.getStatus());
+			logData.put("responsePayload", responseJsonNode);
+			logData.put("timeTaken", timeTaken);
+			String logJson = objectMapper.writeValueAsString(logData);
 
-		log.info("Response Processed: {}", responseBody);
-		//Commented Temporarily
-//		ObjectMapper objectMapper = new ObjectMapper();
-//		JsonNode responseJsonNode = objectMapper.readTree(responseBody);
-//
-//		Map<String, Object> logData = new HashMap<>();
-//		logData.put("method", request.getMethod());
-//		logData.put("uri", request.getRequestURI());
-//		logData.put("requestPayload", requestBody);
-//		logData.put("responseStatus", response.getStatus());
-//		logData.put("responsePayload", responseJsonNode);
-//		logData.put("timeTaken", timeTaken);
-//		String logJson = objectMapper.writeValueAsString(logData);
-
-//		log.info("Request and Response Processed: {}", logJson);
+			log.info("Request and Response Processed: {}", logJson);
+		}
 
 		responseWrapper.copyBodyToResponse();
 	}
