@@ -48,7 +48,11 @@ public abstract class BaseListController<DTO, T, ID> {
 			return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
 		}
 		log.info("getAll Query " + query.toString());
+		long startTime = System.currentTimeMillis();
 		List<T> entities = service.findByQueryWithReferences(entity, query);
+		long endTime = System.currentTimeMillis();  // End time
+	    long executionTime = endTime - startTime;  // Execution time in milliseconds
+	    log.info("Query Execution Time for getAll: " + executionTime + " ms");
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);

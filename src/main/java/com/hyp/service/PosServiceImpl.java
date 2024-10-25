@@ -46,6 +46,9 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	ApiLogService apiRequestResponseLogService;
+	
+	@Autowired
+	ObjectMapper objectMapper;
 
 	private final RestaurantService restaurantService;
 	private final TaxService taxService;
@@ -113,49 +116,42 @@ public class PosServiceImpl implements PosService {
 			List<Item> items = itemService.saveAll(posData.getItems(), restaurant.getId());
 			uploadImagesAsync(items, restaurant.getId());
 		} catch (Exception e) {
-			log.error("Error occured during saveEntities for restaurnat {}, {}", restaurant.getId(), e);
+			log.error("Error occured during saveEntities for restaurant {}, {}", restaurant.getId(), e);
 		}
 	}
 
 	@Override
 	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
 		try {
-			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderRequest));
+			log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/save_order";
 
 			String response = webClient.post().uri(endpoint).body(BodyInserters.fromValue(posOrderRequest)).retrieve()
 					.bodyToMono(String.class).block();
-
+			log.info("createPosOrder Response {}", objectMapper.writeValueAsString(response));
 			if (response != null && !response.isEmpty()) {
-				System.out.println("Response: " + response);
-				return true; // Successful order creation
-			} else {
-				System.err.println("Error: Empty response received");
-				return false; // Failed order creation
+				return true;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error occured during createPosOrder {}", e);
 			throw new PosException("POS Order Creation failed " + e.getMessage());
 		}
+		return false;
 	}
 
 	@Override
 	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
 		try {
-			System.out.println("Request " + new ObjectMapper().writeValueAsString(posOrderUpdateRequest));
+			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/update_order_status";
 			Mono<String> updateOrderResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(posOrderUpdateRequest)).retrieve().bodyToMono(String.class);
-			updateOrderResponse.subscribe(response -> {
-				System.out.println("Response: " + response);
-			}, error -> {
-				System.err.println("Error response: " + error.getMessage());
-			});
-			return updateOrderResponse.toString();
+			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(updateOrderResponse));
+			return updateOrderResponse.block();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error occured during updatePosOrder {}", e);
 			throw new PosException("POS Order Update failed " + e.getMessage());
 		}
 	}
@@ -163,17 +159,13 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {
-			System.out.println("Request " + new ObjectMapper().writeValueAsString(posRiderUpdateRequest));
+			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/rider_status_update";
 			Mono<String> riderUpdateResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(posRiderUpdateRequest)).retrieve().bodyToMono(String.class);
-			riderUpdateResponse.subscribe(response -> {
-				System.out.println("Response: " + response);
-			}, error -> {
-				System.err.println("Error response: " + error.getMessage());
-			});
-			return riderUpdateResponse.toString();
+			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
+			return riderUpdateResponse.block();
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -277,24 +269,28 @@ public class PosServiceImpl implements PosService {
 		List<CompletableFuture<Void>> uploadFutures = new ArrayList<>();
 
 		items.forEach(item -> {
-			CompletableFuture<Void> uploadFuture = CompletableFuture.runAsync(() -> {
-				try {
-					String uploadedImageUrl = bucketService.uploadFile(
-							FileUploadRequest.builder().fileName(String.join("-", item.getId(), item.getItemName()))
-									.folderName(restaurantId).fileUrl(item.getItemImageUrl()).build());
+			if (item.getItemImageUrl() != null && !item.getItemImageUrl().isEmpty()) {
+				CompletableFuture<Void> uploadFuture = CompletableFuture.runAsync(() -> {
+					try {
+						String uploadedImageUrl = bucketService.uploadFile(
+								FileUploadRequest.builder().fileName(String.join("-", item.getId(), item.getItemName()))
+										.folderName(restaurantId).fileUrl(item.getItemImageUrl()).build());
 
-					if (uploadedImageUrl != null) {
-						item.setItemImageUrl(uploadedImageUrl);
-						log.info("Uploaded image URL for item {}: {}", item.getId(), uploadedImageUrl);
-					} else {
-						log.warn("Image upload failed for item: {}", item.getId());
+						if (uploadedImageUrl != null) {
+							item.setItemImageUrl(uploadedImageUrl);
+							log.info("Uploaded image URL for item {}: {}", item.getId(), uploadedImageUrl);
+						} else {
+							log.warn("Image upload failed for item: {}", item.getId());
+						}
+					} catch (Exception e) {
+						log.error("Error during image upload for item {}: {}", item.getId(), e.getMessage());
 					}
-				} catch (Exception e) {
-					log.error("Error during image upload for item {}: {}", item.getId(), e.getMessage());
-				}
-			});
+				});
+				uploadFutures.add(uploadFuture);
+			} else {
+				log.info("Skipping upload for item {} as itemImageUrl is empty or null", item.getId());
+			}
 
-			uploadFutures.add(uploadFuture);
 		});
 
 		CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0])).thenRun(() -> {

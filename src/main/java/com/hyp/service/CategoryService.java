@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import com.hyp.entity.Category;
 import com.hyp.repository.CategoryRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class CategoryService extends BaseServiceImpl<Category, String> {
 
@@ -33,15 +36,19 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 
 	public List<Category> getAllCategoryItems(String restaurantId) {
 		Criteria criteria = Criteria.where("restaurant_id").is(restaurantId);
+		long startTime = System.currentTimeMillis();
 		Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
 				getCategoryItemsLookupOperation());
-		return mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
+		List<Category> category = mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
+		long endTime = System.currentTimeMillis(); 
+		long executionTime = endTime - startTime;
+		log.info("Query Execution Time for getAllCategoryItems: " + executionTime + " ms");
+		return category;
 	}
-	
+
 	private LookupOperation getCategoryItemsLookupOperation() {
-		AggregationPipeline taxLookUpPipeline = Aggregation
-				.newAggregation(
-						LookupOperation.newLookup().from("taxes").localField("item_tax").foreignField("_id").as("taxes"))
+		AggregationPipeline taxLookUpPipeline = Aggregation.newAggregation(
+				LookupOperation.newLookup().from("taxes").localField("item_tax").foreignField("_id").as("taxes"))
 				.getPipeline();
 
 		return LookupOperation.newLookup().from("items").localField("_id").foreignField("item_category_id")

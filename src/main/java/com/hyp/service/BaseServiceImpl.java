@@ -89,20 +89,6 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 			Item item = (Item) entity;
 			item.setTaxes(lookupByIds(Tax.class, item.getItemTax(), "taxes"));
 		}
-		if (entity instanceof Order) {
-			Order order = (Order) entity;
-			for (Order.OrderItem orderItem : order.getOrderItems()) {
-				if(orderItem.getItemAttribute() == null) {
-					Item item = lookupById(Item.class, orderItem.getId(), "items");
-					if (item != null) {
-						if (item.getItemAttributeId() != null) {
-							Attribute attribute = lookupById(Attribute.class, item.getItemAttributeId(), "attributes");
-							orderItem.setItemAttribute(attribute);
-						}
-					}
-				}
-			}
-		}
 		if (entity instanceof Partner) {
 			Partner partner = (Partner) entity;
 			partner.setRestaurantDetails(lookupByIds(Restaurant.class, partner.getRestaurants(), "restaurants"));

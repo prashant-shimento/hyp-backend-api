@@ -58,9 +58,6 @@ public class QueryUtils {
 				offset = Integer.parseInt(value);
 			}
 
-			query.limit(limit != null ? limit : 10);
-			query.skip(offset != null ? offset * limit : 0);
-
 			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
 
 				String[] parts = key.split("_");
@@ -111,6 +108,9 @@ public class QueryUtils {
 			}
 
 		}
+		query.limit(limit != null ? limit : 10);
+		query.skip(offset != null ? offset * limit : 0);
+
 		return query;
 
 	}

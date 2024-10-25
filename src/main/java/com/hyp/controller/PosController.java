@@ -34,28 +34,26 @@ public class PosController {
 
 	@Autowired
 	OrderService orderService;
-	
+
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
 
 	@PostMapping("/menu")
 	public ResponseEntity<PosResponse> saveMenuData(@RequestBody PosDataRequest posDataRequest) {
 		boolean result = posDataService.savePosData(posDataRequest);
-		PosResponse response = new PosResponse.Builder()
-				.httpCode(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
-				.message(result ? "Menu Updated Successfully" : "Something Went Wrong")
-				.status(result ? "success" : "failed").build();
-		return ResponseEntity.ok(response);
+		return ResponseEntity.ok(PosResponse.builder().success(result ? "1" : "0")
+				.message(result ? "Menu items are successfully listed." : "Something Went Wrong").build());
 	}
 
 	@PostMapping("/status/get")
 	public ResponseEntity<PosResponse> getStatus(@RequestBody PosStatusRequest getStatus) {
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(getStatus.getRestaurantId());
-		PosResponse response = new PosResponse.Builder()
+		PosResponse response = PosResponse.builder()
 				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
-				.message(restaurant != null ? "Store Delivery Status fetched successfully" : "Restaurant Not Found")
 				.status(restaurant != null ? "success" : "failed")
-				.storeStatus(restaurant != null && restaurant.isActive() ? "1" : "0").build();
+				.storeStatus(restaurant != null && restaurant.isActive() ? "1" : "0")
+				.message(restaurant != null ? "Store Delivery Status fetched successfully" : "Restaurant Not Found")
+				.build();
 		return ResponseEntity.ok(response);
 	}
 
@@ -64,14 +62,13 @@ public class PosController {
 		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
 		if (restaurant == null) {
-			response = new PosResponse.Builder().httpCode(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
+			response = PosResponse.builder().httpCode(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
 		boolean result = posDataService.updateRestaurant(updateStatus);
 		messageTemplate.convertAndSend("/topic/restaurant-status", updateStatus);
-		response = new PosResponse.Builder()
-				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
+		response = PosResponse.builder().code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Restaurant Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
 		return ResponseEntity.ok(response);
@@ -82,14 +79,13 @@ public class PosController {
 		PosResponse response = null;
 		Restaurant restaurant = restaurantService.findByMenuSharingCode(stockRequest.getRestaurantId());
 		if (restaurant == null) {
-			response = new PosResponse.Builder().code(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
+			response = PosResponse.builder().code(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
 		boolean result = posDataService.updateStock(stockRequest);
 		messageTemplate.convertAndSend("/topic/item-status", stockRequest);
-		response = new PosResponse.Builder()
-				.code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
+		response = PosResponse.builder().code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
 				.message(result ? "Stock Updated Successfully" : "Something Went Wrong")
 				.status(result ? "success" : "failed").build();
 		return ResponseEntity.ok(response);
@@ -100,13 +96,13 @@ public class PosController {
 		PosResponse response = null;
 		try {
 			orderService.processOrderCallback(posCallbackRequest);
-			response = new PosResponse.Builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
-					.error(null).build();
+			response = PosResponse.builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
+					.build();
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
-			response = new PosResponse.Builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
-					.message("Error Occured").error(e.getMessage()).build();
+			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occured")
+					.error(e.getMessage()).build();
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		}
 	}
