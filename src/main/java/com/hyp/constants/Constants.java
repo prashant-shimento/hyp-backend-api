@@ -1,7 +1,9 @@
 package com.hyp.constants;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public interface Constants {
 
@@ -31,7 +33,7 @@ public interface Constants {
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
 	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
 	List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
-	List<String> RESTAURANT_API_PARAMS = Arrays.asList("restaurantName","menuSharingCode","contact");
+	List<String> RESTAURANT_API_PARAMS = Arrays.asList("restaurantName", "menuSharingCode", "contact");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";
@@ -39,6 +41,17 @@ public interface Constants {
 
 	public enum ApiStatus {
 		SUCCESSFUL, FAILURE
+	}
+
+	List<String> FILE_EXTENSIONS = Arrays.asList(".jpg", ".png", ".jpeg");
+
+	static Map<String, String> getContentTypes() {
+		Map<String, String> contentTypes = new HashMap<>();
+		contentTypes.put(".jpg", "image/jpeg");
+		contentTypes.put(".jpeg", "image/jpeg");
+		contentTypes.put(".png", "image/png");
+		contentTypes.put(".gif", "image/gif");
+		return contentTypes;
 	}
 
 	String META_WHATSAPP = "whatsapp";

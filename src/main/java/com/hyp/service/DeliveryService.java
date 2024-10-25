@@ -1,8 +1,6 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +37,7 @@ import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.MailNotificationRequest;
 import com.hyp.translation.DeliveryRequestTranslation;
+import com.hyp.util.CommonUtils;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -88,6 +87,18 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
 	}
 
+	public void createOrder(DeliveryOrderRequest deliveryOrderRequest,Order order) throws DeliveryException {
+		String deliveryOrderId = createDeliveryOrder(deliveryOrderRequest);
+		Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+		delivery.setId(CommonUtils.genId());
+		delivery.setDeliveryOrderId(deliveryOrderId);
+		delivery.setStatus(DeliveryOrderStatusType.PENDING);
+		delivery.setService(order.getDeliveryDetails().getService());
+		delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
+		delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
+		save(delivery);
+	}
+
 	@Retryable(retryFor = { Exception.class })
 	public String createDeliveryOrder(DeliveryOrderRequest deliveryOrderRequest) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order";
@@ -131,14 +142,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			String endpoint = "/v1.0/store/channel/vendor/quote";
 			Mono<DeliveryQuote> quoteResponseMono = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class);
-			quoteResponseMono.subscribe(response -> {
-			}, error -> {
-				log.error("Error response: " + error.getMessage());
-			});
 			log.info("getDeliveryQuote Response {}", objectMapper.writeValueAsString(quoteResponseMono.block()));
 			return quoteResponseMono.block();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in getDeliveryQuote: {}", e);
 			throw new DeliveryException("Error in getDeliveryQuote: " + e.getMessage());
 		}
 	}
@@ -153,17 +160,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("getServiceability endPoint {}", endpoint);
 			Mono<DeliveryQuote> quoteResponseMono = webClient.get().uri(endpoint).retrieve()
 					.bodyToMono(DeliveryQuote.class);
-			quoteResponseMono.subscribe(response -> {
-				log.info("Response: " + response);
-
-			}, error -> {
-				log.error("Error response: " + error.getMessage());
-			});
 			log.info("getServiceability Response {}", objectMapper.writeValueAsString(quoteResponseMono));
 			return quoteResponseMono.block();
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new DeliveryException("Error in getDeliveryQuote: " + e.getMessage());
+			log.error("Error in getServiceability: {}", e);
+			throw new DeliveryException("Error in getServiceability: " + e.getMessage());
 		}
 	}
 
@@ -181,15 +182,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 						return Mono.just(statusCode);
 					});
 			log.info("initiateOrderFulfill Response {}", objectMapper.writeValueAsString(responses));
-			responses.subscribe();
 		} catch (Exception e) {
-			e.printStackTrace();
-			String errorMessage = "Error in initiateOrderFulfill: " + e.getMessage();
-			throw new DeliveryException(errorMessage);
+			log.error("Error in initiateOrderFulfill: {}", e);
+			throw new DeliveryException("Error in initiateOrderFulfill: " + e.getMessage());
 		}
 	}
 
-	public DeliveryRiderLocation getRiderCurrentLocation(String deliveryOrderId) {
+	public DeliveryRiderLocation getRiderCurrentLocation(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/" + deliveryOrderId + "/fulfillment/tracking";
 		try {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
@@ -197,18 +196,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("getRiderCurrentLocation endPoint {}", endpoint);
 			Mono<DeliveryRiderLocation> deliveryLocationResponseMono = webClient.get().uri(endpoint).retrieve()
 					.bodyToMono(DeliveryRiderLocation.class);
-			deliveryLocationResponseMono.subscribe(response -> {
-				log.info("Response: " + response);
-
-			}, error -> {
-				log.error("Error response: " + error.getMessage());
-			});
 			log.info("getRiderCurrentLocation Response {}",
 					objectMapper.writeValueAsString(deliveryLocationResponseMono));
 			return deliveryLocationResponseMono.block();
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Error in getDeliveryQuote: " + e.getMessage(), e);
+			log.error("Error in getRiderCurrentLocation: {}", e);
+			throw new DeliveryException("Error in getRiderCurrentLocation: " + e.getMessage());
 		}
 	}
 
@@ -223,9 +216,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				return Mono.just(statusCode);
 			});
 			log.info("cancelDeliveryOrder Response {}", objectMapper.writeValueAsString(responses));
-			responses.subscribe();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in cancelDeliveryOrder: {}", e);
 			throw new DeliveryException("Error in cancelDeliveryOrder: " + e.getMessage());
 		}
 	}
@@ -245,11 +237,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 						return Mono.just(statusCode);
 					});
 			log.info("initiateSmartFulfill Response {}", objectMapper.writeValueAsString(responses));
-			responses.subscribe();
 		} catch (Exception e) {
-			e.printStackTrace();
-			String errorMessage = "Error in initiateSmartFulfill: " + e.getMessage();
-			throw new DeliveryException(errorMessage);
+			log.error("Error in initiateSmartFulfill: {}", e);
+			throw new DeliveryException("Error in initiateSmartFulfill: " + e.getMessage());
 		}
 	}
 
@@ -263,17 +253,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("getDeliveryStatus endPoint {}", endpoint);
 			Mono<DeliveryOrderStatusResponse> deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
 					.bodyToMono(DeliveryOrderStatusResponse.class);
-			deliveryOrderStatusResponse.subscribe(response -> {
-				log.info("Response: " + response);
-
-			}, error -> {
-				log.error("Error response: " + error.getMessage());
-			});
 			log.info("getDeliveryStatus Response {}", objectMapper.writeValueAsString(deliveryOrderStatusResponse));
 			return deliveryOrderStatusResponse.block();
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new DeliveryException("Error in getDeliveryStatus: " + e.getMessage());
+			log.error("Error in getDeliveryOrderStatus: {}", e);
+			throw new DeliveryException("Error in getDeliveryOrderStatus: " + e.getMessage());
 		}
 	}
 
@@ -307,20 +291,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			}
 			this.save(delivery);
 		} catch (Exception e) {
-			// alert mechanism.
 			MailNotificationRequest notificationRequest = new MailNotificationRequest("Delivery Error Notification",
-					String.format(
-							"An exception occurred while creating an order in the Delivery Service.\n"
-									+ "Order ID: %s\n" + "Error Details: %s\n" + "Time of Error (IST): %s",
-							delivery.getOrderId(), e.getMessage(), LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
-									.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))));
+					String.format("Error on Process Delivery Callback.\n" + "Order ID: %s\n" + "Error Details: %s",
+							delivery.getOrderId(), e.getMessage()));
 
 			mailService.sendNotificationEmail(notificationRequest);
-
-			e.printStackTrace();
-
+			log.error("Error in processDeliveryCallback: {}", e);
 			throw new DeliveryException("Error occurred in processDeliveryCallback: " + e.getMessage());
-
 		}
 	}
 
@@ -356,7 +333,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			DeliveryQuote deliveryQuote = this.getServiceability(delivery.getDeliveryOrderId());
 			List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems().stream()
-					.filter(items -> items.isPickupNow()).collect(Collectors.toList());
+					.filter(items -> items.isPickupNow())
+					.filter(items -> !items.getService().equalsIgnoreCase("loadshare")).collect(Collectors.toList());
 
 			Optional<DeliveryNetworks> matchingNetworkOpt = deliveryNetworks.stream()
 					.filter(network -> network.getNetworkId() == delivery.getNetworkId()).findFirst();
@@ -411,9 +389,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				return Mono.just(statusCode);
 			});
 			log.info("unAllocateOrderFulfill Response {}", objectMapper.writeValueAsString(responses));
-			responses.subscribe();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in unAllocateOrderFulfill: {}", e);
 			throw new DeliveryException("Error in unAllocateOrderFulfill: " + e.getMessage());
 		}
 	}

@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.model.FacebookMessageResponse;
 import com.hyp.request.FacebookMessageRequest;
+import com.hyp.request.FileUploadRequest;
 import com.hyp.request.MailNotificationRequest;
 import com.hyp.response.Response;
+import com.hyp.service.BucketService;
 import com.hyp.service.MailService;
 import com.hyp.service.MetaService;
 
@@ -26,6 +28,10 @@ public class PlaygroundController {
 	
 	@Autowired
 	MailService mailService;
+	
+	@Autowired
+	BucketService bucketService;
+	
 	
 	@PostMapping("/meta-message")
 	public ResponseEntity<Response> metaSendMessage(@RequestBody FacebookMessageRequest facebookMessageRequest) {
@@ -47,6 +53,20 @@ public class PlaygroundController {
 		try {
 			mailService.sendNotificationEmail(mailNotificationRequest);
 			response = new Response(null, false, "Mail Sent !");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PostMapping("/file-upload")
+	public ResponseEntity<Response> fileUpload(@RequestBody FileUploadRequest fileUploadRequest) {
+		Response response;
+		try {
+			bucketService.uploadFile(fileUploadRequest);
+			response = new Response(null, false, "File Uploaded !");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

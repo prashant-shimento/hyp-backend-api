@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hyp.constants.Constants;
 import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.Address;
+import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
@@ -26,8 +27,10 @@ import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatusResponse;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
+import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
+import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.LocationService;
 import com.hyp.service.OrderService;
@@ -43,7 +46,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/delivery")
 public class DeliveryController extends BaseController<DeliveryDto, Delivery, String> {
-	
+
 	@Autowired
 	DeliveryTranslation deliveryTranslation;
 
@@ -65,6 +68,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	@Autowired
 	LocationService locationService;
 
+	@Autowired
+	CustomerService customerService;
+
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderData) {
 		Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
@@ -79,7 +85,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			return ResponseEntity.ok().build();
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			log.error("Exception occurred in updateDeliveryOrderStatus "+e.getMessage());
+			log.error("Exception occurred in updateDeliveryOrderStatus " + e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -112,14 +118,16 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
 			Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
 					.filter(item -> item.isPickupNow())
-					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice()))
-					.findFirst();
-			return filteredQuotes.isPresent() ? ResponseEntity.ok(new Response(Collections.singletonList(filteredQuotes.get()), false,
-					"Delivery Quotes Fetched")) : ResponseEntity.notFound().build();
-			
+					.filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
+					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).findFirst();
+			return filteredQuotes.isPresent()
+					? ResponseEntity.ok(new Response(Collections.singletonList(filteredQuotes.get()), false,
+							"Delivery Quotes Fetched"))
+					: ResponseEntity.notFound().build();
+
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			log.error("Exception occurred in getDeliveryQuote "+e.getMessage());
+			log.error("Exception occurred in getDeliveryQuote " + e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -141,13 +149,38 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			log.error("Exception occurred in getRiderLocation "+e.getMessage());
+			log.error("Exception occurred in getRiderLocation " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
+	@PostMapping("/create/{orderId}")
+	public ResponseEntity<Response> createDeliveryOrder(@PathVariable String orderId) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+			Customer customer = customerService.findById(order.getCustomerId());
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
+					address, customer, order);
+			deliveryService.createOrder(deliveryOrderRequest, order);
+
+			response = new Response(null, false, "Delivery Order Created");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			log.error("Exception occurred in createDeliveryOrder " + e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@PostMapping("/fulfill/{orderId}")
-	public ResponseEntity<Response> smartFulfill(@PathVariable String orderId,
+	public ResponseEntity<Response> fulfillOrder(@PathVariable String orderId,
 			@RequestParam(defaultValue = "", required = false) String fulfillType) {
 		Response response;
 		try {
@@ -172,7 +205,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			log.error("Exception occurred in smartFulfill "+e.getMessage());
+			log.error("Exception occurred in smartFulfill " + e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -191,13 +224,14 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 				response = new Response(null, true, "Delivery Id not found ");
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			DeliveryOrderStatusResponse deliverOrderStatusResponse = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
-			deliveryService.processDeliveryCallback(delivery,deliverOrderStatusResponse.getData());
+			DeliveryOrderStatusResponse deliverOrderStatusResponse = deliveryService
+					.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+			deliveryService.processDeliveryCallback(delivery, deliverOrderStatusResponse.getData());
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
-			log.error("Exception occurred in consumeDeliveryCallback "+e.getMessage());
+			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

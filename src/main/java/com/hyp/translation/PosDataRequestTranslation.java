@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.hyp.constants.Constants;
 import com.hyp.entity.AddonGroup;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Attribute;
@@ -26,6 +25,7 @@ import com.hyp.entity.Tax;
 import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
+import com.hyp.constants.Constants;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosDataRequest.AddonGroupRequest;
@@ -58,11 +58,9 @@ public class PosDataRequestTranslation {
 				.addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
 				.addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
 						posDataRequest.getItems()))
-				// Get Variations details from item
 				.variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
 						posDataRequest.getItems()))
-				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems(), posDataRequest))
-				.build();
+				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems())).build();
 		return posData;
 	}
 
@@ -237,11 +235,11 @@ public class PosDataRequestTranslation {
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
 
-	    if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
-	        restaurant.setFssai(existingRestaurant.getFssai());
-	    } else {
-	        restaurant.setFssai("");
-	    }
+		if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
+			restaurant.setFssai(existingRestaurant.getFssai());
+		} else {
+			restaurant.setFssai("");
+		}
 
 		if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
 			restaurant.setLocation(existingRestaurant.getLocation());
@@ -418,7 +416,7 @@ public class PosDataRequestTranslation {
 						.distinct().collect(Collectors.toList());
 	}
 
-	public static Item translateToItem(ItemRequest itemRequest, PosDataRequest posDataRequest) {
+	public static Item translateToItem(ItemRequest itemRequest) {
 		if (itemRequest == null) {
 			return null;
 		}
@@ -439,9 +437,7 @@ public class PosDataRequestTranslation {
 		item.setPrice(itemRequest.getPrice());
 		item.setMinimumPreparationTime(itemRequest.getMinimumpreparationtime());
 		item.setItemAddonBasedOn(itemRequest.getItemaddonbasedon());
-		String trimmedImageUrl = trimImageUrl(itemRequest.getItem_image_url());
-		item.setItemImageUrl(trimmedImageUrl);
-
+		item.setItemImageUrl(itemRequest.getItem_image_url());
 		item.setItemName(itemRequest.getItemname());
 		item.setCuisine(itemRequest.getCuisine());
 		item.setActive(itemRequest.getActive());
@@ -458,27 +454,7 @@ public class PosDataRequestTranslation {
 		item.setItemOrderType(orderTypeIds);
 
 		item.setAddon(getAddonIdList(itemRequest.getAddon()));
-
 		return item;
-	}
-
-	private static String trimImageUrl(String imageUrl) {
-		if (imageUrl == null || imageUrl.isEmpty()) {
-			return imageUrl;
-		}
-		try {
-			String[] extensions = { ".jpg", ".png", ".jpeg" };
-			for (String extension : extensions) {
-				int index = imageUrl.indexOf(extension);
-				if (index != -1) {
-					return imageUrl.substring(0, index + extension.length());
-				}
-			}
-		} catch (Exception e) {
-			log.error("Error occurred while trimming image URL: " + e.getMessage());
-			return imageUrl;
-		}
-		return imageUrl;
 	}
 
 	public static List<String> getVariationIdList(List<VariationRequest> variationRequestLst) {
@@ -491,9 +467,8 @@ public class PosDataRequestTranslation {
 				: addonGroupList.stream().map(AddonGroupRequest::getAddon_group_id).collect(Collectors.toList());
 	}
 
-	public static List<Item> translateToItemList(List<ItemRequest> itemRequestList, PosDataRequest posDataRequest) {
-		return itemRequestList.stream().map(itemRequest -> translateToItem(itemRequest, posDataRequest))
-				.collect(Collectors.toList());
+	public static List<Item> translateToItemList(List<ItemRequest> itemRequestList) {
+		return itemRequestList.stream().map(itemRequest -> translateToItem(itemRequest)).collect(Collectors.toList());
 	}
 
 }

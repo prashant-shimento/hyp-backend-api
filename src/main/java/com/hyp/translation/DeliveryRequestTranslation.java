@@ -75,8 +75,8 @@ public class DeliveryRequestTranslation {
 		orderRequest.setSenderDetail(senderDetail);
 
 		ContactDetail pocDetail = new ContactDetail();
-		pocDetail.setName("Lognath");
-		pocDetail.setMobile("9965861660");
+		pocDetail.setName("Hyperapps");
+		pocDetail.setMobile("8754556606");
 		orderRequest.setPocDetail(pocDetail);
 
 		ContactDetail receiverDetail = new ContactDetail();

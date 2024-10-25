@@ -2,6 +2,9 @@ package com.hyp.service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +23,7 @@ import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.PosException;
 import com.hyp.model.PosData;
+import com.hyp.request.FileUploadRequest;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
@@ -53,6 +57,7 @@ public class PosServiceImpl implements PosService {
 	private final AddonGroupService addonGroupService;
 	private final CategoryService categoryService;
 	private final ItemService itemService;
+	private final BucketService bucketService;
 
 	private static final DateTimeFormatter FORMATTER_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 	private static final DateTimeFormatter FORMATTER_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -63,7 +68,7 @@ public class PosServiceImpl implements PosService {
 	public PosServiceImpl(AttributeService attributeService, CategoryService categoryService, TaxService taxService,
 			OrderTypeService orderTypeService, VariationService variationService, RestaurantService restaurantService,
 			DiscountService discountService, AddonGroupService addonGroupService, AddonItemService addonItemService,
-			ItemService itemService) {
+			ItemService itemService, BucketService bucketService) {
 		this.attributeService = attributeService;
 		this.categoryService = categoryService;
 		this.taxService = taxService;
@@ -74,6 +79,7 @@ public class PosServiceImpl implements PosService {
 		this.addonGroupService = addonGroupService;
 		this.addonItemService = addonItemService;
 		this.itemService = itemService;
+		this.bucketService = bucketService;
 	}
 
 	@Override
@@ -82,9 +88,9 @@ public class PosServiceImpl implements PosService {
 		try {
 			Restaurant existingRestaurant = restaurantService
 					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
-			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
 			Restaurant restaurant = PosDataRequestTranslation
 					.translateToRestaurant(posDataRequest.getRestaurants().get(0), existingRestaurant);
+			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
 			restaurantService.save(restaurant);
 			saveEntities(restaurant, posData);
 			return true;
@@ -104,9 +110,10 @@ public class PosServiceImpl implements PosService {
 			variationService.saveAll(posData.getVariations(), restaurant.getId());
 			addonItemService.saveAll(posData.getAddonItems(), restaurant.getId());
 			addonGroupService.saveAll(posData.getAddonGroups(), restaurant.getId());
-			itemService.saveAll(posData.getItems(), restaurant.getId());
+			List<Item> items = itemService.saveAll(posData.getItems(), restaurant.getId());
+			uploadImagesAsync(items, restaurant.getId());
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error occured during saveEntities for restaurnat {}, {}", restaurant.getId(), e);
 		}
 	}
 
@@ -264,6 +271,36 @@ public class PosServiceImpl implements PosService {
 			e.printStackTrace();
 			return false;
 		}
+	}
+
+	private void uploadImagesAsync(List<Item> items, String restaurantId) {
+		List<CompletableFuture<Void>> uploadFutures = new ArrayList<>();
+
+		items.forEach(item -> {
+			CompletableFuture<Void> uploadFuture = CompletableFuture.runAsync(() -> {
+				try {
+					String uploadedImageUrl = bucketService.uploadFile(
+							FileUploadRequest.builder().fileName(String.join("-", item.getId(), item.getItemName()))
+									.folderName(restaurantId).fileUrl(item.getItemImageUrl()).build());
+
+					if (uploadedImageUrl != null) {
+						item.setItemImageUrl(uploadedImageUrl);
+						log.info("Uploaded image URL for item {}: {}", item.getId(), uploadedImageUrl);
+					} else {
+						log.warn("Image upload failed for item: {}", item.getId());
+					}
+				} catch (Exception e) {
+					log.error("Error during image upload for item {}: {}", item.getId(), e.getMessage());
+				}
+			});
+
+			uploadFutures.add(uploadFuture);
+		});
+
+		CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0])).thenRun(() -> {
+			log.info("All image uploads completed.");
+			itemService.saveAll(items);
+		});
 	}
 
 }

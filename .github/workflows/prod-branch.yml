@@ -46,6 +46,7 @@ jobs:
         APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
         NOTIFICATION_META_TOKEN: ${{ secrets.NOTIFICATION_META_TOKEN }}
         MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
+        BUCKET_KEY: ${{ secrets.BUCKET_KEY }}
 
     - name: Create .env file
       run: |
@@ -73,6 +74,7 @@ jobs:
         echo "APP_SECRET_KEY=${{ secrets.APP_SECRET_KEY }}" >> .env
         echo "NOTIFICATION_META_TOKEN=${{ secrets.NOTIFICATION_META_TOKEN }}" >> .env
         echo "MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}" >> .env
+        echo "BUCKET_KEY=${{ secrets.BUCKET_KEY }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1

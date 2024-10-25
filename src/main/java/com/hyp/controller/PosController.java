@@ -99,7 +99,7 @@ public class PosController {
 	public ResponseEntity<PosResponse> orderCallBack(@RequestBody PosCallbackRequest posCallbackRequest) {
 		PosResponse response = null;
 		try {
-			orderService.processCallback(posCallbackRequest);
+			orderService.processOrderCallback(posCallbackRequest);
 			response = new PosResponse.Builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
 					.error(null).build();
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);

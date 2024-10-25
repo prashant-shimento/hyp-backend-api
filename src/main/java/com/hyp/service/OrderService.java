@@ -188,7 +188,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		return order;
 	}
 
-	public Order processCallback(PosCallbackRequest posCallbackRequest) throws Exception {
+	public Order processOrderCallback(PosCallbackRequest posCallbackRequest) throws Exception {
 
 		try {
 			Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
@@ -260,15 +260,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (posService.createPosOrder(posOrderRequest)) {
 				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
 						.getDeliveryOrderRequest(restaurant, address, customer, order);
-				String deliveryOrderId = deliveryService.createDeliveryOrder(deliveryOrderRequest);
-				Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
-				delivery.setId(CommonUtils.genId());
-				delivery.setDeliveryOrderId(deliveryOrderId);
-				delivery.setStatus(DeliveryOrderStatusType.PENDING);
-				delivery.setService(order.getDeliveryDetails().getService());
-				delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
-				delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
-				deliveryService.save(delivery);
+				deliveryService.createOrder(deliveryOrderRequest, order);
 			}
 		} catch (RequestTranslationException e) {
 			// Need to handle Payment Refund or Retry Mechanism
