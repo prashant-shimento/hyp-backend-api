@@ -2,7 +2,7 @@ package com.hyp.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 
@@ -13,9 +13,11 @@ public class RetryConfig {
 	RetryTemplate retryTemplate() {
 		RetryTemplate retryTemplate = new RetryTemplate();
 
-		FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
-		fixedBackOffPolicy.setBackOffPeriod(3000);
-		retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
+		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
+		backOffPolicy.setInitialInterval(3000);
+		backOffPolicy.setMultiplier(2);
+		backOffPolicy.setMaxInterval(10000);
+		retryTemplate.setBackOffPolicy(backOffPolicy);
 
 		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
 		retryPolicy.setMaxAttempts(3);

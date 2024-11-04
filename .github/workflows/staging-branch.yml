@@ -47,6 +47,7 @@ jobs:
         NOTIFICATION_META_TOKEN: ${{ secrets.NOTIFICATION_META_TOKEN }}
         MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
         BUCKET_KEY: ${{ secrets.BUCKET_KEY }}
+        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
 
     - name: Create .env file
       run: |
@@ -75,6 +76,7 @@ jobs:
         echo "NOTIFICATION_META_TOKEN=${{ secrets.NOTIFICATION_META_TOKEN }}" >> .env
         echo "MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}" >> .env
         echo "BUCKET_KEY=${{ secrets.BUCKET_KEY }}" >> .env
+        echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> .env
 
 
     - name: Set up Docker Buildx

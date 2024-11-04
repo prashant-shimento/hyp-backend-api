@@ -5,6 +5,7 @@ import java.util.Comparator;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,6 +71,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
 	@Autowired
 	CustomerService customerService;
+	
+	@Autowired
+	private StringRedisTemplate redisTemplate;
 
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderData) {
@@ -228,6 +232,20 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 					.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
 			deliveryService.processDeliveryCallback(delivery, deliverOrderStatusResponse.getData());
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@GetMapping("/token/{token}")
+	public ResponseEntity<Response> updateToken(@PathVariable String token) {
+		Response response;
+		try {
+	        redisTemplate.opsForValue().set("pidgeToken", token);
+			response = new Response(null, false, "Updated Pidge Auth Token");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

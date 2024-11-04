@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.retry.support.RetryTemplate;
@@ -49,9 +50,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	@Value("${delivery.pidge.url}")
 	private String baseUrl;
 
-	@Value("${delivery.pidge.token}")
-	private String token;
-
 	@Value("${delivery.pidge.smart.id}")
 	private String smartId;
 
@@ -79,6 +77,17 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	@Autowired
 	MailService mailService;
 
+	@Autowired
+	private StringRedisTemplate redisTemplate;
+
+	private String getToken() throws Exception {
+		String token = redisTemplate.opsForValue().get("pidgeToken");
+		if (token == null) {
+			throw new DeliveryException("Token not found in Redis");
+		}
+		return token;
+	}
+
 	public Delivery findByOrderId(String orderId) {
 		return deliveryRepository.findByOrderId(orderId);
 	}
@@ -87,7 +96,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
 	}
 
-	public void createOrder(DeliveryOrderRequest deliveryOrderRequest,Order order) throws DeliveryException {
+	public void createOrder(DeliveryOrderRequest deliveryOrderRequest, Order order) throws DeliveryException {
 		String deliveryOrderId = createDeliveryOrder(deliveryOrderRequest);
 		Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
 		delivery.setId(CommonUtils.genId());
@@ -104,7 +113,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		String endpoint = "/v1.0/store/channel/vendor/order";
 		try {
 			log.info("createDeliveryOrder Request {}", objectMapper.writeValueAsString(deliveryOrderRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			Mono<String> createOrderResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryOrderRequest)).retrieve().bodyToMono(String.class);
@@ -137,7 +146,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 
 			log.info("getDeliveryQuote Request {}", objectMapper.writeValueAsString(deliveryQuoteRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			String endpoint = "/v1.0/store/channel/vendor/quote";
 			Mono<DeliveryQuote> quoteResponseMono = webClient.post().uri(endpoint)
@@ -154,7 +163,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public DeliveryQuote getServiceability(String deliveryOrderId) throws DeliveryException {
 		try {
 
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			String endpoint = "v1.0/store/channel/vendor/order/fulfillment/services?ids=" + deliveryOrderId;
 			log.info("getServiceability endPoint {}", endpoint);
@@ -173,7 +182,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		String endpoint = "/v1.0/store/channel/vendor/order/fulfill";
 		try {
 			log.info("initiateOrderFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
@@ -191,7 +200,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public DeliveryRiderLocation getRiderCurrentLocation(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/" + deliveryOrderId + "/fulfillment/tracking";
 		try {
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			log.info("getRiderCurrentLocation endPoint {}", endpoint);
 			Mono<DeliveryRiderLocation> deliveryLocationResponseMono = webClient.get().uri(endpoint).retrieve()
@@ -208,7 +217,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/cancel";
 		try {
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint).exchangeToMono(response -> {
 				HttpStatus statusCode = (HttpStatus) response.statusCode();
@@ -228,7 +237,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			deliveryFulfillRequest.setSmartId(smartId);
 			log.info("initiateSmartFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			Mono<Object> responses = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
@@ -247,7 +256,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public DeliveryOrderStatusResponse getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
 		try {
 
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			String endpoint = "v1.0/store/channel/vendor/order/" + deliveryOrderId;
 			log.info("getDeliveryStatus endPoint {}", endpoint);
@@ -381,7 +390,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public void unAllocateOrderFulfill(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/fulfillment/cancel";
 		try {
-			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, token)
+			WebClient webClient = WebClient.builder().baseUrl(baseUrl).defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
 					.build();
 			Mono<Object> responses = webClient.put().uri(endpoint).exchangeToMono(response -> {
 				HttpStatus statusCode = (HttpStatus) response.statusCode();

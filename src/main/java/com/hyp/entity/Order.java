@@ -154,7 +154,7 @@ public class Order {
 		private List<OrderAddonItem> orderAddonItems;
 
 		@Field("item_attribute")
-		private Attribute itemAttribute;
+		private String itemAttribute;
 	}
 
 	@Data

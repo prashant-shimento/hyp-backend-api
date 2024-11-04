@@ -92,7 +92,7 @@ public class OrderDto extends BaseDto {
 		private String variationId;
 		private List<OrderItemTax> orderItemTax;
 		private List<OrderAddonItem> orderAddonItems;
-		private Attribute itemAttribute;
+		private String itemAttribute;
 
 	}
 

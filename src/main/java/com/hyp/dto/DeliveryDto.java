@@ -39,7 +39,6 @@ public class DeliveryDto extends BaseDto {
         private AddressDto address;
         private String name;
         private String mobile;
-        private String email;
     }
 
     @Data

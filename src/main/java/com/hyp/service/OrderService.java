@@ -168,8 +168,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				}
 			}
 			if (orderItem.getVariationId() == null) {
-				orderItem.setItemAttribute(
-						attributeService.findById(itemService.findById(orderItem.getId()).getItemAttributeId()));
+				orderItem.setItemAttribute(itemService.findById(orderItem.getId()).getItemAttributeId());
 			}
 		}
 

@@ -1,6 +1,9 @@
 package com.hyp.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -46,9 +50,12 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	ApiLogService apiRequestResponseLogService;
-	
+
 	@Autowired
 	ObjectMapper objectMapper;
+
+	@Autowired
+	RedisTemplate<String, Object> redisTemplate;
 
 	private final RestaurantService restaurantService;
 	private final TaxService taxService;
@@ -89,12 +96,21 @@ public class PosServiceImpl implements PosService {
 	@Transactional
 	public boolean savePosData(PosDataRequest posDataRequest) {
 		try {
+			long existingRestQuery = System.currentTimeMillis();
 			Restaurant existingRestaurant = restaurantService
 					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
+			log.info("Time taken for existingRestQuery: " + (System.currentTimeMillis() - existingRestQuery) + "ms");
+			long restaurantTranslation = System.currentTimeMillis();
 			Restaurant restaurant = PosDataRequestTranslation
 					.translateToRestaurant(posDataRequest.getRestaurants().get(0), existingRestaurant);
+			log.info("Time taken for restaurantTranslation: " + (System.currentTimeMillis() - restaurantTranslation)
+					+ "ms");
+			long posDataTranslation = System.currentTimeMillis();
 			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
+			log.info("Time taken for posDataTranslation: " + (System.currentTimeMillis() - posDataTranslation) + "ms");
+			long restaurantSave = System.currentTimeMillis();
 			restaurantService.save(restaurant);
+			log.info("Time taken for restaurantSave: " + (System.currentTimeMillis() - restaurantSave) + "ms");
 			saveEntities(restaurant, posData);
 			return true;
 		} catch (Exception e) {
@@ -105,18 +121,53 @@ public class PosServiceImpl implements PosService {
 
 	private void saveEntities(Restaurant restaurant, PosData posData) {
 		try {
+			long startTime = System.currentTimeMillis();
+
+			long orderTypeStart = System.currentTimeMillis();
 			orderTypeService.saveAll(posData.getOrderTypes(), restaurant.getId());
+			log.info("Time taken for saving order types: {} ms", (System.currentTimeMillis() - orderTypeStart));
+
+			long attributeStart = System.currentTimeMillis();
 			attributeService.saveAll(posData.getAttributes(), restaurant.getId());
+			log.info("Time taken for saving attributes: {} ms", (System.currentTimeMillis() - attributeStart));
+
+			long discountStart = System.currentTimeMillis();
 			discountService.saveAll(posData.getDiscounts(), restaurant.getId());
+			log.info("Time taken for saving discounts: {} ms", (System.currentTimeMillis() - discountStart));
+
+			long categoryStart = System.currentTimeMillis();
 			categoryService.saveAll(posData.getCategories(), restaurant.getId());
+			log.info("Time taken for saving categories: {} ms", (System.currentTimeMillis() - categoryStart));
+
+			long taxStart = System.currentTimeMillis();
 			taxService.saveAll(posData.getTaxes(), restaurant.getId());
+			log.info("Time taken for saving taxes: {} ms", (System.currentTimeMillis() - taxStart));
+
+			long variationStart = System.currentTimeMillis();
 			variationService.saveAll(posData.getVariations(), restaurant.getId());
+			log.info("Time taken for saving variations: {} ms", (System.currentTimeMillis() - variationStart));
+
+			long addonItemStart = System.currentTimeMillis();
 			addonItemService.saveAll(posData.getAddonItems(), restaurant.getId());
+			log.info("Time taken for saving addon items: {} ms", (System.currentTimeMillis() - addonItemStart));
+
+			long addonGroupStart = System.currentTimeMillis();
 			addonGroupService.saveAll(posData.getAddonGroups(), restaurant.getId());
+			log.info("Time taken for saving addon groups: {} ms", (System.currentTimeMillis() - addonGroupStart));
+
+			long itemStart = System.currentTimeMillis();
 			List<Item> items = itemService.saveAll(posData.getItems(), restaurant.getId());
+			log.info("Time taken for saving items: {} ms", (System.currentTimeMillis() - itemStart));
+
+			long imageUploadStart = System.currentTimeMillis();
 			uploadImagesAsync(items, restaurant.getId());
+			log.info("Time taken for uploading images asynchronously: {} ms",
+					(System.currentTimeMillis() - imageUploadStart));
+
+			log.info("Total time taken for saveEntities method: {} ms", (System.currentTimeMillis() - startTime));
+
 		} catch (Exception e) {
-			log.error("Error occured during saveEntities for restaurant {}, {}", restaurant.getId(), e);
+			log.error("Error occurred during saveEntities for restaurant {}, {}", restaurant.getId(), e);
 		}
 	}
 
@@ -189,12 +240,23 @@ public class PosServiceImpl implements PosService {
 		}
 	}
 
+	private void setRedisData(String itemType, String id, long ttl, boolean inStock) {
+		String redisKey = itemType + ":" + id + ":stock";
+		redisTemplate.opsForValue().set(redisKey, inStock, Duration.ofSeconds(ttl));
+	}
+
 	private void updateItemStock(String id, PosStockRequest stockRequest) {
 		Item item = itemService.findById(id);
 		if (item != null) {
 			item.setActive(stockRequest.isInStock() ? "1" : "0");
 			if (!stockRequest.isInStock()) {
-				item.setAutoTurnOnTime(parseAutoTurnOnTime(stockRequest));
+				LocalDateTime autoTurnOnTime = parseAutoTurnOnTime(stockRequest);
+				item.setAutoTurnOnTime(autoTurnOnTime);
+				long ttl = calculateTTLInSeconds(autoTurnOnTime);
+				if (ttl > 0) {
+					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
+				}
+				log.info("Calculated AutoTuronOnTime {} and TTL {} for Item {}", autoTurnOnTime, ttl, id);
 			}
 			itemService.update(item);
 		}
@@ -205,7 +267,13 @@ public class PosServiceImpl implements PosService {
 		if (addOnItem != null) {
 			addOnItem.setActive(stockRequest.isInStock() ? "1" : "0");
 			if (!stockRequest.isInStock()) {
-				addOnItem.setAutoTurnOnTime(parseAutoTurnOnTime(stockRequest));
+				LocalDateTime autoTurnOnTime = parseAutoTurnOnTime(stockRequest);
+				addOnItem.setAutoTurnOnTime(autoTurnOnTime);
+				long ttl = calculateTTLInSeconds(autoTurnOnTime);
+				if (ttl > 0) {
+					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
+				}
+				log.info("Calculated AutoTuronOnTime {} and TTL {} for AddonItem {}", autoTurnOnTime, ttl, id);
 			}
 			addonItemService.update(addOnItem);
 		}
@@ -217,12 +285,21 @@ public class PosServiceImpl implements PosService {
 				: stockRequest.getAutoTurnOnTime();
 		if (turnOnTime.length() == 19) {
 			return LocalDateTime.parse(turnOnTime, FORMATTER_WITH_SECONDS);
-		} else if (turnOnTime.length() == 19) {
+		} else if (turnOnTime.length() == 16) {
 			return LocalDateTime.parse(turnOnTime, FORMATTER_WITHOUT_SECONDS);
 		} else {
 			log.error("Invalid TurnOnTime passed " + turnOnTime);
-			return LocalDateTime.now();
+			return LocalDateTime.now().plusHours(2);
 		}
+	}
+
+	private long calculateTTLInSeconds(LocalDateTime turnOnTime) {
+		ZonedDateTime utcTurnOnTime = turnOnTime.atZone(ZoneId.of("Asia/Kolkata"))
+				.withZoneSameInstant(ZoneId.of("UTC"));
+
+		ZonedDateTime currentUtcTime = ZonedDateTime.now(ZoneId.of("UTC"));
+		Duration duration = Duration.between(currentUtcTime, utcTurnOnTime);
+		return Math.max(0, duration.getSeconds());
 	}
 
 	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus) {

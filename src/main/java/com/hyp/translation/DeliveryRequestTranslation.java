@@ -92,7 +92,6 @@ public class DeliveryRequestTranslation {
 		receiverDetail.setAddress(receiverAddress);
 		receiverDetail.setMobile(customer.getMobile());
 		receiverDetail.setName(customer.getName());
-		receiverDetail.setEmail(customer.getEmail());
 		List<Trip> trips = new ArrayList<>();
 		Trip trip = new Trip();
 		trip.setReferenceId(order.getId());

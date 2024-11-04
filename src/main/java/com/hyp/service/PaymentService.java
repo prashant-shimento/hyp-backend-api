@@ -1,10 +1,12 @@
 package com.hyp.service;
 
+import java.time.Duration;
 import java.util.Date;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.hyp.constants.Constants;
@@ -33,9 +35,12 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	@Autowired
 	OrderService orderService;
-	
+
 	@Autowired
 	RestaurantService restaurantService;
+
+	@Autowired
+	RedisTemplate<String, Object> redisTemplate;
 
 	public Payment createPaymentOrder(String orderId, double amount) {
 		try {
@@ -46,10 +51,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			orderRequest.put("currency", "INR");
 			orderRequest.put("receipt", CommonUtils.genId());
 			JSONObject notes = new JSONObject();
-			notes.put("restaurant", restaurant.getId() +":"+restaurant.getRestaurantName());
+			notes.put("restaurant", restaurant.getId() + ":" + restaurant.getRestaurantName());
 			orderRequest.put("notes", notes);
 			Order order = razorpayClient.orders.create(orderRequest);
-			
+
 			Payment payment = new Payment();
 			payment.setId(CommonUtils.genId());
 			payment.setPaymentOrderId(order.get("id"));
@@ -60,6 +65,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setProvider(Constants.RAZOR_PAY);
 			payment.setOrderId(orderId);
 			orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
+			String redisKey = "order:" + orderId + ":state";
+			redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(2));
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -126,7 +133,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setRefund(paymentRefund);
 
 			this.save(payment);
-			orderService.updateOrderStatus(orderId, OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
+			orderService.updateOrderStatus(orderId,
+					OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();

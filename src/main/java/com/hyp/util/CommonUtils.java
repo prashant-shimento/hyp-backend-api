@@ -2,8 +2,11 @@ package com.hyp.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
@@ -96,10 +99,17 @@ public class CommonUtils {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
 		return LocalDateTime.parse(dateString, formatter);
 	}
-	
+
 	public static List<String> buildStringList(Object... values) {
-        return Arrays.stream(values)
-                .map(String::valueOf)
-                .collect(Collectors.toList());
-    }
+		return Arrays.stream(values).map(String::valueOf).collect(Collectors.toList());
+	}
+
+	public static long getTtlInSeconds(String inputTime) {
+		ZonedDateTime istTime = ZonedDateTime.parse(inputTime,
+				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.of("Asia/Kolkata")));
+		ZonedDateTime utcTime = istTime.withZoneSameInstant(ZoneId.of("UTC"));
+		ZonedDateTime currentTimeUtc = ZonedDateTime.now(ZoneId.of("UTC"));
+		Duration duration = Duration.between(currentTimeUtc, utcTime);
+		return duration.getSeconds();
+	}
 }
