@@ -66,7 +66,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setOrderId(orderId);
 			orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
 			String redisKey = "order:" + orderId + ":state";
-			redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(2));
+			redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15));
 			return payment;
 		} catch (Exception e) {
 			e.printStackTrace();

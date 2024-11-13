@@ -3,6 +3,8 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Updates;
+
 import org.bson.Document;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,39 +24,39 @@ public class MongoScript {
                             Filters.ne("items", new ArrayList<>()),
                             Filters.elemMatch("items", Filters.exists("item_attribute", false))
                     )
-            ).into(new ArrayList<>());
+            ).limit(10).into(new ArrayList<>());
 
             
-            
+            System.out.println("Order to update "+ ordersToUpdate.size());
+
             
 
             for (Document order : ordersToUpdate) {
-                List<Document> updatedItems = new ArrayList<>();
-
-                // Loop through each item in the order's items array
-                List<Document> items = (List<Document>) order.get("items");
                 
+
+//                 Loop through each item in the order's items array
+                List<Document> items = (List<Document>) order.get("items");
+//                
+                System.out.println("Order id "+ order.get("_id") + " item size "+items.size());
                 for (Document item : items) {
-                	if(!item.containsKey("item_attribute")) {
-                		System.out.println(item.get("item_id") + " doesn't contain attributes");
-                		 Document itemDoc = itemCollection.find(Filters.eq("_id", item.getString("item_id"))).first();
-                  		System.out.println(item.toJson() + " before adding attributes ");
-
-                         if (itemDoc != null && itemDoc.containsKey("item_attribute_id")) {
-                         	item.put("item_attribute",itemDoc.get("item_attribute_id"));
-                     		System.out.println(item.toJson() + " after adding attributes ");
-
-                         }
-
-                         updatedItems.add(item);
-                	}                        
+//                	System.out.println("Order" + item);
+           		 Document itemDoc = itemCollection.find(Filters.eq("_id", item.getString("item_id"))).first();
+           		 if(itemDoc != null) {
+           			 System.out.println("ItemDoc is not null " + itemDoc.get("item_attribute_id"));
+           			item.put("item_attribute",itemDoc.get("item_attribute_id"));
+           		 }else {
+           			System.out.println("ItemDoc is null " +item.getString("item_id"));
+           			item.put("item_attribute","1");
+           		 }                
                 }
-                System.out.println(updatedItems.size() + "to be updated ");
-
-//                orderCollection.updateOne(
-//                        Filters.eq("_id", order.get("_id")),
-//                        Updates.set("items", updatedItems)
-//                );
+                
+                System.out.println("Items "+items);
+                
+           		 
+                orderCollection.updateOne(
+                        Filters.eq("_id", order.get("_id")),
+                        Updates.set("items", items)
+                );
 
             }
 
