@@ -26,8 +26,14 @@ public class DeliveryRequestTranslation {
 	public static DeliveryFulfillRequest getOrderFulfillRequest(Delivery delivery) {
 		List<String> orderIds = new ArrayList<>();
 		orderIds.add(delivery.getDeliveryOrderId());
-		return new DeliveryFulfillRequest(orderIds, delivery.getService(), true, delivery.getNetworkId(),
-				delivery.getNetworkToken(), null);
+		return DeliveryFulfillRequest.builder().ids(orderIds).service(delivery.getService()).pickUpNow(true)
+				.networkId(delivery.getNetworkId()).token(delivery.getNetworkToken()).build();
+	}
+
+	public static DeliveryFulfillRequest getSmartFulfillRequest(Delivery delivery) {
+		List<String> orderIds = new ArrayList<>();
+		orderIds.add(delivery.getDeliveryOrderId());
+		return DeliveryFulfillRequest.builder().ids(orderIds).build();
 	}
 
 	public static DeliveryQuoteRequest getQuoteRequest(Restaurant restaurant, Address address) {

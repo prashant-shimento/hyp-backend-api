@@ -213,7 +213,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
+					deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);	
+					//deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
 				}
 				order = this.update(order);
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
@@ -318,7 +319,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		for (Order order : ordersToProcess) {
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
 			if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
+				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
 			}
 		}
 

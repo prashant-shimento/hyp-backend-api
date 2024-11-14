@@ -374,7 +374,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	public void processDeliverySmartFulfill(Delivery delivery, String fulfillmentType) throws DeliveryException {
 		try {
-			this.initiateSmartFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+			this.initiateSmartFulfill(DeliveryRequestTranslation.getSmartFulfillRequest(delivery));
 			delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
 			delivery.setFulfillmentType(fulfillmentType);
 			delivery.setFulfillmentAt(LocalDateTime.now());

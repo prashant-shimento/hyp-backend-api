@@ -8,6 +8,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,6 +59,8 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	RedisTemplate<String, Object> redisTemplate;
+
+	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
 	private final RestaurantService restaurantService;
 	private final TaxService taxService;
@@ -120,54 +125,53 @@ public class PosServiceImpl implements PosService {
 	}
 
 	private void saveEntities(Restaurant restaurant, PosData posData) {
+		long startTime = System.currentTimeMillis();
+
 		try {
-			long startTime = System.currentTimeMillis();
+			CompletableFuture<Void> orderTypeFuture = logEntityInsert("order types",
+					() -> orderTypeService.saveAll(posData.getOrderTypes(), restaurant.getId()));
 
-			long orderTypeStart = System.currentTimeMillis();
-			orderTypeService.saveAll(posData.getOrderTypes(), restaurant.getId());
-			log.info("Time taken for saving order types: {} ms", (System.currentTimeMillis() - orderTypeStart));
+			CompletableFuture<Void> attributeFuture = logEntityInsert("attributes",
+					() -> attributeService.saveAll(posData.getAttributes(), restaurant.getId()));
 
-			long attributeStart = System.currentTimeMillis();
-			attributeService.saveAll(posData.getAttributes(), restaurant.getId());
-			log.info("Time taken for saving attributes: {} ms", (System.currentTimeMillis() - attributeStart));
+			CompletableFuture<Void> discountFuture = logEntityInsert("discounts",
+					() -> discountService.saveAll(posData.getDiscounts(), restaurant.getId()));
 
-			long discountStart = System.currentTimeMillis();
-			discountService.saveAll(posData.getDiscounts(), restaurant.getId());
-			log.info("Time taken for saving discounts: {} ms", (System.currentTimeMillis() - discountStart));
+			CompletableFuture<Void> categoryFuture = logEntityInsert("categories",
+					() -> categoryService.saveAll(posData.getCategories(), restaurant.getId()));
 
-			long categoryStart = System.currentTimeMillis();
-			categoryService.saveAll(posData.getCategories(), restaurant.getId());
-			log.info("Time taken for saving categories: {} ms", (System.currentTimeMillis() - categoryStart));
+			CompletableFuture<Void> taxFuture = logEntityInsert("taxes",
+					() -> taxService.saveAll(posData.getTaxes(), restaurant.getId()));
 
-			long taxStart = System.currentTimeMillis();
-			taxService.saveAll(posData.getTaxes(), restaurant.getId());
-			log.info("Time taken for saving taxes: {} ms", (System.currentTimeMillis() - taxStart));
+			CompletableFuture<Void> variationFuture = logEntityInsert("variations",
+					() -> variationService.saveAll(posData.getVariations(), restaurant.getId()));
 
-			long variationStart = System.currentTimeMillis();
-			variationService.saveAll(posData.getVariations(), restaurant.getId());
-			log.info("Time taken for saving variations: {} ms", (System.currentTimeMillis() - variationStart));
+			CompletableFuture<Void> addonItemFuture = logEntityInsert("addon items",
+					() -> addonItemService.saveAll(posData.getAddonItems(), restaurant.getId()));
 
-			long addonItemStart = System.currentTimeMillis();
-			addonItemService.saveAll(posData.getAddonItems(), restaurant.getId());
-			log.info("Time taken for saving addon items: {} ms", (System.currentTimeMillis() - addonItemStart));
+			CompletableFuture<Void> addonGroupFuture = logEntityInsert("addon groups",
+					() -> addonGroupService.saveAll(posData.getAddonGroups(), restaurant.getId()));
 
-			long addonGroupStart = System.currentTimeMillis();
-			addonGroupService.saveAll(posData.getAddonGroups(), restaurant.getId());
-			log.info("Time taken for saving addon groups: {} ms", (System.currentTimeMillis() - addonGroupStart));
+			CompletableFuture<List<Item>> itemsFuture = logItemInsert("items",
+					() -> itemService.saveAll(posData.getItems(), restaurant.getId()));
 
-			long itemStart = System.currentTimeMillis();
-			List<Item> items = itemService.saveAll(posData.getItems(), restaurant.getId());
-			log.info("Time taken for saving items: {} ms", (System.currentTimeMillis() - itemStart));
+			itemsFuture.thenAccept(items -> {
+				try {
+					uploadImagesAsync(items, restaurant.getId());
+				} catch (Exception e) {
+					log.error("Error occurred during image upload: {}", e.getMessage(), e);
+				}
+			});
 
-			long imageUploadStart = System.currentTimeMillis();
-			uploadImagesAsync(items, restaurant.getId());
-			log.info("Time taken for uploading images asynchronously: {} ms",
-					(System.currentTimeMillis() - imageUploadStart));
-
-			log.info("Total time taken for saveEntities method: {} ms", (System.currentTimeMillis() - startTime));
+			// Log time taken for each save operation
+			CompletableFuture
+					.allOf(orderTypeFuture, attributeFuture, discountFuture, categoryFuture, taxFuture, variationFuture,
+							addonItemFuture, addonGroupFuture)
+					.thenRun(() -> log.info("Total time for saveEntities: {} ms",
+							System.currentTimeMillis() - startTime));
 
 		} catch (Exception e) {
-			log.error("Error occurred during saveEntities for restaurant {}, {}", restaurant.getId(), e);
+			log.error("Error occurred during saveEntities for restaurant {}: {}", restaurant.getId(), e);
 		}
 	}
 
@@ -373,6 +377,23 @@ public class PosServiceImpl implements PosService {
 		CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0])).thenRun(() -> {
 			log.info("All image uploads completed.");
 			itemService.saveAll(items);
+		});
+	}
+
+	private CompletableFuture<Void> logEntityInsert(String entityName, Runnable action) {
+		return CompletableFuture.runAsync(() -> {
+			long start = System.currentTimeMillis();
+			action.run();
+			log.info("Time taken for saving {}: {} ms", entityName, (System.currentTimeMillis() - start));
+		}, executorService);
+	}
+
+	private <T> CompletableFuture<T> logItemInsert(String label, Supplier<T> supplier) {
+		long startTime = System.currentTimeMillis();
+		return CompletableFuture.supplyAsync(() -> {
+			T result = supplier.get();
+			log.info("Time taken for saving {}: {} ms", label, (System.currentTimeMillis() - startTime));
+			return result;
 		});
 	}
 
