@@ -249,6 +249,11 @@ public class PosServiceImpl implements PosService {
 		redisTemplate.opsForValue().set(redisKey, inStock, Duration.ofSeconds(ttl));
 	}
 
+	private void removeRedisKey(String itemType, String id) {
+		String redisKey = itemType + ":" + id + ":stock";
+		redisTemplate.delete(redisKey);
+	}
+
 	private void updateItemStock(String id, PosStockRequest stockRequest) {
 		Item item = itemService.findById(id);
 		if (item != null) {
@@ -261,6 +266,8 @@ public class PosServiceImpl implements PosService {
 					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
 				}
 				log.info("Calculated AutoTuronOnTime {} and TTL {} for Item {}", autoTurnOnTime, ttl, id);
+			} else {
+				removeRedisKey(stockRequest.getType(), id);
 			}
 			itemService.update(item);
 		}
@@ -278,6 +285,8 @@ public class PosServiceImpl implements PosService {
 					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
 				}
 				log.info("Calculated AutoTuronOnTime {} and TTL {} for AddonItem {}", autoTurnOnTime, ttl, id);
+			} else {
+				removeRedisKey(stockRequest.getType(), id);
 			}
 			addonItemService.update(addOnItem);
 		}

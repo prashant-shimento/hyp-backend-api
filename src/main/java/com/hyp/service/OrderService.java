@@ -311,7 +311,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
 			int minPrepTime = order.getMinPrepTime().equalsIgnoreCase("") ? 10
 					: Integer.parseInt(order.getMinPrepTime());
-			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : minPrepTime - 5;
+			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : 5;
 			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
 			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
 		}).collect(Collectors.toList());
