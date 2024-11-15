@@ -42,6 +42,7 @@ public class BucketService {
 			}
 
 			String fileUrl = FileUtils.trimFileUrl(fileUploadRequest.getFileUrl());
+			log.info("FileUrl after parsing:{} " + fileUrl);
 			String contentType = FileUtils.getContentType(fileUrl);
 			if (contentType == null) {
 				log.warn("Unsupported file extension for file: {}", fileUrl);

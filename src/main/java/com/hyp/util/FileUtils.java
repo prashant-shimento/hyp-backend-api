@@ -45,16 +45,12 @@ public class FileUtils {
 			return fileUrl;
 		}
 		try {
-
-			for (String extension : Constants.FILE_EXTENSIONS) {
-				int index = fileUrl.indexOf(extension);
-				if (index != -1) {
-					return fileUrl.substring(0, index + extension.length());
-				}
-			}
+			String lowerCaseFileUrl = fileUrl.toLowerCase();
+			return Constants.FILE_EXTENSIONS.stream().filter(lowerCaseFileUrl::contains)
+					.map(extension -> fileUrl.substring(0, lowerCaseFileUrl.indexOf(extension) + extension.length()))
+					.findFirst().orElse(fileUrl);
 		} catch (Exception e) {
 			log.error("Error occurred while trimming file URL: " + e.getMessage());
-			return fileUrl;
 		}
 		return fileUrl;
 	}
