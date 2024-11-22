@@ -47,7 +47,7 @@ public class LoggingFilterConfig extends OncePerRequestFilter {
 			Map<String, Object> logData = new HashMap<>();
 			logData.put("method", request.getMethod());
 			logData.put("uri", request.getRequestURI());
-			logData.put("requestPayload", requestBody);
+			logData.put("requestPayload", objectMapper.readTree(requestBody));
 			logData.put("responseStatus", response.getStatus());
 			logData.put("responsePayload", responseJsonNode);
 			logData.put("timeTaken", timeTaken);

@@ -287,13 +287,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
 				DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
 				delivery.setFulfillment(deliveryFulfill);
-				orderService.updateOrderStatus(order.getId(),
-						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
 				if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
 					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
 					order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
-					orderService.save(order);
 				}
+				orderService.save(order);
+				orderService.updateOrderStatus(order.getId(),
+						OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
 				if (posService.isPosUpdateRequired(fullFillStatus)) {
 					posService.updatePosRiderStatus(delivery, order);
 				}

@@ -96,7 +96,8 @@ public class PaymentController {
 				payment.setSignature(razorPayDto.getRazorpaySignature());
 				processPaymentStatus(order, payment);
 			}
-			return ResponseEntity.ok().build();
+			response = new Response(Collections.singletonList(order), false, "Payment Verified Successfully");
+			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());
 			e.printStackTrace();
