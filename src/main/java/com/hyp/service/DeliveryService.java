@@ -317,7 +317,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			if (selectedNetwork != null) {
 				String token = selectedNetwork.getToken();
 				delivery.setNetworkToken(token);
-				this.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
 				delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
 				delivery.setFulfillmentType(fulfillmentType);
 				delivery.setFulfillmentAt(LocalDateTime.now());
@@ -325,6 +324,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				delivery.setService(selectedNetwork.getService());
 				delivery.setPickupNow(selectedNetwork.isPickupNow());
 				this.save(delivery);
+				this.initiateOrderFulfill(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
 			} else {
 				throw new DeliveryException(
 						"No matching network found with the specified networkId or minimum price network");

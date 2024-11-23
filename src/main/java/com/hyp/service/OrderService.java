@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -106,6 +107,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	NotificationService notificationService;
+
+	@Autowired
+	private StringRedisTemplate redisTemplate;
 
 	@Value("${whatsapp.alert.mobile}")
 	String alertMobileNum;
@@ -211,10 +215,14 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 						parameters);
 				order = this.update(order);
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
+				String fulFill = redisTemplate.opsForValue().get("fulfill");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);	
-					//deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
+					if (fulFill.equalsIgnoreCase("smart")) {
+						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+					} else {
+						deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
+					}
 				}
 				order = this.update(order);
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
@@ -317,9 +325,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}).collect(Collectors.toList());
 
 		for (Order order : ordersToProcess) {
+			String fulFill = redisTemplate.opsForValue().get("fulfill");
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
+			if (fulFill.equalsIgnoreCase("smart")) {
+				deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+			} else {
+				deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
 			}
 		}
 

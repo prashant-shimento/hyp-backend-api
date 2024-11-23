@@ -20,9 +20,9 @@ public class DeliveryFulfillRequest {
 	private List<String> ids;
 	private String service;
 	@JsonProperty("pickup_now")
-	private boolean pickUpNow;
+	private Boolean pickUpNow;
 	@JsonProperty("network_id")
-	private int networkId;
+	private Integer networkId;
 	private String token;
 	@JsonProperty("smart_allocation_id")
 	private String smartId;
