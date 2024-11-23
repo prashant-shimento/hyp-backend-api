@@ -21,6 +21,7 @@ public class RestaurantDto extends BaseDto {
 	private String country;
 	private List<String> images;
 	private String restaurantName;
+    private String websiteUrl;
 	private String address;
 	private String contact;
 	private String landmark;

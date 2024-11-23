@@ -42,6 +42,9 @@ public class Restaurant {
 
 	@Field("restaurant_name")
 	private String restaurantName;
+	
+	@Field("website_url")
+    private String websiteUrl;
 
 	@Field("packaging_applicable_on")
 	private String packagingApplicableOn;

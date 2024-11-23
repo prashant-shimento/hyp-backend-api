@@ -304,7 +304,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			break;
 		case DELIVERED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
-					restaurant.getSupportContact());
+					restaurant.getSupportContact(),restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
 			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
 					templateParameters);
 			break;
