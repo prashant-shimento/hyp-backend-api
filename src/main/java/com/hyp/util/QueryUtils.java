@@ -1,6 +1,7 @@
 package com.hyp.util;
 
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,6 +96,11 @@ public class QueryUtils {
 				case "lte":
 					query.addCriteria(Criteria.where(fieldName).lte(parsedValue));
 					break;
+				case "range":
+					Date[] dateRange = (Date[]) parsedValue;
+					query.addCriteria(Criteria.where(fieldName).gte(dateRange[0]).lte(dateRange[1]));
+					query.with(Sort.by(Sort.Direction.ASC, fieldName));
+					break;
 				case "like":
 					query.addCriteria(Criteria.where(fieldName).regex(".*" + parsedValue + ".*"));
 					break;
@@ -116,7 +122,8 @@ public class QueryUtils {
 	}
 
 	public static boolean isValidQueryParamOperator(String operator) {
-		return Arrays.asList("eq", "neq", "in", "nin", "gte", "gt", "lte", "lt", "like", "nlike").contains(operator);
+		return Arrays.asList("eq", "neq", "in", "nin", "gte", "gt", "lte", "range", "lt", "like", "nlike")
+				.contains(operator);
 	}
 
 	public static List<String> getAllowedParameters(String className) {
@@ -125,7 +132,15 @@ public class QueryUtils {
 
 	private static Object parseValue(String fieldName, String value, String operator) {
 		if (Constants.DATE_API_PARAMS.contains(fieldName)) {
-			return CommonUtils.getISODate(value);
+			if ("range".equals(operator)) {
+				String[] dateRange = value.split(",");
+				if (dateRange.length == 2) {
+					Date startDate = CommonUtils.getISODate(dateRange[0], Constants.SUPPORTED_DATE_FORMATS);
+					Date endDate = CommonUtils.getISODate(dateRange[1], Constants.SUPPORTED_DATE_FORMATS);
+					return new Date[] { startDate, endDate };
+				}
+			}
+			return CommonUtils.getISODate(value, Constants.SUPPORTED_DATE_FORMATS);
 		}
 		switch (operator) {
 		case "eq":
@@ -140,6 +155,7 @@ public class QueryUtils {
 		case "lt":
 		case "gte":
 		case "lte":
+		case "range":
 			try {
 				return Integer.parseInt(value);
 			} catch (NumberFormatException e) {
@@ -150,4 +166,5 @@ public class QueryUtils {
 			return null;
 		}
 	}
+
 }

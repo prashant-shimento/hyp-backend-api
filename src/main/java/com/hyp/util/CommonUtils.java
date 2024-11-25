@@ -66,14 +66,15 @@ public class CommonUtils {
 		return referenceId;
 	}
 
-	public static Date getISODate(String date) {
+	public static Date getISODate(String date, String formats) {
 		try {
-			SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS");
+			SimpleDateFormat dateFormat = new SimpleDateFormat(formats);
 			return dateFormat.parse(date);
 		} catch (ParseException e) {
 			e.printStackTrace();
-			return null;
 		}
+		System.err.println("Failed to parse date: " + date);
+		return null;
 	}
 
 	public static String extractPincode(String address) {
