@@ -95,7 +95,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		if (token == null) {
 			throw new DeliveryException("Token not found in Redis");
 		}
-		return "Bearer c3Rrbjo0Ojg1MzpjOTMxMzA2MC0xODAyLTExZWYtYmM0My02MzZlYmUzZTlhNjQ=";
+		return token;
 	}
 
 	public String refreshToken() throws Exception {
