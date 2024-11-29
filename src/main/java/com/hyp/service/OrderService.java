@@ -328,9 +328,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			String fulFill = redisTemplate.opsForValue().get("fulfill");
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
 			if (fulFill.equalsIgnoreCase("smart")) {
-				deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
 			} else {
-				deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
+				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
 			}
 		}
 

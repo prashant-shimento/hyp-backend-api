@@ -128,7 +128,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		save(delivery);
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public String createDeliveryOrder(DeliveryOrderRequest deliveryOrderRequest) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order";
 		try {
@@ -164,7 +164,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public DeliveryQuote getDeliveryQuote(DeliveryQuoteRequest deliveryQuoteRequest) throws DeliveryException {
 		try {
 
@@ -172,10 +172,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
 			String endpoint = "/v1.0/store/channel/vendor/quote";
-			Mono<DeliveryQuote> quoteResponseMono = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class);
-			log.info("getDeliveryQuote Response {}", objectMapper.writeValueAsString(quoteResponseMono.block()));
-			return quoteResponseMono.block();
+			DeliveryQuote quoteResponseMono = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class).block();			
+			log.info("getDeliveryQuote Response {}", objectMapper.writeValueAsString(quoteResponseMono));
+			return quoteResponseMono;
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
@@ -185,7 +185,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public DeliveryQuote getServiceability(String deliveryOrderId) throws DeliveryException {
 		try {
 
@@ -206,20 +206,17 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public void initiateOrderFulfill(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/fulfill";
 		try {
 			log.info("initiateOrderFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			Mono<Object> responses = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
-						HttpStatus statusCode = (HttpStatus) response.statusCode();
-						log.info("Status code: " + statusCode);
-						return Mono.just(statusCode);
-					});
-			log.info("initiateOrderFulfill Response {}", objectMapper.writeValueAsString(responses));
+			String response = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve()
+					.bodyToMono(String.class).block();
+			log.info("initiateOrderFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
@@ -228,8 +225,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			throw new DeliveryException("Error in initiateOrderFulfill: " + e.getMessage());
 		}
 	}
-	
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public DeliveryRiderLocation getRiderCurrentLocation(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/" + deliveryOrderId + "/fulfillment/tracking";
 		try {
@@ -250,18 +247,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/cancel";
 		try {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			Mono<Object> responses = webClient.post().uri(endpoint).exchangeToMono(response -> {
-				HttpStatus statusCode = (HttpStatus) response.statusCode();
-				log.info("Status code: " + statusCode);
-				return Mono.just(statusCode);
-			});
-			log.info("cancelDeliveryOrder Response {}", objectMapper.writeValueAsString(responses));
+			String response = webClient.post().uri(endpoint).retrieve().bodyToMono(String.class).block();
+			log.info("cancelDeliveryOrder Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
@@ -271,7 +264,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public void initiateSmartFulfill(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/fulfill/smart";
 		try {
@@ -279,13 +272,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("initiateSmartFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			Mono<DeliveryFulfillResponse> responses = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
-						HttpStatus statusCode = (HttpStatus) response.statusCode();
-						log.info("Status code: " + statusCode);
-						return response.bodyToMono(DeliveryFulfillResponse.class);
-					});
-			log.info("initiateSmartFulfill Response {}", objectMapper.writeValueAsString(responses));
+			DeliveryFulfillResponse response = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve()
+					.bodyToMono(DeliveryFulfillResponse.class).block();
+			log.info("initiateSmartFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
@@ -295,7 +285,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public DeliveryOrderStatusResponse getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
 		try {
 
@@ -303,10 +293,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
 			String endpoint = "v1.0/store/channel/vendor/order/" + deliveryOrderId;
 			log.info("getDeliveryStatus endPoint {}", endpoint);
-			Mono<DeliveryOrderStatusResponse> deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
-					.bodyToMono(DeliveryOrderStatusResponse.class);
+			DeliveryOrderStatusResponse deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
+					.bodyToMono(DeliveryOrderStatusResponse.class).block();
 			log.info("getDeliveryStatus Response {}", objectMapper.writeValueAsString(deliveryOrderStatusResponse));
-			return deliveryOrderStatusResponse.block();
+			return deliveryOrderStatusResponse;
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
@@ -332,6 +322,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					|| delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
 				DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
 				DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
+				delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
+				delivery.setService(deliveryFulfill.getChannel().getName());
+				delivery.setPickupNow(true);
 				delivery.setFulfillment(deliveryFulfill);
 				if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
 					delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
@@ -432,18 +425,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	@Retryable(retryFor = { Exception.class,WebClientResponseException.Unauthorized.class })
+	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
 	public void unAllocateOrderFulfill(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/fulfillment/cancel";
 		try {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			Mono<Object> responses = webClient.put().uri(endpoint).exchangeToMono(response -> {
-				HttpStatus statusCode = (HttpStatus) response.statusCode();
-				log.info("Status code: " + statusCode);
-				return Mono.just(statusCode);
-			});
-			log.info("unAllocateOrderFulfill Response {}", objectMapper.writeValueAsString(responses));
+			String response = webClient.put().uri(endpoint).retrieve().bodyToMono(String.class).block();
+			log.info("unAllocateOrderFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 		} catch (Exception e) {

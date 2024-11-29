@@ -112,6 +112,7 @@ public class DeliveryOrderStatus {
 		private String name;
 		@JsonProperty("order_id")
 		private String orderId;
+		private String id;
 	}
 
 	@Data
