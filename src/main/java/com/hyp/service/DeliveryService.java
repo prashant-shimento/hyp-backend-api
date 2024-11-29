@@ -36,6 +36,7 @@ import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryFulfillRequest;
+import com.hyp.request.DeliveryFulfillResponse;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.MailNotificationRequest;
@@ -54,7 +55,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	private String baseUrl;
 
 	@Value("${delivery.pidge.smart.id}")
-	private String smartId;
+	private Integer smartId;
 
 	@Value("${delivery.pidge.username}")
 	private String pidgeUsername;
@@ -94,7 +95,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		if (token == null) {
 			throw new DeliveryException("Token not found in Redis");
 		}
-		return token;
+		return "Bearer c3Rrbjo0Ojg1MzpjOTMxMzA2MC0xODAyLTExZWYtYmM0My02MzZlYmUzZTlhNjQ=";
 	}
 
 	public String refreshToken() throws Exception {
@@ -278,11 +279,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("initiateSmartFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			Mono<Object> responses = webClient.post().uri(endpoint)
+			Mono<DeliveryFulfillResponse> responses = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).exchangeToMono(response -> {
 						HttpStatus statusCode = (HttpStatus) response.statusCode();
 						log.info("Status code: " + statusCode);
-						return Mono.just(statusCode);
+						return response.bodyToMono(DeliveryFulfillResponse.class);
 					});
 			log.info("initiateSmartFulfill Response {}", objectMapper.writeValueAsString(responses));
 		} catch (WebClientResponseException.Unauthorized e) {

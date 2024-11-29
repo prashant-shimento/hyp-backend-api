@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Builder
 public class DeliveryFulfillRequest {
-	
+
 	private List<String> ids;
 	private String service;
 	@JsonProperty("pickup_now")
@@ -25,5 +25,5 @@ public class DeliveryFulfillRequest {
 	private Integer networkId;
 	private String token;
 	@JsonProperty("smart_allocation_id")
-	private String smartId;
+	private Integer smartId;
 }
