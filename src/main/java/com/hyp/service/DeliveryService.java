@@ -1,5 +1,6 @@
 package com.hyp.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -8,8 +9,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.retry.support.RetryTemplate;
@@ -88,10 +89,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	MailService mailService;
 
 	@Autowired
-	private StringRedisTemplate redisTemplate;
+	private StringRedisTemplate stringRedisTemplate;
+
+	@Autowired
+	RedisTemplate<String, Object> redisTemplate;
 
 	private String getToken() throws Exception {
-		String token = redisTemplate.opsForValue().get("pidgeToken");
+		String token = stringRedisTemplate.opsForValue().get("pidgeToken");
 		if (token == null) {
 			throw new DeliveryException("Token not found in Redis");
 		}
@@ -101,7 +105,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public String refreshToken() throws Exception {
 		String newToken = generateToken();
 		if (newToken != null && !newToken.isEmpty()) {
-			redisTemplate.opsForValue().set("pidgeToken", newToken);
+			stringRedisTemplate.opsForValue().set("pidgeToken", newToken);
 			return newToken;
 		} else {
 			throw new DeliveryException("Failed to refresh the token: Received empty token");
@@ -173,7 +177,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
 			String endpoint = "/v1.0/store/channel/vendor/quote";
 			DeliveryQuote quoteResponseMono = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class).block();			
+					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class)
+					.block();
 			log.info("getDeliveryQuote Response {}", objectMapper.writeValueAsString(quoteResponseMono));
 			return quoteResponseMono;
 		} catch (WebClientResponseException.Unauthorized e) {
@@ -213,9 +218,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("initiateOrderFulfill Request {}", objectMapper.writeValueAsString(deliveryFulfillRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			String response = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve()
-					.bodyToMono(String.class).block();
+			String response = webClient.post().uri(endpoint).body(BodyInserters.fromValue(deliveryFulfillRequest))
+					.retrieve().bodyToMono(String.class).block();
 			log.info("initiateOrderFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
@@ -322,6 +326,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					|| delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
 				DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
 				DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
+				if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
+						|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
+					String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
+					redisTemplate.opsForValue().set(redisKey, fullFillStatus, Duration.ofMinutes(25));
+				}
 				delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
 				delivery.setService(deliveryFulfill.getChannel().getName());
 				delivery.setPickupNow(true);

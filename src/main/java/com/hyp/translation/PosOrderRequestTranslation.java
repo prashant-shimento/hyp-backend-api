@@ -3,6 +3,7 @@ package com.hyp.translation;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,9 +17,11 @@ import com.hyp.entity.Order.OrderDiscount;
 import com.hyp.entity.Order.OrderItem;
 import com.hyp.entity.Order.OrderItemTax;
 import com.hyp.entity.Order.OrderTax;
+import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DiscountType;
 import com.hyp.enums.OrderType;
+import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.enums.TaxType;
 import com.hyp.exception.RequestTranslationException;
@@ -98,14 +101,15 @@ public class PosOrderRequestTranslation {
 		return posRiderUpdateRequest;
 	}
 
-	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address)
-			throws RequestTranslationException {
+	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address,
+			Partner partner) throws RequestTranslationException {
 		PosOrderRequest posOrderRequest = new PosOrderRequest();
 		try {
 			posOrderRequest.setAccessToken(accessToken);
 			posOrderRequest.setAppKey(appKey);
 			posOrderRequest.setAppSecret(appSecret);
-			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address));
+
+			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address, partner.getType()));
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
@@ -113,19 +117,24 @@ public class PosOrderRequestTranslation {
 		return posOrderRequest;
 	}
 
-	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address) {
+	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address,
+			PartnerType partnerType) {
 		OrderInfo orderInfo = new OrderInfo();
-		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address));
+		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address, partnerType));
 		orderInfo.setDeviceType("");
 		orderInfo.setUdid("");
 		return orderInfo;
 	}
 
-	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer,
-			Address address) {
+	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer, Address address,
+			PartnerType partnerType) {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
-		orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
+		if (partnerType.equals(PartnerType.THEATRE)) {
+			orderInfoDetails.setCustomer(getCustomerDetails(customer, order));
+		} else {
+			orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
+		}
 		orderInfoDetails.setOrder(getOrderDetails(order));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
@@ -138,6 +147,19 @@ public class PosOrderRequestTranslation {
 		customerDetails.setLatitude(String.valueOf(address.getLocation().getLatitude()));
 		customerDetails.setLongitude(String.valueOf(address.getLocation().getLongitude()));
 		customerDetails.setName(customer.getName());
+		customerDetails.setPhone(customer.getMobile());
+		CustomerOrderRequest customerRequest = new CustomerOrderRequest();
+		customerRequest.setCustomerDetails(customerDetails);
+		return customerRequest;
+	}
+
+	public static CustomerOrderRequest getCustomerDetails(Customer customer, Order order) {
+		CustomerDetails customerDetails = new CustomerDetails();
+		customerDetails.setEmail(customer.getEmail());
+		String name = String.format("%s-%s-%s", customer.getName(),
+				Optional.ofNullable(order.getScreen()).orElse("N/A"),
+				Optional.ofNullable(order.getSeat()).orElse("N/A"));
+		customerDetails.setName(name);
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();
 		customerRequest.setCustomerDetails(customerDetails);

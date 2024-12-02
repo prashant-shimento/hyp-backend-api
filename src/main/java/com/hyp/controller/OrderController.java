@@ -85,7 +85,10 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
 			orderTranslation.updateEntityFromDto(orderDto, order);
-			orderService.save(order);
+			order = orderService.save(order);
+			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
+				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
+			}
 			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}

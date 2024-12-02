@@ -18,4 +18,8 @@ public class PartnerService extends BaseServiceImpl<Partner, String> {
 	public List<Partner> findByPartnerType(PartnerType type) {
         return partnerRepository.findByType(type);
     }
+	
+	public Partner findPartnersByRestaurantId(String restaurantId, PartnerType type) {
+        return partnerRepository.findByRestaurantsContainingAndType(restaurantId, type);
+    }
 }

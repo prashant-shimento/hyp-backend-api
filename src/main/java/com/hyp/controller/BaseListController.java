@@ -61,9 +61,9 @@ public abstract class BaseListController<DTO, T, ID> {
 	@GetMapping("/{id}")
 	public ResponseEntity<Response> getById(@PathVariable ID id) {
 		try {
-			T entity = service.findById(id);
-			if (entity != null) {
-				DTO dto = translationService.getDto(entity);
+			T entityById = service.findByIdWithReference(id, entity);
+			if (entityById != null) {
+				DTO dto = translationService.getDto(entityById);
 				Response response = new Response(Collections.singletonList(dto), false, "success");
 				return ResponseEntity.ok(response);
 			} else {

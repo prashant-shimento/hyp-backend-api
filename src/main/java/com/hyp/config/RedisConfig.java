@@ -13,6 +13,7 @@ import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import com.hyp.listener.DeliveryListener;
 import com.hyp.listener.ItemStockListener;
 import com.hyp.listener.OrderListener;
 
@@ -21,13 +22,13 @@ public class RedisConfig {
 
 	@Value("${spring.data.redis.host}")
 	private String redisHost;
-	
+
 	@Value("${spring.data.redis.port}")
 	private String redisPort;
-	
+
 	@Value("${spring.data.redis.password}")
 	private String redisPassword;
-	
+
 	@Bean
 	JedisConnectionFactory jedisConnectionFactory() {
 		RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
@@ -48,11 +49,13 @@ public class RedisConfig {
 
 	@Bean
 	RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
-			MessageListenerAdapter orderListenerAdapter, MessageListenerAdapter itemStockListenerAdapter) {
+			MessageListenerAdapter orderListenerAdapter, MessageListenerAdapter itemStockListenerAdapter,
+			MessageListenerAdapter deliveryListenerAdapter) {
 		RedisMessageListenerContainer container = new RedisMessageListenerContainer();
 		container.setConnectionFactory(connectionFactory);
 		container.addMessageListener(orderListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
 		container.addMessageListener(itemStockListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
+		container.addMessageListener(deliveryListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
 		return container;
 	}
 
@@ -64,5 +67,10 @@ public class RedisConfig {
 	@Bean
 	MessageListenerAdapter itemStockListenerAdapter(ItemStockListener itemStockListener) {
 		return new MessageListenerAdapter(itemStockListener);
+	}
+
+	@Bean
+	MessageListenerAdapter deliveryListenerAdapter(DeliveryListener deliveryListener) {
+		return new MessageListenerAdapter(deliveryListener);
 	}
 }

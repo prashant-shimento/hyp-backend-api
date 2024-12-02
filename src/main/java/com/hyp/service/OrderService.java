@@ -1,5 +1,6 @@
 package com.hyp.service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -9,6 +10,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,9 +25,12 @@ import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
+import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.PartnerType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
@@ -108,11 +113,14 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
 	NotificationService notificationService;
 
-	@Autowired
-	private StringRedisTemplate redisTemplate;
-
 	@Value("${whatsapp.alert.mobile}")
 	String alertMobileNum;
+
+	@Autowired
+	RedisTemplate<String, Object> redisTemplate;
+
+	@Autowired
+	StringRedisTemplate stringRedisTemplate;
 
 	public Order create(OrderDto orderDto) throws Exception {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
@@ -182,13 +190,25 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setCreatedAt(LocalDateTime.now());
 		order = this.save(order);
 		Customer customer = customerService.findById(order.getCustomerId());
+		
+		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
+		if (partner != null) {
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
+					restaurantService.findById(order.getRestaurantId()), order, customer, address, partner);
+			posService.createPosOrder(posOrderRequest);
+		}
+		
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
 		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
 		for (String mobile : mobileNumbers) {
 			notificationService.sendOrderNotification(mobile, Constants.META_ORDER_ALERT_TEMPLATE, parameters);
 		}
+
+		
+
 		return order;
+
 	}
 
 	public Order processOrderCallback(PosCallbackRequest posCallbackRequest) throws Exception {
@@ -214,10 +234,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
 				order = this.update(order);
+				String redisKey = "order:" + order.getId() + ":fulfill";
+				redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
+
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
-				String fulFill = redisTemplate.opsForValue().get("fulfill");
+				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
-				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {	
 					if (fulFill.equalsIgnoreCase("smart")) {
 						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
 					} else {
@@ -249,7 +272,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 									.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))));
 
 			mailService.sendNotificationEmail(notificationRequest);
-
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
@@ -262,14 +284,18 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosOrderRequest posOrderRequest = posOrderRequestTranslation
-					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer, address);
+			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.RESTAURANT);
+			if (partner != null) {
+				PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
+						restaurantService.findById(order.getRestaurantId()), order, customer, address, partner);
+				if (posService.createPosOrder(posOrderRequest)) {
+					DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
+							.getDeliveryOrderRequest(restaurant, address, customer, order);
+					deliveryService.createOrder(deliveryOrderRequest, order);
+				}
 
-			if (posService.createPosOrder(posOrderRequest)) {
-				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
-						.getDeliveryOrderRequest(restaurant, address, customer, order);
-				deliveryService.createOrder(deliveryOrderRequest, order);
 			}
+
 		} catch (RequestTranslationException e) {
 			// Need to handle Payment Refund or Retry Mechanism
 			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());
@@ -304,7 +330,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			break;
 		case DELIVERED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
-					restaurant.getSupportContact(),restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
+					restaurant.getSupportContact(), restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
 			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
 					templateParameters);
 			break;
@@ -313,26 +339,26 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 	}
 
-	@Scheduled(fixedRate = 60000)
-	public void scheduleDeliveryFullfill() throws DeliveryException {
-		LocalDateTime currentTime = LocalDateTime.now();
-		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
-			int minPrepTime = order.getMinPrepTime().equalsIgnoreCase("") ? 10
-					: Integer.parseInt(order.getMinPrepTime());
-			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : 5;
-			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
-			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
-		}).collect(Collectors.toList());
-
-		for (Order order : ordersToProcess) {
-			String fulFill = redisTemplate.opsForValue().get("fulfill");
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			if (fulFill.equalsIgnoreCase("smart")) {
-				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
-			} else {
-				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
-			}
-		}
-
-	}
+//	@Scheduled(fixedRate = 60000)
+//	public void scheduleDeliveryFullfill() throws DeliveryException {
+//		LocalDateTime currentTime = LocalDateTime.now();
+//		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
+//			int minPrepTime = order.getMinPrepTime().equalsIgnoreCase("") ? 10
+//					: Integer.parseInt(order.getMinPrepTime());
+//			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : 5;
+//			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
+//			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
+//		}).collect(Collectors.toList());
+//
+//		for (Order order : ordersToProcess) {
+//			String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
+//			Delivery delivery = deliveryService.findByOrderId(order.getId());
+//			if (fulFill.equalsIgnoreCase("smart")) {
+//				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
+//			} else {
+//				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
+//			}
+//		}
+//
+//	}
 }

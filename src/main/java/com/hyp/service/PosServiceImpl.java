@@ -29,6 +29,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.PosException;
+import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.PosData;
 import com.hyp.request.FileUploadRequest;
 import com.hyp.request.PosDataRequest;
@@ -201,10 +202,10 @@ public class PosServiceImpl implements PosService {
 			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/update_order_status";
-			Mono<String> updateOrderResponse = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(posOrderUpdateRequest)).retrieve().bodyToMono(String.class);
+			String updateOrderResponse = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(posOrderUpdateRequest)).retrieve().bodyToMono(String.class).block();
 			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(updateOrderResponse));
-			return updateOrderResponse.block();
+			return updateOrderResponse;
 		} catch (Exception e) {
 			log.error("Error occured during updatePosOrder {}", e);
 			throw new PosException("POS Order Update failed " + e.getMessage());
@@ -217,10 +218,10 @@ public class PosServiceImpl implements PosService {
 			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/rider_status_update";
-			Mono<String> riderUpdateResponse = webClient.post().uri(endpoint)
-					.body(BodyInserters.fromValue(posRiderUpdateRequest)).retrieve().bodyToMono(String.class);
+			String riderUpdateResponse = webClient.post().uri(endpoint)
+					.body(BodyInserters.fromValue(posRiderUpdateRequest)).retrieve().bodyToMono(String.class).block();
 			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
-			return riderUpdateResponse.block();
+			return riderUpdateResponse;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -324,12 +325,17 @@ public class PosServiceImpl implements PosService {
 
 	public void updatePosRiderStatus(Delivery delivery, Order order) {
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		RiderDetails riderDetails = new RiderDetails(delivery.getFulfillment().getRider().getName(),
-				delivery.getFulfillment().getRider().getMobile());
-
-		RiderStatusType riderStatus = RiderStatusType
-				.getRiderStatusByDeliveryRider(delivery.getFulfillment().getStatus());
-
+		RiderDetails riderDetails = null;
+		RiderStatusType riderStatus = null;
+		if (delivery != null && delivery.getFulfillment() != null) {
+			Rider rider = delivery.getFulfillment().getRider();
+			if (rider != null) {
+				riderDetails = new RiderDetails(rider.getName(), rider.getMobile());
+			}
+			riderStatus = RiderStatusType.getRiderStatusByDeliveryRider(delivery.getFulfillment().getStatus());
+		} else {
+			riderStatus = RiderStatusType.getRiderStatusByOrderStatusType(order.getStatus());
+		}
 		PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation
 				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
 

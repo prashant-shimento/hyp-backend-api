@@ -117,6 +117,9 @@ public class Restaurant {
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
+	
+	@Field("screens")
+	private List<String> screens;
 
 	@Getter
 	@Setter

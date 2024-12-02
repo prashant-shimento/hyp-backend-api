@@ -41,5 +41,6 @@ public class RestaurantDto extends BaseDto {
 	private String packagingChargeType;
 	private Location location;
 	private String fssai;
+	private List<String> screens;
 
 }

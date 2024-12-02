@@ -70,7 +70,9 @@ public class OrderDto extends BaseDto {
 	private String minDeliveryTime;
 	private String minPrepTime;
 	private String deliveryTrackingLink;
-
+	private String screen;
+	private String seat;
+	
 	@Data
 	@NoArgsConstructor
 	public static class OrderItem {

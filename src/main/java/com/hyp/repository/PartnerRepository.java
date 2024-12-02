@@ -10,5 +10,7 @@ import com.hyp.enums.PartnerType;
 public interface PartnerRepository extends MongoRepository<Partner, String> {
 	
 	List<Partner> findByType(PartnerType type);
+	
+	Partner findByRestaurantsContainingAndType(String restaurantId, PartnerType type);
 
 }

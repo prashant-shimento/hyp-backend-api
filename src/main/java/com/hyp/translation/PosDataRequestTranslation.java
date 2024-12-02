@@ -223,7 +223,6 @@ public class PosDataRequestTranslation {
 		restaurant.setPackagingCharge(restaurantRequest.getDetails().getPackaging_charge());
 		restaurant.setCalculateTaxOnDelivery(restaurantRequest.getDetails().getCalculatetaxondelivery());
 		restaurant.setPackagingChargeType(restaurantRequest.getDetails().getPackaging_charge_type());
-		restaurant.setContact(restaurantRequest.getDetails().getContact());
 		restaurant.setState(restaurantRequest.getDetails().getState());
 		restaurant.setLandmark(restaurantRequest.getDetails().getLandmark());
 		restaurant.setImages(restaurantRequest.getDetails().getImages());
@@ -265,7 +264,15 @@ public class PosDataRequestTranslation {
 		if (existingRestaurant != null && existingRestaurant.getDeliveryPartner() != null) {
 			restaurant.setDeliveryPartner(existingRestaurant.getDeliveryPartner());
 		} else {
-			restaurant.setDeliveryPartner(DeliveryPartner.SELF);
+			restaurant.setDeliveryPartner(DeliveryPartner.PIDGE);
+		}
+		if (existingRestaurant != null && existingRestaurant.getContact() != null) {
+			restaurant.setContact(existingRestaurant.getContact());
+		} else {
+			restaurant.setContact(restaurantRequest.getDetails().getContact());
+		}
+		if (existingRestaurant != null && existingRestaurant.getScreens() != null) {
+			restaurant.setScreens(existingRestaurant.getScreens());
 		}
 		return restaurant;
 	}

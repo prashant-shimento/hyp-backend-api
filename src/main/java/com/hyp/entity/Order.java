@@ -120,6 +120,12 @@ public class Order {
 	@Field("delivery_tracking_link")
 	private String deliveryTrackingLink;
 	
+	@Field("screen")
+	private String screen;
+	
+	@Field("seat")
+	private String seat;
+	
 
 	@Data
 	@NoArgsConstructor
