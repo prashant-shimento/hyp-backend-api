@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
@@ -22,6 +23,7 @@ import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
+import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
@@ -51,6 +53,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@Autowired
 	AddressService addressService;
+	
+	@Autowired
+	DeliveryService deliveryService;
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
@@ -81,6 +86,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			}
 			orderTranslation.updateEntityFromDto(orderDto, order);
 			orderService.save(order);
+			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
+				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
+			}
 			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
