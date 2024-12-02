@@ -130,8 +130,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			throw new Exception("Customer not found " + orderDto.getCustomerId());
 		}
 
-		if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
-			throw new Exception("Delivery Address not found " + orderDto.getDeliveryDetails().getAddressId());
+		
+		if (orderDto.getDeliveryDetails() != null) {
+			if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
+				throw new Exception("Delivery Address not found: " + orderDto.getDeliveryDetails().getAddressId());
+			}
+		} else {
+			if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
+				throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
+			}
 		}
 
 		Restaurant restaurant = restaurantService.findById(orderDto.getRestaurantId());
@@ -190,22 +197,20 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setCreatedAt(LocalDateTime.now());
 		order = this.save(order);
 		Customer customer = customerService.findById(order.getCustomerId());
-		
+
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 		if (partner != null) {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
 					restaurantService.findById(order.getRestaurantId()), order, customer, address, partner);
 			posService.createPosOrder(posOrderRequest);
 		}
-		
+
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
 		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
 		for (String mobile : mobileNumbers) {
 			notificationService.sendOrderNotification(mobile, Constants.META_ORDER_ALERT_TEMPLATE, parameters);
 		}
-
-		
 
 		return order;
 
@@ -240,7 +245,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
-				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {	
+				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					if (fulFill.equalsIgnoreCase("smart")) {
 						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
 					} else {

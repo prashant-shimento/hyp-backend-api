@@ -46,7 +46,7 @@ jobs:
         APP_SECRET_KEY: ${{ secrets.APP_SECRET_KEY }}
         NOTIFICATION_META_TOKEN: ${{ secrets.NOTIFICATION_META_TOKEN }}
         MAIL_APP_PASSWORD: ${{ secrets.MAIL_APP_PASSWORD }}
-        BUCKET_HOST: ${{ secrets.PRODUCTION_REDIS_HOST }}
+        BUCKET_KEY: ${{ secrets.BUCKET_KEY }}
         REDIS_HOST: ${{ secrets.PRODUCTION_REDIS_HOST }}
         REDIS_PORT: ${{ secrets.PRODUCTION_REDIS_PORT }}
         REDIS_PASSWORD: ${{ secrets.PRODUCTION_REDIS_PASSWORD }}
@@ -77,7 +77,7 @@ jobs:
         echo "APP_SECRET_KEY=${{ secrets.APP_SECRET_KEY }}" >> .env
         echo "NOTIFICATION_META_TOKEN=${{ secrets.NOTIFICATION_META_TOKEN }}" >> .env
         echo "MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}" >> .env
-        echo "BUCKET_HOST=${{ secrets.PRODUCTION_REDIS_HOST }}" >> .env
+        echo "BUCKET_KEY=${{ secrets.BUCKET_KEY }}" >> .env
         echo "REDIS_HOST=${{ secrets.PRODUCTION_REDIS_HOST }}" >> .env
         echo "REDIS_PORT=${{ secrets.PRODUCTION_REDIS_PORT }}" >> .env
         echo "REDIS_PASSWORD=${{ secrets.PRODUCTION_REDIS_PASSWORD }}" >> .env
