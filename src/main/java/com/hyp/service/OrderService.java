@@ -126,14 +126,21 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
 		}
+		Restaurant restaurant = restaurantService.findById(orderDto.getRestaurantId());
 		if (!customerService.isExistsById(orderDto.getCustomerId())) {
 			throw new Exception("Customer not found " + orderDto.getCustomerId());
 		}
 
-		
+		Address address = null;
 		if (orderDto.getDeliveryDetails() != null) {
 			if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
 				throw new Exception("Delivery Address not found: " + orderDto.getDeliveryDetails().getAddressId());
+			}
+			address = addressService.findById(orderDto.getDeliveryDetails().getAddressId());
+			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
+					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+				throw new Exception("Location Not Deliverable");
 			}
 		} else {
 			if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
@@ -141,16 +148,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 		}
 
-		Restaurant restaurant = restaurantService.findById(orderDto.getRestaurantId());
 		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
 			throw new Exception("Order cannot be processed: Outside delivery hours.");
-		}
-
-		Address address = addressService.findById(orderDto.getDeliveryDetails().getAddressId());
-		if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
-				address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
-				restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
-			throw new Exception("Location Not Deliverable");
 		}
 
 		if (orderDto.getOrderDiscount() != null) {
@@ -200,8 +199,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 		if (partner != null) {
-			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
-					restaurantService.findById(order.getRestaurantId()), order, customer, address, partner);
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation
+					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
+			posService.createPosOrder(posOrderRequest);
+		} else {
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation
+					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer, address);
 			posService.createPosOrder(posOrderRequest);
 		}
 
@@ -292,7 +295,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.RESTAURANT);
 			if (partner != null) {
 				PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
-						restaurantService.findById(order.getRestaurantId()), order, customer, address, partner);
+						restaurantService.findById(order.getRestaurantId()), order, customer, address);
 				if (posService.createPosOrder(posOrderRequest)) {
 					DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
 							.getDeliveryOrderRequest(restaurant, address, customer, order);

@@ -17,7 +17,6 @@ import com.hyp.entity.Order.OrderDiscount;
 import com.hyp.entity.Order.OrderItem;
 import com.hyp.entity.Order.OrderItemTax;
 import com.hyp.entity.Order.OrderTax;
-import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DiscountType;
 import com.hyp.enums.OrderType;
@@ -101,15 +100,15 @@ public class PosOrderRequestTranslation {
 		return posRiderUpdateRequest;
 	}
 
-	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address,
-			Partner partner) throws RequestTranslationException {
+	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer, Address address)
+			throws RequestTranslationException {
 		PosOrderRequest posOrderRequest = new PosOrderRequest();
 		try {
 			posOrderRequest.setAccessToken(accessToken);
 			posOrderRequest.setAppKey(appKey);
 			posOrderRequest.setAppSecret(appSecret);
 
-			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address, partner.getType()));
+			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address));
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
@@ -117,24 +116,53 @@ public class PosOrderRequestTranslation {
 		return posOrderRequest;
 	}
 
-	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address,
-			PartnerType partnerType) {
+	public PosOrderRequest getPosOrderRequest(Restaurant restaurant, Order order, Customer customer)
+			throws RequestTranslationException {
+		PosOrderRequest posOrderRequest = new PosOrderRequest();
+		try {
+			posOrderRequest.setAccessToken(accessToken);
+			posOrderRequest.setAppKey(appKey);
+			posOrderRequest.setAppSecret(appSecret);
+
+			posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer));
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
+		}
+		return posOrderRequest;
+	}
+
+	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer, Address address) {
 		OrderInfo orderInfo = new OrderInfo();
-		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address, partnerType));
+		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer, address));
 		orderInfo.setDeviceType("");
 		orderInfo.setUdid("");
 		return orderInfo;
 	}
 
-	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer, Address address,
-			PartnerType partnerType) {
+	public OrderInfo getOrderInfo(Restaurant restaurant, Order order, Customer customer) {
+		OrderInfo orderInfo = new OrderInfo();
+		orderInfo.setOrderInfoDetails(getOrderInfoDetails(restaurant, order, customer));
+		orderInfo.setDeviceType("");
+		orderInfo.setUdid("");
+		return orderInfo;
+	}
+
+	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer,
+			Address address) {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
-		if (partnerType.equals(PartnerType.THEATRE)) {
-			orderInfoDetails.setCustomer(getCustomerDetails(customer, order));
-		} else {
-			orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
-		}
+		orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
+		orderInfoDetails.setOrder(getOrderDetails(order));
+		orderInfoDetails.setOrderItem(getOrderItems(order));
+		orderInfoDetails.setTax(getTax(order.getOrderTax()));
+		return orderInfoDetails;
+	}
+
+	public OrderInfoDetails getOrderInfoDetails(Restaurant restaurant, Order order, Customer customer) {
+		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
+		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
+		orderInfoDetails.setCustomer(getCustomerDetails(customer, order));
 		orderInfoDetails.setOrder(getOrderDetails(order));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
