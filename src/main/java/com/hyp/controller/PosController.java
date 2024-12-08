@@ -4,20 +4,34 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.entity.Address;
+import com.hyp.entity.Customer;
+import com.hyp.entity.Order;
+import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.PartnerType;
+import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosDataRequest;
+import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
 import com.hyp.response.PosResponse;
+import com.hyp.service.AddressService;
+import com.hyp.service.CustomerService;
+import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
+import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
+import com.hyp.translation.DeliveryRequestTranslation;
+import com.hyp.translation.PosOrderRequestTranslation;
 
 import io.swagger.v3.oas.annotations.Hidden;
 
@@ -37,6 +51,21 @@ public class PosController {
 
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
+	
+	@Autowired
+	AddressService addressService;
+
+	@Autowired
+	DeliveryService deliveryService;
+
+	@Autowired
+	PaymentService paymentService;
+	
+	@Autowired
+	CustomerService customerService;
+
+	@Autowired
+	PosOrderRequestTranslation posOrderRequestTranslation;
 
 	@PostMapping("/menu")
 	public ResponseEntity<PosResponse> saveMenuData(@RequestBody PosDataRequest posDataRequest) {
@@ -98,6 +127,30 @@ public class PosController {
 			orderService.processOrderCallback(posCallbackRequest);
 			response = PosResponse.builder().httpCode(HttpStatus.OK.value()).message("Order Updated Successfully")
 					.build();
+			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occured")
+					.error(e.getMessage()).build();
+			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+		}
+	}
+	
+	@PostMapping("/order/{orderId}")
+	public ResponseEntity<PosResponse> createOrder(@PathVariable String orderId) {
+		PosResponse response = null;
+		try {
+			Order order = orderService.findById(orderId);
+			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+			Customer customer = customerService.findById(order.getCustomerId());
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
+					restaurantService.findById(order.getRestaurantId()), order, customer, address);
+			if (posDataService.createPosOrder(posOrderRequest)) {
+				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
+						.getDeliveryOrderRequest(restaurant, address, customer, order);
+				deliveryService.createOrder(deliveryOrderRequest, order);
+			}
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
