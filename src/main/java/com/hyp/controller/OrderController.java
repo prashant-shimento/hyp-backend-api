@@ -87,9 +87,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			orderTranslation.updateEntityFromDto(orderDto, order);
 			order = orderService.save(order);
 			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
-				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
-			}
-			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
+				orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERED);
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
 			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");

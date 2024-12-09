@@ -31,6 +31,7 @@ import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PartnerType;
+import com.hyp.enums.PaymentType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
@@ -202,10 +203,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation
 					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
 			posService.createPosOrder(posOrderRequest);
-		} else {
-			PosOrderRequest posOrderRequest = posOrderRequestTranslation
-					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer, address);
-			posService.createPosOrder(posOrderRequest);
 		}
 
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
@@ -230,6 +227,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				throw new Exception("Order not found " + posCallbackRequest.getOrderId());
 			}
 			Order order = this.findById(posCallbackRequest.getOrderId());
+			PaymentType paymentType = order.getPaymentType();
+			if (paymentType != PaymentType.COD) {
+				if (paymentService.findByOrderId(order.getId()) == null) {
+					throw new Exception("Payment not completed" + posCallbackRequest.getOrderId());
+				}
+			}
+
 			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
 			Customer customer = customerService.findById(order.getCustomerId());
 			order.setStatus(newOrderStatus);
@@ -242,9 +246,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
 				order = this.update(order);
-				String redisKey = "order:" + order.getId() + ":fulfill";
-				redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
-
+				Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
+				if (partner == null) {
+					String redisKey = "order:" + order.getId() + ":fulfill";
+					redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
+				}
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -289,19 +295,21 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	public void processOrder(Order order) {
 		try {
-			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+			
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.RESTAURANT);
-			if (partner != null) {
+			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
+			if (partner == null) {
+				Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+
 				PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
 						restaurantService.findById(order.getRestaurantId()), order, customer, address);
+
 				if (posService.createPosOrder(posOrderRequest)) {
 					DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
 							.getDeliveryOrderRequest(restaurant, address, customer, order);
 					deliveryService.createOrder(deliveryOrderRequest, order);
 				}
-
 			}
 
 		} catch (RequestTranslationException e) {

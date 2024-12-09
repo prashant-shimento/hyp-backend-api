@@ -274,6 +274,9 @@ public class PosDataRequestTranslation {
 		if (existingRestaurant != null && existingRestaurant.getScreens() != null) {
 			restaurant.setScreens(existingRestaurant.getScreens());
 		}
+		if (existingRestaurant != null && existingRestaurant.getWebsiteUrl() != null) {
+			restaurant.setWebsiteUrl(existingRestaurant.getWebsiteUrl());
+		}
 		return restaurant;
 	}
 

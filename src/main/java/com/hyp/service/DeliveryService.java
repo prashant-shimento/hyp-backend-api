@@ -162,6 +162,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new DeliveryException("Error processing JSON response " + e.getMessage());
@@ -184,6 +186,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in getDeliveryQuote: {}", e);
 			throw new DeliveryException("Error in getDeliveryQuote: " + e.getMessage());
@@ -205,6 +209,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in getServiceability: {}", e);
 			throw new DeliveryException("Error in getServiceability: " + e.getMessage());
@@ -224,6 +230,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in initiateOrderFulfill: {}", e);
 			throw new DeliveryException("Error in initiateOrderFulfill: " + e.getMessage());
@@ -245,6 +253,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in getRiderCurrentLocation: {}", e);
 			throw new DeliveryException("Error in getRiderCurrentLocation: " + e.getMessage());
@@ -262,6 +272,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in cancelDeliveryOrder: {}", e);
 			throw new DeliveryException("Error in cancelDeliveryOrder: " + e.getMessage());
@@ -283,6 +295,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in initiateSmartFulfill: {}", e);
 			throw new DeliveryException("Error in initiateSmartFulfill: " + e.getMessage());
@@ -304,6 +318,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in getDeliveryOrderStatus: {}", e);
 			throw new DeliveryException("Error in getDeliveryOrderStatus: " + e.getMessage());
@@ -444,6 +460,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("unAllocateOrderFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
+		} catch (WebClientResponseException.InternalServerError e) {
+			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in unAllocateOrderFulfill: {}", e);
 			throw new DeliveryException("Error in unAllocateOrderFulfill: " + e.getMessage());

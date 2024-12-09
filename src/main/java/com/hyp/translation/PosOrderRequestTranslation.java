@@ -184,9 +184,8 @@ public class PosOrderRequestTranslation {
 	public static CustomerOrderRequest getCustomerDetails(Customer customer, Order order) {
 		CustomerDetails customerDetails = new CustomerDetails();
 		customerDetails.setEmail(customer.getEmail());
-		String name = String.format("%s-%s-%s", customer.getName(),
-				Optional.ofNullable(order.getScreen()).orElse("N/A"),
-				Optional.ofNullable(order.getSeat()).orElse("N/A"));
+		String name = String.format("%s-%s-%s", Optional.ofNullable(order.getScreen()).orElse("N/A"),
+				Optional.ofNullable(order.getSeat()).orElse("N/A"), customer.getName());
 		customerDetails.setName(name);
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();

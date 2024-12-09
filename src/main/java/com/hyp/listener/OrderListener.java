@@ -63,8 +63,8 @@ public class OrderListener implements MessageListener {
 							log.error("Exception occured on redis expiry delivery fulfill");
 							orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
 						}
+						log.info("Order is fulfilled on redis expiry for {}", orderId);
 					}
-					log.info("Order is fulfilled on redis expiry for {}", orderId);
 				}
 			}
 		}
