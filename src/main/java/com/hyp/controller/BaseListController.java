@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.hyp.entity.BaseEntity;
 import com.hyp.response.Response;
 import com.hyp.service.BaseService;
 import com.hyp.service.BaseTranslationService;
@@ -50,9 +51,9 @@ public abstract class BaseListController<DTO, T, ID> {
 		log.info("getAll Query " + query.toString());
 		long startTime = System.currentTimeMillis();
 		List<T> entities = service.findByQueryWithReferences(entity, query);
-		long endTime = System.currentTimeMillis();  // End time
-	    long executionTime = endTime - startTime;  // Execution time in milliseconds
-	    log.info("Query Execution Time for getAll: " + executionTime + " ms");
+		long endTime = System.currentTimeMillis(); // End time
+		long executionTime = endTime - startTime; // Execution time in milliseconds
+		log.info("Query Execution Time for getAll: " + executionTime + " ms");
 		List<DTO> dtoEntities = translationService.getDtoList(entities);
 		Response response = new Response(dtoEntities, false, "success");
 		return ResponseEntity.ok(response);
@@ -63,12 +64,23 @@ public abstract class BaseListController<DTO, T, ID> {
 		try {
 			T entityById = service.findByIdWithReference(id, entity);
 			if (entityById != null) {
-				DTO dto = translationService.getDto(entityById);
-				Response response = new Response(Collections.singletonList(dto), false, "success");
-				return ResponseEntity.ok(response);
+				if (entityById instanceof BaseEntity) {
+					if (!((BaseEntity) entityById).isDeleted()) {
+						DTO dto = translationService.getDto(entityById);
+						Response response = new Response(Collections.singletonList(dto), false, "success");
+						return ResponseEntity.ok(response);
+					} else {
+						return ResponseEntity.notFound().build();
+					}
+				} else {
+					DTO dto = translationService.getDto(entityById);
+					Response response = new Response(Collections.singletonList(dto), false, "success");
+					return ResponseEntity.ok(response);
+				}
 			} else {
 				return ResponseEntity.notFound().build();
 			}
+
 		} catch (Exception ex) {
 			Response response = new Response(null, true, ex.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

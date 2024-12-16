@@ -44,6 +44,7 @@ public class QueryUtils {
 		}
 
 		Query query = new Query();
+		
 		if (sort != null) {
 			query.with(sort);
 		}

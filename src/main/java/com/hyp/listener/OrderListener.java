@@ -9,11 +9,13 @@ import org.springframework.stereotype.Component;
 import com.hyp.constants.Constants;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
+import com.hyp.entity.Payment;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
+import com.hyp.service.PaymentService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,6 +32,9 @@ public class OrderListener implements MessageListener {
 	@Autowired
 	StringRedisTemplate stringRedisTemplate;
 
+	@Autowired
+	PaymentService paymentService;
+
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
 		String expiredKey = message.toString();
@@ -39,8 +44,31 @@ public class OrderListener implements MessageListener {
 			Order order = orderService.findById(orderId);
 			if (order != null) {
 				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
+					Payment payment = paymentService.findByOrderId(orderId);
+					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+					if (paymentStatus.equalsIgnoreCase("created")) {
+						log.info("Order status updated as cancelled for {}", orderId);
+						orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
+					}
+					
+				}
+			}
+		}
+		if (expiredKey.startsWith("order:") && expiredKey.endsWith(":payment")) {
+			String orderId = expiredKey.split(":")[1];
+			log.info("Received Payment Paid Order Expiry from Redis for {}", orderId);
+			Order order = orderService.findById(orderId);
+			if (order != null) {
+				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
 					log.info("Order status updated as cancelled for {}", orderId);
-					orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
+					Payment payment = paymentService.findByOrderId(orderId);
+					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+					if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
+						orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+						payment.setStatus(paymentStatus);
+						paymentService.save(payment);
+						orderService.processOrder(order);
+					}
 				}
 			}
 		}

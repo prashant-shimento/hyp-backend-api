@@ -12,10 +12,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
-import com.hyp.entity.Attribute;
 import com.hyp.entity.BaseEntity;
 import com.hyp.entity.Item;
-import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.Tax;
@@ -78,6 +76,12 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		Query query = new Query(Criteria.where(fieldName).is(value));
 		return mongoTemplate.findOne(query, entityClass);
 	}
+	
+	@Override
+	public List<T> findByRestaurant(Class<T> entityClass, Object value) {
+		Query query = new Query(Criteria.where("restaurantId").is(value));
+		return mongoTemplate.find(query, entityClass);
+	}
 
 	@Override
 	public List<T> findByQuery(Class<T> entityClass, Query query) {
@@ -113,11 +117,43 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		List<T> entities = mongoTemplate.find(query, entityClass);
 		return entities.stream().map(this::populateReferences).collect(Collectors.toList());
 	}
+
+	@Override
+	public T findByIdWithReference(ID id, Class<T> entityClass) {
+		T entity = mongoTemplate.findById(id, entityClass);
+		return populateReferences(entity);
+	}
+
+	@Override
+	public void softDeleteById(ID id) {
+		T entity = findById(id);
+		if (entity instanceof BaseEntity) {
+			((BaseEntity) entity).setDeleted(true);
+			repository.save(entity);
+		}
+	}
 	
 	@Override
-	public T findByIdWithReference(ID id,Class<T> entityClass) {
-		T entity = mongoTemplate.findById(id, entityClass);
-	    return populateReferences(entity);
+	public void softDeleteByRestaurant(Class<T> entityClass, ID id) {
+	    Query query = Query.query(Criteria.where("restaurant_id").is(id));
+	    List<T> entities = mongoTemplate.find(query, entityClass);
+
+	    for (T entity : entities) {
+	        if (entity instanceof BaseEntity) {
+	            ((BaseEntity) entity).setDeleted(true);
+	        }
+	    }
+	    repository.saveAll(entities);
+	}
+
+	@Override
+	public void softDeleteAll(List<T> entities) {
+		for (T entity : entities) {
+			if (entity instanceof BaseEntity) {
+				((BaseEntity) entity).setDeleted(true);
+			}
+		}
+		repository.saveAll(entities);
 	}
 
 }

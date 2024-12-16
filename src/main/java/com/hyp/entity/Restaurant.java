@@ -120,6 +120,9 @@ public class Restaurant {
 	
 	@Field("screens")
 	private List<String> screens;
+	
+	@Field("logo_url")
+	private String logoUrl;
 
 	@Getter
 	@Setter

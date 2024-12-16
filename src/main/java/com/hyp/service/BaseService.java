@@ -22,6 +22,12 @@ public interface BaseService<T, ID> {
 
 	void deleteById(ID id);
 	
+	void softDeleteById(ID id);
+	
+	void softDeleteByRestaurant(Class<T> entityClass, ID id);
+	
+	void softDeleteAll(List<T> entities);
+	
 	public boolean isExistsById(ID id);
 	
     public T findByField(Class<T> entityClass, String fieldName, Object value);
@@ -31,5 +37,7 @@ public interface BaseService<T, ID> {
     public List<T> findByQueryWithReferences(Class<T> entityClass, Query query);
 
 	T findByIdWithReference(ID id, Class<T> entityClass);
+
+	List<T> findByRestaurant(Class<T> entityClass, Object value);
 
 }

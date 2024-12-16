@@ -38,6 +38,7 @@ import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryFulfillResponse;
+import com.hyp.request.DeliveryFulfillResponse.Data;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.MailNotificationRequest;
@@ -291,6 +292,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			DeliveryFulfillResponse response = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryFulfillRequest)).retrieve()
 					.bodyToMono(DeliveryFulfillResponse.class).block();
+			Data data = response.getData();
+			data.setFulfilled(false);
+			if (!response.getData().isFulfilled()) {
+				// alert
+			}
 			log.info("initiateSmartFulfill Response {}", objectMapper.writeValueAsString(response));
 		} catch (WebClientResponseException.Unauthorized e) {
 			handleUnauthorizedError(e);
@@ -335,8 +341,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(DeliveryFulfillStatusType.CANCELLED));
-				this.unAllocateOrderFulfill(delivery.getDeliveryOrderId());
-				this.processDeliveryFulfill(delivery, Constants.ON_CANCEL);
 			}
 			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
 					|| delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
@@ -345,7 +349,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
 						|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
 					String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
-					redisTemplate.opsForValue().set(redisKey, fullFillStatus, Duration.ofMinutes(25));
+					redisTemplate.opsForValue().set(redisKey, fullFillStatus, Duration.ofMinutes(5));
 				}
 				delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
 				delivery.setService(deliveryFulfill.getChannel().getName());

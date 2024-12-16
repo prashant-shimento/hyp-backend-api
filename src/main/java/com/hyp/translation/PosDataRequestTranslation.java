@@ -25,7 +25,6 @@ import com.hyp.entity.Tax;
 import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
-import com.hyp.constants.Constants;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosDataRequest.AddonGroupRequest;
@@ -42,9 +41,7 @@ import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
 
 import io.micrometer.common.util.StringUtils;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 @Component
 public class PosDataRequestTranslation {
 
@@ -226,7 +223,6 @@ public class PosDataRequestTranslation {
 		restaurant.setState(restaurantRequest.getDetails().getState());
 		restaurant.setLandmark(restaurantRequest.getDetails().getLandmark());
 		restaurant.setImages(restaurantRequest.getDetails().getImages());
-		restaurant.setAddress(restaurantRequest.getDetails().getAddress());
 		restaurant.setMenuSharingCode(restaurantRequest.getDetails().getMenusharingcode());
 		restaurant.setCalculateTaxOnPacking(restaurantRequest.getDetails().getCalculatetaxondelivery());
 		restaurant.setDeliveryCharge(restaurantRequest.getDetails().getDeliverycharge());
@@ -238,6 +234,11 @@ public class PosDataRequestTranslation {
 			restaurant.setFssai(existingRestaurant.getFssai());
 		} else {
 			restaurant.setFssai("");
+		}
+		if (existingRestaurant != null && existingRestaurant.getAddress() != null) {
+			restaurant.setAddress(existingRestaurant.getAddress());
+		} else {
+			restaurant.setAddress(restaurantRequest.getDetails().getAddress());
 		}
 
 		if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
@@ -271,11 +272,21 @@ public class PosDataRequestTranslation {
 		} else {
 			restaurant.setContact(restaurantRequest.getDetails().getContact());
 		}
+		if (existingRestaurant != null && existingRestaurant.getLogoUrl() != null) {
+			restaurant.setLogoUrl(existingRestaurant.getLogoUrl());
+		} else {
+			restaurant.setLogoUrl("https://storage.googleapis.com/hyp-app-bucket/default-logo.png");
+		}
 		if (existingRestaurant != null && existingRestaurant.getScreens() != null) {
 			restaurant.setScreens(existingRestaurant.getScreens());
+		}else {
+			restaurant.setScreens(null);
 		}
 		if (existingRestaurant != null && existingRestaurant.getWebsiteUrl() != null) {
 			restaurant.setWebsiteUrl(existingRestaurant.getWebsiteUrl());
+		}
+		else {
+			restaurant.setWebsiteUrl(null);
 		}
 		return restaurant;
 	}
@@ -444,7 +455,7 @@ public class PosDataRequestTranslation {
 
 		item.setItemPackingCharges(itemRequest.getItem_packingcharges());
 		item.setIgnoreTaxes(itemRequest.getIgnore_taxes());
-		item.setPrice(itemRequest.getPrice());
+		item.setPrice(getPrice(itemRequest));
 		item.setMinimumPreparationTime(itemRequest.getMinimumpreparationtime());
 		item.setItemAddonBasedOn(itemRequest.getItemaddonbasedon());
 		item.setItemImageUrl(itemRequest.getItem_image_url());
@@ -479,6 +490,23 @@ public class PosDataRequestTranslation {
 
 	public static List<Item> translateToItemList(List<ItemRequest> itemRequestList) {
 		return itemRequestList.stream().map(itemRequest -> translateToItem(itemRequest)).collect(Collectors.toList());
+	}
+
+	private static String getPrice(ItemRequest itemRequest) {
+		if ("0".equals(itemRequest.getPrice()) || "0.0".equals(itemRequest.getPrice())
+				|| "1".equalsIgnoreCase(itemRequest.getItemallowvariation())) {
+			return getLeastVariationPrice(itemRequest.getVariation(), itemRequest.getPrice());
+		}
+		return itemRequest.getPrice();
+	}
+
+	private static String getLeastVariationPrice(List<VariationRequest> variations, String itemPrice) {
+		if (variations == null || variations.isEmpty()) {
+			return itemPrice;
+		}
+		return String.valueOf(variations.stream().filter(variation -> "1".equals(variation.getActive()))
+				.mapToDouble(variation -> Double.parseDouble(variation.getPrice())).min()
+				.orElse(Double.parseDouble(itemPrice)));
 	}
 
 }

@@ -37,8 +37,11 @@ public class NotificationService {
 	private PartnerService partnerService;
 
 	@Autowired
+	private RedisService redisService;
+
+	@Autowired
 	private WebClient.Builder webClientBuilder;
-	
+
 	@Autowired
 	private MetaService metaService;
 
@@ -46,7 +49,8 @@ public class NotificationService {
 	public void sendFeedbackMessageAndUpdateFlag() {
 		List<Partner> partners = partnerService.findByPartnerType(PartnerType.NOTIFICATION);
 		for (Partner partner : partners) {
-			List<Feedback> feedbacks = feedbackService.findByHasBeenNotifiedAndBusiness(false, partner.getConfigs().getOrDefault("Business", null));
+			List<Feedback> feedbacks = feedbackService.findByHasBeenNotifiedAndBusiness(false,
+					partner.getConfigs().getOrDefault("Business", null));
 			log.debug("Found feedbacks: " + feedbacks.size());
 			for (Feedback feedback : feedbacks) {
 				sendFeedbackMessage(feedback.getMobileNumber(), partner);
@@ -59,7 +63,6 @@ public class NotificationService {
 
 	public void sendFeedbackMessage(String mobileNumber, Partner partner) {
 		try {
-			
 
 			String apiUrl = constructFacebookGraphApiUrl(partner);
 			String accessToken = partner.getConfigs().get("AccessToken");
@@ -68,16 +71,11 @@ public class NotificationService {
 			WebClient webClient = webClientBuilder.baseUrl(apiUrl)
 					.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).build();
-            FacebookMessageRequest facebookMessageBody = FacebookMessageRequest.builder()
-                    .messagingProduct("whatsapp")
-                    .recipientType("individual")
-                    .to(mobileNumber)
-                    .type("template")
-                    .template(FacebookMessageRequest.Template.builder()
-                            .name(templateName)
-                            .language(new FacebookMessageRequest.Language("en"))
-                            .build())
-                    .build();
+			FacebookMessageRequest facebookMessageBody = FacebookMessageRequest.builder().messagingProduct("whatsapp")
+					.recipientType("individual").to(mobileNumber).type("template")
+					.template(FacebookMessageRequest.Template.builder().name(templateName)
+							.language(new FacebookMessageRequest.Language("en")).build())
+					.build();
 			Mono<String> responseMono = webClient.post().bodyValue(facebookMessageBody).retrieve()
 					.bodyToMono(String.class);
 
@@ -98,7 +96,7 @@ public class NotificationService {
 		String endpoint = String.format("/%s/messages", facebookBusinessId);
 		return baseUrl + endpoint;
 	}
-	
+
 	@Async
 	public void sendOrderNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
 		try {
@@ -121,14 +119,17 @@ public class NotificationService {
 					.template(FacebookMessageRequest.Template.builder().name(templateName)
 							.language(Language.builder().code("en").build()).components(components).build())
 					.build();
-
+			if (!redisService.isNotificationServiceEnabled()) {
+				log.info("Notification service is disabled.");
+				return;
+			}
 			metaService.sendMessage(messageRequest);
 		} catch (NotificationException e) {
 			log.error("Error occured in sendOrderNotification " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Async
 	public void sendOrderNotification(String mobile, String templateName, List<String> parameters) {
 		try {
@@ -147,11 +148,15 @@ public class NotificationService {
 							.language(Language.builder().code("en").build()).components(components).build())
 					.build();
 
+			if (!redisService.isNotificationServiceEnabled()) {
+				log.info("Notification service is disabled.");
+				return;
+			}
 			metaService.sendMessage(messageRequest);
 		} catch (NotificationException e) {
 			log.error("Error occured in sendOrderNotification " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
-	
+
 }

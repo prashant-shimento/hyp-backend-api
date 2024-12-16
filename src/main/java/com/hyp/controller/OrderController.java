@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.dto.OrderDto;
+import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
@@ -25,6 +26,7 @@ import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
+import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.OrderTranslation;
@@ -53,9 +55,12 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@Autowired
 	AddressService addressService;
-	
+
 	@Autowired
 	DeliveryService deliveryService;
+	
+	@Autowired
+	PaymentService paymentService;
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
@@ -74,19 +79,19 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+
 	@PatchMapping("/{orderId}")
 	public ResponseEntity<Response> update(@PathVariable String orderId, @RequestBody OrderDto orderDto) {
 		Response response;
 		try {
 			Order order = orderService.findById(orderId);
-			if(order == null) {
+			if (order == null) {
 				response = new Response(null, true, "Order not found " + orderId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
 			orderTranslation.updateEntityFromDto(orderDto, order);
 			order = orderService.save(order);
-			if(OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())){
+			if (OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())) {
 				orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERED);
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
@@ -127,8 +132,12 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
-					.getPosOrderUpdateRequest(restaurant, order, "Customer Cancellation");
+					.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
 			String posResponse = posService.updatePosOrder(posOrderUpdateRequest);
+			orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
+			Delivery delivery = deliveryService.findByOrderId(orderId);
+			deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+			paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
 			response = new Response(Collections.singletonList(posResponse), false, "Order Cancelled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {

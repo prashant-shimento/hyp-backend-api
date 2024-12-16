@@ -27,7 +27,7 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 
 	public List<Category> getCategoryItemsById(String categoryId) {
 
-		Criteria criteria = Criteria.where("_id").is(categoryId);
+		Criteria criteria = Criteria.where("_id").is(categoryId).andOperator(Criteria.where("is_deleted").is(false));
 		Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
 				getCategoryItemsLookupOperation());
 
@@ -35,7 +35,7 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 	}
 
 	public List<Category> getAllCategoryItems(String restaurantId) {
-		Criteria criteria = Criteria.where("restaurant_id").is(restaurantId);
+		Criteria criteria = Criteria.where("restaurant_id").is(restaurantId).andOperator(Criteria.where("is_deleted").is(false));
 		long startTime = System.currentTimeMillis();
 		Aggregation aggregation = Aggregation.newAggregation(Aggregation.match(criteria),
 				getCategoryItemsLookupOperation());
@@ -48,6 +48,7 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 
 	private LookupOperation getCategoryItemsLookupOperation() {
 		AggregationPipeline taxLookUpPipeline = Aggregation.newAggregation(
+				Aggregation.match(Criteria.where("is_deleted").is(false)),
 				LookupOperation.newLookup().from("taxes").localField("item_tax").foreignField("_id").as("taxes"))
 				.getPipeline();
 

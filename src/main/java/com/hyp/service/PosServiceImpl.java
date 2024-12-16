@@ -22,6 +22,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.entity.AddonItem;
+import com.hyp.entity.Category;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Item;
 import com.hyp.entity.Order;
@@ -43,7 +44,6 @@ import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
@@ -105,6 +105,9 @@ public class PosServiceImpl implements PosService {
 			long existingRestQuery = System.currentTimeMillis();
 			Restaurant existingRestaurant = restaurantService
 					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
+			if(existingRestaurant != null) {
+				deletePosData(existingRestaurant.getId());
+			}
 			log.info("Time taken for existingRestQuery: " + (System.currentTimeMillis() - existingRestQuery) + "ms");
 			long restaurantTranslation = System.currentTimeMillis();
 			Restaurant restaurant = PosDataRequestTranslation
@@ -125,6 +128,18 @@ public class PosServiceImpl implements PosService {
 		}
 	}
 
+	@Transactional
+	public void deletePosData(String restaurantId) {
+		try {
+			long deletePosData = System.currentTimeMillis();
+			itemService.softDeleteByRestaurant(Item.class, restaurantId);
+			categoryService.softDeleteByRestaurant(Category.class, restaurantId);
+			log.info("Time taken for deletePosData: " + (System.currentTimeMillis() - deletePosData) + "ms");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
 	private void saveEntities(Restaurant restaurant, PosData posData) {
 		long startTime = System.currentTimeMillis();
 
@@ -182,14 +197,17 @@ public class PosServiceImpl implements PosService {
 			log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/save_order";
-
+			posOrderRequest.setAppKey("sdfsdfdsf");
 			String response = webClient.post().uri(endpoint).body(BodyInserters.fromValue(posOrderRequest)).retrieve()
 					.bodyToMono(String.class).block();
 			log.info("createPosOrder Response {}", objectMapper.writeValueAsString(response));
+
 			if (response != null && !response.isEmpty()) {
 				return true;
 			}
 		} catch (Exception e) {
+			//Alert mechanism
+			//
 			log.error("Error occured during createPosOrder {}", e);
 			throw new PosException("POS Order Creation failed " + e.getMessage());
 		}

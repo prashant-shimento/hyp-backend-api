@@ -39,5 +39,7 @@ public abstract class BaseEntity implements Serializable {
 
 	@Field("restaurant_id")
 	private String restaurantId;
-
+	
+	@Field("is_deleted")
+	private boolean isDeleted = false;
 }

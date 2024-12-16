@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.hyp.entity.BaseEntity;
 import com.hyp.response.Response;
 import com.hyp.service.BaseService;
 import com.hyp.service.BaseTranslationService;
@@ -60,10 +61,21 @@ public abstract class BaseController<DTO, T, ID> {
 	public ResponseEntity<Response> getById(@PathVariable ID id) {
 		try {
 			T entity = service.findById(id);
+
 			if (entity != null) {
-				DTO dto = translationService.getDto(entity);
-				Response response = new Response(Collections.singletonList(dto), false, "success");
-				return ResponseEntity.ok(response);
+				if (entity instanceof BaseEntity) {
+					if (!((BaseEntity) entity).isDeleted()) {
+						DTO dto = translationService.getDto(entity);
+						Response response = new Response(Collections.singletonList(dto), false, "success");
+						return ResponseEntity.ok(response);
+					} else {
+						return ResponseEntity.notFound().build();
+					}
+				} else {
+					DTO dto = translationService.getDto(entity);
+					Response response = new Response(Collections.singletonList(dto), false, "success");
+					return ResponseEntity.ok(response);
+				}
 			} else {
 				return ResponseEntity.notFound().build();
 			}
