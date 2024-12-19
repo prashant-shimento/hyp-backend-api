@@ -14,53 +14,59 @@ public class MongoScript {
     public static void main(String[] args) {
         try (MongoClient mongoClient = MongoClients.create("mongodb+srv://apiuser:IggL9Oyj26ehmp83@production.n3ybxpg.mongodb.net")) {
             MongoDatabase database = mongoClient.getDatabase("hyp_backend_db");
-            MongoCollection<Document> orderCollection = database.getCollection("orders");
             MongoCollection<Document> itemCollection = database.getCollection("items");
-            MongoCollection<Document> attributeCollection = database.getCollection("attributes");
+            MongoCollection<Document> variationsCollection = database.getCollection("variations");
 
-            // Step 1: Find orders with items missing item_attribute
-            List<Document> ordersToUpdate = orderCollection.find(
-                    Filters.and(
-                            Filters.ne("items", new ArrayList<>()),
-                            Filters.elemMatch("items", Filters.exists("item_attribute", false))
-                    )
-            ).limit(10).into(new ArrayList<>());
+         // Step 1: Find items with price "0"
+            List<Document> itemsToUpdate = itemCollection.find(
+                    Filters.eq("price", "0")
+            ).into(new ArrayList<>());
 
-            
-            System.out.println("Order to update "+ ordersToUpdate.size());
+            System.out.println("Items to update: " + itemsToUpdate.size());
 
-            
+            for (Document item : itemsToUpdate) {
+                Object itemId = item.get("_id");
+                System.out.println("Processing item with id: " + itemId);
 
-            for (Document order : ordersToUpdate) {
-                
+                // Step 2: Get variations from the item
+                List<Object> variationIds = (List<Object>) item.get("variation");
+                if (variationIds != null && !variationIds.isEmpty()) {
+                    // Step 3: Find the least price from the variations collection
+                    List<Document> variations = variationsCollection.find(
+                            Filters.in("_id", variationIds)
+                    ).into(new ArrayList<>());
 
-//                 Loop through each item in the order's items array
-                List<Document> items = (List<Document>) order.get("items");
-//                
-                System.out.println("Order id "+ order.get("_id") + " item size "+items.size());
-                for (Document item : items) {
-//                	System.out.println("Order" + item);
-           		 Document itemDoc = itemCollection.find(Filters.eq("_id", item.getString("item_id"))).first();
-           		 if(itemDoc != null) {
-           			 System.out.println("ItemDoc is not null " + itemDoc.get("item_attribute_id"));
-           			item.put("item_attribute",itemDoc.get("item_attribute_id"));
-           		 }else {
-           			System.out.println("ItemDoc is null " +item.getString("item_id"));
-           			item.put("item_attribute","1");
-           		 }                
+                    double leastPrice = Double.MAX_VALUE;
+                    for (Document variation : variations) {
+                        Object priceObj = variation.get("price");
+                        if (priceObj != null) {
+                            try {
+                                double price = Double.parseDouble(priceObj.toString());
+                                if (price < leastPrice) {
+                                    leastPrice = price;
+                                }
+                            } catch (NumberFormatException e) {
+                                System.err.println("Invalid price format for variation: " + variation.get("_id"));
+                            }
+                        }
+                    }
+
+                    // Step 4: Update the item's price if a valid least price was found
+                    if (leastPrice != Double.MAX_VALUE) {
+                        itemCollection.updateOne(
+                                Filters.eq("_id", itemId),
+                                Updates.set("price", String.valueOf(leastPrice))
+                        );
+                        System.out.println("Updated item with id " + itemId + " to price " + leastPrice);
+                    } else {
+                        System.out.println("No valid price found for variations of item with id " + itemId);
+                    }
+                } else {
+                    System.out.println("No variations found for item with id " + itemId);
                 }
-                
-                System.out.println("Items "+items);
-                
-           		 
-                orderCollection.updateOne(
-                        Filters.eq("_id", order.get("_id")),
-                        Updates.set("items", items)
-                );
-
             }
 
-            System.out.println("Item attributes updated successfully.");
+            System.out.println("Item price updates completed successfully.");
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Error during item attribute update: " + e.getMessage());
