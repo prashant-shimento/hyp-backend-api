@@ -19,6 +19,7 @@ public class VariationService extends BaseServiceImpl<Variation, String> {
 
 	@Autowired
 	VariationRepository variationRepository;
+	
 	@Autowired
 	MongoTemplate mongoTemplate;
 

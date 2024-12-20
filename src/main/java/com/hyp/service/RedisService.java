@@ -14,4 +14,12 @@ public class RedisService {
 	    String value = redisTemplate.opsForValue().get("notification:service:enabled");
 	    return Boolean.parseBoolean(value);
 	}
+	
+	public String getAlertUsers() {
+	    return redisTemplate.opsForValue().get("whatsappAlert");
+	}
+	
+	public String getInternalUsers() {
+	    return redisTemplate.opsForValue().get("internalUsers");
+	}
 }	

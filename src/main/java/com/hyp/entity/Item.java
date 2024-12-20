@@ -96,5 +96,11 @@ public class Item extends BaseEntity {
     private LocalDateTime autoTurnOnTime;
     
 	private transient List<Tax> taxes;
+	
+	@Field("item_variations")
+	private transient List<Variation> itemVariations;
+	
+	@Field("item_addons")
+	private transient List<AddonGroup> itemAddons;
 }
 

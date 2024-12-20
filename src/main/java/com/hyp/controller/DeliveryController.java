@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.constants.Constants;
+import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
@@ -88,15 +89,15 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(null, false, "Success");
 			return ResponseEntity.ok().build();
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in updateDeliveryOrderStatus " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@GetMapping("/quote/{restaurantId}")
-	public ResponseEntity<Response> getDeliveryQuote(@PathVariable("restaurantId") String restaurantId,
-			@RequestParam("addressId") String addressId) {
+	public ResponseEntity<Response> getDeliveryQuote(@PathVariable String restaurantId,
+			String addressId) {
 		Response response = null;
 		try {
 			Restaurant restaurant = restaurantService.findById(restaurantId);
@@ -113,13 +114,17 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
 					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
 					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
-				response = new Response(null, true, "Location not Deliverable");
+				response = new Response(null, true, ErrorConstants.LOCATION_NOT_DELIVERBLE);
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 			}
 
 			DeliveryQuote deliveryQuote = deliveryService
 					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
+			if(deliveryQuote.getData().getItems().isEmpty()) {
+				response = new Response(null, true, ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+			}
 			Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
 					.filter(item -> item.isPickupNow())
 					.filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
@@ -130,8 +135,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 					: ResponseEntity.notFound().build();
 
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in getDeliveryQuote " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -152,8 +157,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(Collections.singletonList(deliveryRiderLocation), false, "Delivery Quotes Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in getRiderLocation " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -177,8 +182,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(null, false, "Delivery Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in createDeliveryOrder " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -208,8 +213,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Fullfilled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in smartFulfill " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -234,8 +239,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -248,8 +253,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			response = new Response(null, false, "Updated Pidge Auth Token");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
 			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

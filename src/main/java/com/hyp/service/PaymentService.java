@@ -65,8 +65,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setProvider(Constants.RAZOR_PAY);
 			payment.setOrderId(orderId);
 			orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
+			
 			String redisKey = "order:" + orderId + ":state";
 			redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15));
+			
 			String redisPaymentKey = "order:" + orderId + ":payment";
 			redisTemplate.opsForValue().set(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4));
 			return payment;

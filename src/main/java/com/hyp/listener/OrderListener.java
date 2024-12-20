@@ -1,5 +1,8 @@
 package com.hyp.listener;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -7,15 +10,22 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.hyp.constants.Constants;
+import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Payment;
+import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
+import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
+import com.hyp.service.NotificationService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
+import com.hyp.service.RedisService;
+import com.hyp.service.RestaurantService;
+import com.hyp.util.CommonUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +45,18 @@ public class OrderListener implements MessageListener {
 	@Autowired
 	PaymentService paymentService;
 
+	@Autowired
+	CustomerService customerService;
+
+	@Autowired
+	RestaurantService restaurantService;
+
+	@Autowired
+	NotificationService notificationService;
+
+	@Autowired
+	RedisService redisService;
+
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
 		String expiredKey = message.toString();
@@ -48,9 +70,10 @@ public class OrderListener implements MessageListener {
 					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
 					if (paymentStatus.equalsIgnoreCase("created")) {
 						log.info("Order status updated as cancelled for {}", orderId);
-						orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
+						order.setStatus(OrderStatusType.CANCELLED);
+						orderService.save(order);
 					}
-					
+
 				}
 			}
 		}
@@ -77,7 +100,7 @@ public class OrderListener implements MessageListener {
 			log.info("Received Order Fulfill Expiry from Redis for {}", orderId);
 			Order order = orderService.findById(orderId);
 			if (order != null) {
-				if (order.getStatus().equals(OrderStatusType.ACCEPTED)) {
+				if (order.getStatus().equals(OrderStatusType.ACCEPTED) || order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
 					Delivery delivery = deliveryService.findByOrderId(order.getId());
 					String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
 					if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
@@ -92,6 +115,29 @@ public class OrderListener implements MessageListener {
 							orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
 						}
 						log.info("Order is fulfilled on redis expiry for {}", orderId);
+					}
+				}
+			}
+		}
+		if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delivery")) {
+			String orderId = expiredKey.split(":")[1];
+			log.info("Received Order Delivery Check Expiry from Redis for {}", orderId);
+			Order order = orderService.findById(orderId);
+			if (order != null) {
+				if (order.getStatus().equals(OrderStatusType.ACCEPTED)) {
+					Customer customer = customerService.findById(order.getCustomerId());
+					Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+					Delivery delivery = deliveryService.findByOrderId(orderId);
+					if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+						List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
+								order.getStatus(), customer.getName(), customer.getMobile(), "-", "-");
+						String alertMobileNum = redisService.getAlertUsers();
+						List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
+						for (String mobile : mobileNumbers) {
+							notificationService.sendOrderNotification(mobile,
+									Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
+						}
+						log.info("Sent delivery delay alert for {}", orderId);
 					}
 				}
 			}

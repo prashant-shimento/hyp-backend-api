@@ -63,6 +63,8 @@ public interface Constants {
 	String META_ORDER_CANCELLED_TEMPLATE = "order_cancelled";
 	String META_ORDER_ALERT_TEMPLATE = "order_alert";
 	String META_DELIVERY_DELAY_ALERT_TEMPLATE = "delivery_delay_alert";
+	String META_ORDER_PAID_TEMPLATE = "order_payment_success";
+
 
 
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";

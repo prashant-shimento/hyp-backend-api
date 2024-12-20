@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.RazorpayEventDto;
 import com.hyp.dto.RazorpayVerifyDto;
 import com.hyp.dto.RefundDto;
@@ -42,8 +43,8 @@ public class PaymentController {
 	@Value("${razorpay.secret}")
 	private String razorPaySecret;
 
-	@PostMapping("{orderId}")
-	public ResponseEntity<Response> createPaymentOrder(@PathVariable("orderId") String orderId) {
+	@PostMapping("/{orderId}")
+	public ResponseEntity<Response> createPaymentOrder(@PathVariable String orderId) {
 		Response response;
 		try {
 			Order order = orderService.findById(orderId);
@@ -55,8 +56,8 @@ public class PaymentController {
 			response = new Response(Collections.singletonList(payment), false, "Payment Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in createPaymentOrder " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -75,8 +76,8 @@ public class PaymentController {
 			return ResponseEntity.ok(response);
 
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in consumePayment " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -99,8 +100,8 @@ public class PaymentController {
 			response = new Response(Collections.singletonList(order), false, "Payment Verified Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in verifyPayment " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -117,8 +118,8 @@ public class PaymentController {
 			if (payment == null) {
 				throw new Exception("Payment not found " + refundDto.getOrderId());
 			}
-			if(order.getStatus().equals(OrderStatusType.REFUND_COMPLETED) ||
-					order.getStatus().equals(OrderStatusType.REFUND_INITIATED)){
+			if (order.getStatus().equals(OrderStatusType.REFUND_COMPLETED)
+					|| order.getStatus().equals(OrderStatusType.REFUND_INITIATED)) {
 				throw new Exception("Refund Already " + order.getStatus());
 			}
 			payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), true);
@@ -126,14 +127,15 @@ public class PaymentController {
 			response = new Response(Collections.singletonList(payment), false, "Refund Intiated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in initiateRefund " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	@PostMapping("/callback")
 	public ResponseEntity<Response> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
+		Response response;
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":
@@ -156,9 +158,9 @@ public class PaymentController {
 			}
 			return ResponseEntity.ok(new Response(null, false, "Success"));
 		} catch (Exception e) {
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(new Response(null, true, e.getMessage()));
+			log.error("Exception occurred in razorPayWebHook " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
@@ -179,7 +181,7 @@ public class PaymentController {
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
-		log.info("payment capture event processing for order=" + payment.getOrderId());
+		log.info("payment capture event processing for order " + payment.getOrderId());
 		payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 		payment.setPaymentId(paymentId);
 		paymentService.save(payment);
@@ -188,7 +190,7 @@ public class PaymentController {
 	private void handleRefundEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
 		String paymentId = razorPayEventDto.getPayload().getRefund().getEntity().getPayment_id();
 		Payment payment = paymentService.findByPaymentId(paymentId);
-		log.info("payment refund event processing for order=" + payment.getOrderId());
+		log.info("payment refund event processing for order " + payment.getOrderId());
 		orderService.updateOrderStatus(payment.getOrderId(), orderStatus);
 		payment.getRefund().setStatus(razorPayEventDto.getPayload().getRefund().getEntity().getStatus());
 		paymentService.save(payment);

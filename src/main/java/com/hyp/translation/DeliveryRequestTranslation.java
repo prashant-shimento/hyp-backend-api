@@ -100,9 +100,9 @@ public class DeliveryRequestTranslation {
 		receiverDetail.setName(customer.getName());
 		List<Trip> trips = new ArrayList<>();
 		Trip trip = new Trip();
-		trip.setReferenceId("ORDER-ID-"+order.getId()+"ITEMS-"+order.getOrderItems().size());
+		trip.setReferenceId("order-"+order.getId()+"-items-"+order.getOrderItems().size());
 		trip.setReceiverDetail(receiverDetail);
-		trip.setSourceOrderId("ORDER-ID-"+order.getId()+"ITEMS-"+order.getOrderItems().size());
+		trip.setSourceOrderId(order.getId());
 		trip.setBillAmount(order.getTotalAmount());
 		trips.add(trip);
 		orderRequest.setTrips(trips);

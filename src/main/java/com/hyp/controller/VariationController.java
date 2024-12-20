@@ -10,9 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hyp.dto.OrderDto;
 import com.hyp.dto.VariationDto;
-import com.hyp.entity.Order;
 import com.hyp.entity.Variation;
 import com.hyp.response.Response;
 import com.hyp.service.VariationService;

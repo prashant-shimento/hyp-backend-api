@@ -197,7 +197,6 @@ public class PosServiceImpl implements PosService {
 			log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/save_order";
-			posOrderRequest.setAppKey("sdfsdfdsf");
 			String response = webClient.post().uri(endpoint).body(BodyInserters.fromValue(posOrderRequest)).retrieve()
 					.bodyToMono(String.class).block();
 			log.info("createPosOrder Response {}", objectMapper.writeValueAsString(response));
@@ -206,8 +205,6 @@ public class PosServiceImpl implements PosService {
 				return true;
 			}
 		} catch (Exception e) {
-			//Alert mechanism
-			//
 			log.error("Error occured during createPosOrder {}", e);
 			throw new PosException("POS Order Creation failed " + e.getMessage());
 		}

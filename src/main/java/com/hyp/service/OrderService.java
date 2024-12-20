@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,11 +115,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
 	NotificationService notificationService;
 
-	@Value("${whatsapp.alert.mobile}")
-	String alertMobileNum;
-
 	@Autowired
 	RedisTemplate<String, Object> redisTemplate;
+
+	@Autowired
+	RedisService redisService;
 
 	@Autowired
 	StringRedisTemplate stringRedisTemplate;
@@ -207,6 +208,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
+		String alertMobileNum = redisService.getAlertUsers();
 		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
 		for (String mobile : mobileNumbers) {
 			notificationService.sendOrderNotification(mobile, Constants.META_ORDER_ALERT_TEMPLATE, parameters);
@@ -251,6 +253,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					String redisKey = "order:" + order.getId() + ":fulfill";
 					redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
 				}
+				if (partner == null) {
+					String redisKey = "order:" + order.getId() + ":delivery";
+					redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6));
+				}
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -271,6 +277,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
 					deliveryService.save(delivery);
 				}
+				updateOrderStatus(order.getId(), OrderStatusType.CANCELLED);
 			}
 			messageTemplate.convertAndSend("/topic/order-status", order);
 			return order;
@@ -295,7 +302,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	public void processOrder(Order order) {
 		try {
-			
+
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
@@ -310,6 +317,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 							.getDeliveryOrderRequest(restaurant, address, customer, order);
 					deliveryService.createOrder(deliveryOrderRequest, order);
 				}
+
 			}
 
 		} catch (RequestTranslationException e) {
@@ -337,6 +345,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 		Delivery delivery = deliveryService.findByOrderId(order.getId());
 		switch (orderStatus) {
+		case PAID:
+			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
+					order.getId(), order.getStatus());
+			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
+					templateParameters);
+			break;
+
 		case PICKED_UP:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
 					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
@@ -350,31 +365,14 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
 					templateParameters);
 			break;
+		case CANCELLED:
+			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+					restaurant.getRestaurantName());
+			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE,
+					templateParameters);
+			break;
 		default:
 			break;
 		}
 	}
-
-//	@Scheduled(fixedRate = 60000)
-//	public void scheduleDeliveryFullfill() throws DeliveryException {
-//		LocalDateTime currentTime = LocalDateTime.now();
-//		List<Order> ordersToProcess = orderRepository.findByStatus(OrderStatusType.ACCEPTED).stream().filter(order -> {
-//			int minPrepTime = order.getMinPrepTime().equalsIgnoreCase("") ? 10
-//					: Integer.parseInt(order.getMinPrepTime());
-//			int bufferTime = minPrepTime > 20 ? minPrepTime - 10 : 5;
-//			LocalDateTime triggerTime = order.getOrderTime().plusMinutes(bufferTime);
-//			return triggerTime.isBefore(currentTime) || triggerTime.isEqual(currentTime);
-//		}).collect(Collectors.toList());
-//
-//		for (Order order : ordersToProcess) {
-//			String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
-//			Delivery delivery = deliveryService.findByOrderId(order.getId());
-//			if (fulFill.equalsIgnoreCase("smart")) {
-//				deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
-//			} else {
-//				deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
-//			}
-//		}
-//
-//	}
 }

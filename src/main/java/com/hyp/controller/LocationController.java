@@ -13,18 +13,23 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.google.maps.model.GeocodingResult;
+import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.AddressDto;
 import com.hyp.entity.Partner;
+import com.hyp.entity.Restaurant;
 import com.hyp.model.PlaceData;
 import com.hyp.model.PlacePredictionData;
 import com.hyp.request.LocationRequest;
 import com.hyp.response.Response;
 import com.hyp.service.LocationService;
 import com.hyp.service.PartnerService;
+import com.hyp.service.RestaurantService;
 import com.hyp.translation.MapDataTranslation;
 
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/location")
 public class LocationController {
@@ -35,6 +40,9 @@ public class LocationController {
 	@Autowired
 	PartnerService partnerService;
 
+	@Autowired
+	RestaurantService restaurantService;
+
 	@GetMapping("/maps/predict")
 	public ResponseEntity<Response> getLocationPrediction(@RequestParam String search) {
 		Response response;
@@ -44,22 +52,26 @@ public class LocationController {
 					"Location Prediction Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in getLocationPrediction " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
-	@GetMapping("/maps/place/{partnerId}")
-	public ResponseEntity<Response> getPlace(@PathVariable String partnerId,
+	@GetMapping("/maps/place/{entityId}")
+	public ResponseEntity<Response> getPlace(@PathVariable String entityId,
 			@RequestBody LocationRequest locationRequest) {
 		Response response;
 		AddressDto addressPlaceData;
 		try {
-			Partner partner = partnerService.findByIdWithReference(partnerId, Partner.class);
+			Partner partner = partnerService.findByIdWithReference(entityId, Partner.class);
+			Restaurant restaurant = null;
 			if (partner == null) {
-				response = new Response(null, true, "Restaurant Partner not found " + partnerId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+				restaurant = restaurantService.findById(entityId);
+				if (restaurant == null) {
+					response = new Response(null, true, "Entity not found for id: " + entityId);
+					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+				}
 			}
 			if (locationRequest.getPlaceId() != null) {
 				String rawPlaceData = locationService.getPlaceDetails(locationRequest.getPlaceId());
@@ -80,12 +92,17 @@ public class LocationController {
 				response = new Response(null, true, "Please provide PlaceId or Co-ordinates");
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 			}
-
-			List<String> restaurantList = locationService.getServicableRestaurants(addressPlaceData,
-					partner.getRestaurantDetails());
+			List<String> restaurantList;
+			if (restaurant != null) {
+				restaurantList = locationService.getServicableRestaurants(addressPlaceData,
+						Collections.singletonList(restaurant));
+			} else {
+				restaurantList = locationService.getServicableRestaurants(addressPlaceData,
+						partner.getRestaurantDetails());
+			}
 
 			if (restaurantList.size() == 0) {
-				response = new Response(null, true, "Location not Deliverable");
+				response = new Response(null, true, ErrorConstants.LOCATION_NOT_DELIVERBLE);
 				return ResponseEntity.badRequest().body(response);
 			}
 
@@ -95,8 +112,8 @@ public class LocationController {
 					false, "Location Place Data Fetched");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in getPlace " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

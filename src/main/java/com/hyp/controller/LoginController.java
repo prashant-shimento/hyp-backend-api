@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.LoginDto;
 import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
@@ -25,17 +26,16 @@ import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
-
+import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/login")
 public class LoginController {
-
-	@Value("${internal.users}")
-	private String internalUserNumbers;
 
 	@Autowired
 	public CustomerService customerService;
@@ -54,6 +54,9 @@ public class LoginController {
 
 	@Autowired
 	HttpServletRequest httpRequest;
+	
+	@Autowired
+	RedisService redisService;
 
 	@PostMapping("/otp")
 	public ResponseEntity<Response> userLogin(@RequestBody LoginDto loginDto) {
@@ -72,8 +75,8 @@ public class LoginController {
 			response = new Response(null, false, "OTP Sent Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in userLogin " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -96,7 +99,6 @@ public class LoginController {
 			if (!checkIfInternalUser(verificationRequest.getMobile())) {
 				int storedOtp = otpService.getOtp(verificationRequest.getMobile());
 				if (verificationRequest.getOtp() != storedOtp) {
-					otpService.clearOTP(verificationRequest.getMobile());
 					return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 							.body(new Response(null, true, "OTP Verification Failed"));
 				}
@@ -115,14 +117,14 @@ public class LoginController {
 			return ResponseEntity
 					.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in otpVerify " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
 	private boolean checkIfInternalUser(String mobile) {
-		return internalUserNumbers.contains(mobile);
+		return redisService.getInternalUsers().contains(mobile);
 	}
 
 	@PostMapping("/resend-otp/{mobile}")
@@ -136,8 +138,8 @@ public class LoginController {
 			response = new Response(null, false, "OTP Sent Successfully");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in otpResend " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

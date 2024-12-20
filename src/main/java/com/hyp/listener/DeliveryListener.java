@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
@@ -16,11 +15,11 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.model.DeliveryOrderStatus.Rider;
-import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
 import com.hyp.service.OrderService;
+import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.util.CommonUtils;
 
@@ -44,9 +43,9 @@ public class DeliveryListener implements MessageListener {
 
 	@Autowired
 	NotificationService notificationService;
-
-	@Value("${whatsapp.alert.mobile}")
-	String alertMobileNum;
+	
+	@Autowired
+	RedisService redisService;
 
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
@@ -69,6 +68,7 @@ public class DeliveryListener implements MessageListener {
 				List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
 						order.getStatus(), customer.getName(), customer.getMobile(),
 						rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
+				String alertMobileNum = redisService.getAlertUsers();
 				List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
 				for (String mobile : mobileNumbers) {
 					notificationService.sendOrderNotification(mobile, Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE,

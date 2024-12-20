@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
@@ -32,8 +33,11 @@ import com.hyp.service.RestaurantService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping("/order")
 public class OrderController extends BaseListController<OrderDto, Order, String> {
@@ -58,7 +62,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@Autowired
 	DeliveryService deliveryService;
-	
+
 	@Autowired
 	PaymentService paymentService;
 
@@ -74,8 +78,8 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
+			log.error("Exception occurred in create " + e.getMessage());
 			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
@@ -89,24 +93,37 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				response = new Response(null, true, "Order not found " + orderId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
+			OrderStatusType orderStatus = order.getStatus();
 			orderTranslation.updateEntityFromDto(orderDto, order);
-			order = orderService.save(order);
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			if (OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())) {
 				orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERED);
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
+			if (OrderStatusType.CANCELLED.name().equalsIgnoreCase(orderDto.getStatus())) {
+				if (orderStatus.equals(OrderStatusType.ACCEPTED)) {
+					PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
+							.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
+					posService.updatePosOrder(posOrderUpdateRequest);
+					Delivery delivery = deliveryService.findByOrderId(orderId);
+					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+					paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
+				}
+				orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
+			}
+			order = orderService.save(order);
 			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in update " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
 
-	// This is dummy api to simulate rider allocation, not to be used directly
+	@Hidden
 	@PostMapping("/rider/{orderId}")
-	public ResponseEntity<Response> orderRiderUpdate(@PathVariable("orderId") String orderId) {
+	public ResponseEntity<Response> orderRiderUpdate(@PathVariable String orderId) {
 		Response response;
 		try {
 			Order order = orderService.findById(orderId);
@@ -117,32 +134,8 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
-	}
-
-	// This is dummy api to simulate cancel order allocation, not to be used
-	// directly
-	@PostMapping("/cancel/{orderId}")
-	public ResponseEntity<Response> orderCancel(@PathVariable("orderId") String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
-					.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
-			String posResponse = posService.updatePosOrder(posOrderUpdateRequest);
-			orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
-			Delivery delivery = deliveryService.findByOrderId(orderId);
-			deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
-			paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
-			response = new Response(Collections.singletonList(posResponse), false, "Order Cancelled");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
+			log.error("Exception occurred in orderRiderUpdate " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}

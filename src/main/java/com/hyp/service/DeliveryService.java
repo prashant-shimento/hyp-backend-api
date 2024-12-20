@@ -22,7 +22,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
-import com.hyp.constants.Constants;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -349,7 +348,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
 						|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
 					String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
-					redisTemplate.opsForValue().set(redisKey, fullFillStatus, Duration.ofMinutes(5));
+					redisTemplate.opsForValue().set(redisKey, fullFillStatus, Duration.ofMinutes(25));
 				}
 				delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
 				delivery.setService(deliveryFulfill.getChannel().getName());
