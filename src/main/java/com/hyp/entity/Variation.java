@@ -22,7 +22,7 @@ public class Variation extends BaseEntity {
 	private static final long serialVersionUID = 1L;
 
 	private String name;
-
+	
 	@Field("group_name")
 	private String groupName;
 
@@ -48,5 +48,7 @@ public class Variation extends BaseEntity {
 	
 	@Field("addon_groups")
 	private transient List<AddonGroup> addonGroups;
+	
+	private transient String id;
 	
 }

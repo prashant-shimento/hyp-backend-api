@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.constants.ErrorConstants;
+import com.hyp.dto.PaymentDto;
 import com.hyp.dto.RazorpayEventDto;
 import com.hyp.dto.RazorpayVerifyDto;
 import com.hyp.dto.RefundDto;
@@ -23,16 +24,20 @@ import com.hyp.response.Response;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RazorpaySignatureVerifier;
+import com.hyp.translation.PaymentTranslation;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
 @RequestMapping("/payment")
-public class PaymentController {
+public class PaymentController extends BaseListController<PaymentDto, Payment, String> {
 
 	@Autowired
 	PaymentService paymentService;
+	
+	@Autowired
+	PaymentTranslation paymentTranslation;
 
 	@Autowired
 	OrderService orderService;
@@ -52,7 +57,6 @@ public class PaymentController {
 				throw new Exception("Order not found " + orderId);
 			}
 			Payment payment = paymentService.createPaymentOrder(order.getId(), order.getGrandTotalAmount());
-			paymentService.save(payment);
 			response = new Response(Collections.singletonList(payment), false, "Payment Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {

@@ -24,9 +24,8 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.OrderStatusType;
 import com.hyp.model.DeliveryOrderStatus;
-import com.hyp.model.DeliveryOrderStatusResponse;
+import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.request.DeliveryOrderRequest;
@@ -77,7 +76,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	private StringRedisTemplate redisTemplate;
 
 	@PostMapping("/callback")
-	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderStatus deliveryOrderData) {
+	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData) {
 		Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
 		Response response;
 		try {
@@ -199,17 +198,11 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
 			Delivery delivery = deliveryService.findByOrderId(order.getId());
-
-			if (order.getStatus().equals(OrderStatusType.ERROR)
-					|| order.getStatus().equals(OrderStatusType.DELIVERY_ERROR)) {
-				if (fulfillType.equalsIgnoreCase("smart")) {
-					deliveryService.processDeliverySmartFulfill(delivery, Constants.SMART);
-				} else {
-					deliveryService.processDeliveryFulfill(delivery, Constants.API);
-				}
-				orderService.updateOrderStatus(orderId, OrderStatusType.READY_FOR_DELIVERY);
+			if (fulfillType.equalsIgnoreCase("smart")) {
+				deliveryService.processDeliverySmartFulfill(delivery, Constants.SMART);
+			} else {
+				deliveryService.processDeliveryFulfill(delivery, Constants.API);
 			}
-
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Fullfilled");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
@@ -233,9 +226,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 				response = new Response(null, true, "Delivery Id not found ");
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
-			DeliveryOrderStatusResponse deliverOrderStatusResponse = deliveryService
+			DeliveryOrderStatus deliverOrderStatus = deliveryService
 					.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
-			deliveryService.processDeliveryCallback(delivery, deliverOrderStatusResponse.getData());
+			deliveryService.processDeliveryCallback(delivery, deliverOrderStatus.getData());
 			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
@@ -254,6 +247,66 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PostMapping("/unallocate/{orderId}")
+	public ResponseEntity<Response> unallocate(@PathVariable String orderId) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			deliveryService.unallocateOrderFulfill(delivery.getDeliveryOrderId());
+			response = new Response(null, false, "Order Unallocated Successfully");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			log.error("Exception occurred in unallocate " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PostMapping("/cancel/{orderId}")
+	public ResponseEntity<Response> cancelDeliveryOrder(@PathVariable String orderId) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+			response = new Response(null, false, "Delivery Order Cancelled");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			log.error("Exception occurred in cancelDeliveryOrder " + e.getMessage());
+			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@GetMapping("/status/{orderId}")
+	public ResponseEntity<Response> getDeliveryOrderStatus(@PathVariable String orderId) {
+		Response response;
+		try {
+			Order order = orderService.findById(orderId);
+			if (order == null) {
+				response = new Response(null, true, "Order not found " + orderId);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+			}
+			Delivery delivery = deliveryService.findByOrderId(order.getId());
+			DeliveryOrderStatus deliveryOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+			response = new Response(Collections.singletonList(deliveryOrderStatus.getData()), false, "Delivery Order Status Fetched");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			log.error("Exception occurred in getDeliveryOrderStatus " + e.getMessage());
 			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}

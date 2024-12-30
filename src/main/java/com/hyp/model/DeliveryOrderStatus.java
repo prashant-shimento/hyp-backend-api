@@ -14,49 +14,55 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DeliveryOrderStatus {
 
-	@JsonProperty("id")
-	private String id;
+	private DeliveryOrderData data;
+	
+	@Data
+	public static class DeliveryOrderData {
+		@JsonProperty("id")
+		private String id;
 
-	@JsonProperty("dd_channel")
-	private DeliveryChannel ddChannel;
+		@JsonProperty("dd_channel")
+		private DeliveryChannel ddChannel;
 
-	@JsonProperty("reference_id")
-	private String referenceId;
+		@JsonProperty("reference_id")
+		private String referenceId;
 
-	@JsonProperty("bill_amount")
-	private int billAmount;
+		@JsonProperty("bill_amount")
+		private int billAmount;
 
-	@JsonProperty("cod_amount")
-	private int codAmount;
+		@JsonProperty("cod_amount")
+		private int codAmount;
 
-	@JsonProperty("created_at")
-	private String createdAt;
+		@JsonProperty("created_at")
+		private String createdAt;
 
-	@JsonProperty("customer_detail")
-	private ContactDetail customerDetail;
+		@JsonProperty("customer_detail")
+		private ContactDetail customerDetail;
 
-	@JsonProperty("sender_detail")
-	private ContactDetail senderDetail;
+		@JsonProperty("sender_detail")
+		private ContactDetail senderDetail;
 
-	@JsonProperty("poc_detail")
-	private ContactDetail pocDetail;
+		@JsonProperty("poc_detail")
+		private ContactDetail pocDetail;
 
-	@JsonProperty("status")
-	private String status;
+		@JsonProperty("status")
+		private String status;
 
-	@JsonProperty("updated_at")
-	private String updatedAt;
+		@JsonProperty("updated_at")
+		private String updatedAt;
 
-	@JsonProperty("notes")
-	private List<Object> notes;
+		@JsonProperty("notes")
+		private List<Object> notes;
 
-	private DeliveryFulfillment fulfillment;
+		private DeliveryFulfillment fulfillment;
 
-	@JsonProperty("owner")
-	private Owner owner;
+		@JsonProperty("owner")
+		private Owner owner;
 
-	@JsonProperty("parent_id")
-	private int parentId;
+		@JsonProperty("parent_id")
+		private int parentId;
+
+	}
 
 	@Data
 	public static class DeliveryChannel {

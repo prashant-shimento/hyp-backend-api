@@ -18,12 +18,16 @@ import com.hyp.repository.PaymentRepository;
 import com.hyp.util.CommonUtils;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
 import com.razorpay.Refund;
 import com.razorpay.Utils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class PaymentService extends BaseServiceImpl<Payment, String> {
-
+    
 	@Value("${razorpay.key}")
 	private String razorPayKey;
 
@@ -38,6 +42,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	@Autowired
 	RestaurantService restaurantService;
+	
+	@Autowired
+	RedisService redisService;
 
 	@Autowired
 	RedisTemplate<String, Object> redisTemplate;
@@ -53,7 +60,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			JSONObject notes = new JSONObject();
 			notes.put("restaurant", restaurant.getId() + ":" + restaurant.getRestaurantName());
 			orderRequest.put("notes", notes);
+			long paymentCreate = System.currentTimeMillis();
 			Order order = razorpayClient.orders.create(orderRequest);
+			log.info("Time taken for paymentCreate: " + (System.currentTimeMillis() - paymentCreate) + "ms");
 
 			Payment payment = new Payment();
 			payment.setId(CommonUtils.genId());
@@ -64,14 +73,16 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setCurrency(order.get("currency"));
 			payment.setProvider(Constants.RAZOR_PAY);
 			payment.setOrderId(orderId);
+			long orderUpdate = System.currentTimeMillis();
 			orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
-			
+			log.info("Time taken for orderUpdate: " + (System.currentTimeMillis() - orderUpdate) + "ms");
+
 			String redisKey = "order:" + orderId + ":state";
-			redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15));
-			
+			redisService.setRedisData(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15).toSeconds());
 			String redisPaymentKey = "order:" + orderId + ":payment";
-			redisTemplate.opsForValue().set(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4));
-			return payment;
+			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4).toSeconds());
+
+			return save(payment);
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);

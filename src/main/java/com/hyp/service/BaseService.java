@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 public interface BaseService<T, ID> {
 	
 	T findById(ID id);
+	
+	List<T> findByIds(List<ID> ids);
 
 	List<T> findAll();
 

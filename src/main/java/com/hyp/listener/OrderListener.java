@@ -131,12 +131,7 @@ public class OrderListener implements MessageListener {
 					if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 						List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
 								order.getStatus(), customer.getName(), customer.getMobile(), "-", "-");
-						String alertMobileNum = redisService.getAlertUsers();
-						List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
-						for (String mobile : mobileNumbers) {
-							notificationService.sendOrderNotification(mobile,
-									Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
-						}
+						notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
 						log.info("Sent delivery delay alert for {}", orderId);
 					}
 				}

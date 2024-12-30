@@ -11,13 +11,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hyp.constants.ErrorConstants;
+import com.hyp.dto.AddonGroupDto;
 import com.hyp.dto.ItemDto;
-import com.hyp.entity.AddonGroup;
+import com.hyp.dto.VariationDto;
 import com.hyp.entity.Item;
-import com.hyp.entity.Variation;
 import com.hyp.response.Response;
 import com.hyp.service.ItemService;
+import com.hyp.translation.AddonGroupsTranslation;
 import com.hyp.translation.ItemTranslation;
+import com.hyp.translation.VariationTranslation;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,13 +32,19 @@ public class ItemController extends BaseListController<ItemDto, Item, String> {
 	public ItemTranslation itemTranslation;
 	
 	@Autowired
+	public VariationTranslation variationTranslation;
+	
+	@Autowired
+	public AddonGroupsTranslation addonGroupsTranslation;
+	
+	@Autowired
 	private ItemService itemService;
 	
 	@GetMapping("/{itemId}/variations")
 	public ResponseEntity<Response> getVariationsDetails(@PathVariable String itemId) {
 		Response response = new Response();
 		try {
-			List<Variation> variations = itemService.getVariationsByItemId(itemId);
+			List<VariationDto> variations = variationTranslation.getDtoList(itemService.getVariationsByItemId(itemId));
 			if(variations == null || variations.isEmpty()) {
 				response = new Response(null, true, "Variations not found for Item : " + itemId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -55,7 +63,7 @@ public class ItemController extends BaseListController<ItemDto, Item, String> {
 	public ResponseEntity<Response> getAddons(@PathVariable String itemId) {
 		Response response = new Response();
 		try {
-			List<AddonGroup> addonGroups = itemService.getAddonsByItemId(itemId);
+			List<AddonGroupDto> addonGroups = addonGroupsTranslation.getDtoList(itemService.getAddonsByItemId(itemId));
 			if(addonGroups == null || addonGroups.isEmpty()) {
 				response = new Response(null, true, "Addons not found for Item : " + itemId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);

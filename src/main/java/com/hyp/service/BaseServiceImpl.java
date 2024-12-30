@@ -1,10 +1,14 @@
 package com.hyp.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -12,11 +16,19 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.entity.BaseEntity;
 import com.hyp.entity.Item;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.Tax;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.InsertOneModel;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 
 @Service
 public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
@@ -26,11 +38,19 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
 	@Autowired
 	private MongoTemplate mongoTemplate;
+	
+	@Autowired
+	private ObjectMapper objectMapper;
 
 	@Override
 	public T findById(ID id) {
 		Optional<T> optionalEntity = repository.findById(id);
 		return optionalEntity.orElse(null);
+	}
+
+	@Override
+	public List<T> findByIds(List<ID> ids) {
+		return repository.findAllById(ids);
 	}
 
 	@Override
@@ -76,7 +96,7 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		Query query = new Query(Criteria.where(fieldName).is(value));
 		return mongoTemplate.findOne(query, entityClass);
 	}
-	
+
 	@Override
 	public List<T> findByRestaurant(Class<T> entityClass, Object value) {
 		Query query = new Query(Criteria.where("restaurantId").is(value));
@@ -132,18 +152,18 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 			repository.save(entity);
 		}
 	}
-	
+
 	@Override
 	public void softDeleteByRestaurant(Class<T> entityClass, ID id) {
-	    Query query = Query.query(Criteria.where("restaurant_id").is(id));
-	    List<T> entities = mongoTemplate.find(query, entityClass);
+		Query query = Query.query(Criteria.where("restaurant_id").is(id));
+		List<T> entities = mongoTemplate.find(query, entityClass);
 
-	    for (T entity : entities) {
-	        if (entity instanceof BaseEntity) {
-	            ((BaseEntity) entity).setDeleted(true);
-	        }
-	    }
-	    repository.saveAll(entities);
+		for (T entity : entities) {
+			if (entity instanceof BaseEntity) {
+				((BaseEntity) entity).setDeleted(true);
+			}
+		}
+		repository.saveAll(entities);
 	}
 
 	@Override
@@ -154,6 +174,36 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 			}
 		}
 		repository.saveAll(entities);
+	}
+
+	private String getCollectionName(Class<T> entityClass) {
+		return mongoTemplate.getCollectionName(entityClass);
+	}
+
+	public BulkWriteResult bulkInsert(List<T> entities, Class<T> entityClass) {
+		List<WriteModel<Document>> writeModels = new ArrayList<>();
+
+		for (T entity : entities) {
+			writeModels.add(new InsertOneModel<Document>((Document) entity));
+		}
+		return mongoTemplate.getCollection(getCollectionName(entityClass)).bulkWrite(writeModels,
+				new BulkWriteOptions().ordered(false));
+	}
+
+	public BulkWriteResult bulkUpdate(List<T> entities, Class<T> entityClass) {
+		List<WriteModel<Document>> writeModels = new ArrayList<>();
+
+		for (T entity : entities) {
+			String id = ((BaseEntity) entity).getId();
+			Bson filter = Filters.eq("_id", id);
+		    Map<String, Object> entityMap = objectMapper.convertValue(entity, new TypeReference<Map<String, Object>>() {});
+		    Document entityDoc = new Document(entityMap);
+			Bson update = new Document("$set", entityDoc);
+			writeModels.add(new UpdateOneModel<Document>(filter, update));
+		}
+
+		return mongoTemplate.getCollection(getCollectionName(entityClass)).bulkWrite(writeModels,
+				new BulkWriteOptions().ordered(false));
 	}
 
 }

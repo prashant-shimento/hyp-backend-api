@@ -1,9 +1,11 @@
 package com.hyp.service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -36,13 +38,44 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 			LookupOperation lookupVariations = LookupOperation.newLookup().from("variations").localField("variation")
 					.foreignField("_id").as("item_variations");
 
-			ProjectionOperation projectVariations = Aggregation.project("item_variations").andExclude("_id");
+			UnwindOperation unwindVariations = Aggregation.unwind("item_variations", true);
 
-			Aggregation aggregation = Aggregation.newAggregation(matchOperation, lookupVariations, projectVariations);
+			LookupOperation lookupAddonGroups = LookupOperation.newLookup().from("addon_groups")
+					.localField("item_variations.addon_group_id").foreignField("_id")
+					.as("item_variations.addon_groups");
+
+			UnwindOperation unwindAddonGroups = Aggregation.unwind("item_variations.addon_groups", true);
+
+			LookupOperation lookupAddonItems = LookupOperation.newLookup().from("addon_items")
+					.localField("item_variations.addon_groups.addon_group_items").foreignField("_id")
+					.as("item_variations.addon_groups.addon_items");
+
+			GroupOperation groupVariations = Aggregation.group("item_variations._id").first("item_variations._id")
+					.as("id").first("item_variations.name").as("name").first("item_variations.group_name")
+					.as("group_name").first("item_variations.price").as("price").first("item_variations.status")
+					.as("status").first("item_variations.active").as("active")
+					.first("item_variations.item_packing_charges").as("item_packing_charges")
+					.first("item_variations.variation_rank").as("variation_rank")
+					.first("item_variations.variation_allow_addon").as("variation_allow_addon")
+					.first("item_variations.restaurant_id").as("restaurant_id").push("item_variations.addon_groups")
+					.as("addon_groups");
+
+			GroupOperation groupAll = Aggregation.group()
+					.push(new Document("id", "$id").append("name", "$name").append("group_name", "$group_name")
+							.append("price", "$price").append("status", "$status").append("active", "$active")
+							.append("item_packing_charges", "$item_packing_charges")
+							.append("variation_rank", "$variation_rank")
+							.append("variation_allow_addon", "$variation_allow_addon")
+							.append("restaurant_id", "$restaurant_id").append("addon_groups", "$addon_groups"))
+					.as("item_variations");
+
+			Aggregation aggregation = Aggregation.newAggregation(matchOperation, lookupVariations, unwindVariations,
+					lookupAddonGroups, unwindAddonGroups, lookupAddonItems, groupVariations, groupAll);
 
 			AggregationResults<Item> results = mongoTemplate.aggregate(aggregation, "items", Item.class);
-			return results.getMappedResults().stream().map(Item::getItemVariations).filter(Objects::nonNull)
-					.flatMap(List::stream).collect(Collectors.toList());
+			System.out.println(results.getRawResults().toJson());
+			return results.getMappedResults().stream().map(Item::getItemVariations).flatMap(List::stream)
+					.collect(Collectors.toList());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -51,7 +84,8 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 
 	public List<AddonGroup> getAddonsByItemId(String itemId) {
 		try {
-			MatchOperation matchOperation = Aggregation.match(Criteria.where("_id").is(itemId));
+			MatchOperation matchOperation = Aggregation
+					.match(Criteria.where("_id").is(itemId).and("addon").exists(true).ne(Collections.emptyList()));
 
 			LookupOperation lookupAddonGroups = LookupOperation.newLookup().from("addon_groups").localField("addon")
 					.foreignField("_id").as("item_addons");
@@ -61,8 +95,7 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 			LookupOperation lookupAddonItems = LookupOperation.newLookup().from("addon_items")
 					.localField("item_addons.addon_group_items").foreignField("_id").as("item_addons.addon_items");
 
-			GroupOperation regroupAddons = Aggregation.group("_id")
-	                .push("item_addons").as("item_addons"); 
+			GroupOperation regroupAddons = Aggregation.group("_id").push("item_addons").as("item_addons");
 
 			ProjectionOperation projectAddons = Aggregation.project("item_addons").andExclude("_id");
 
@@ -70,13 +103,13 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 					lookupAddonItems, regroupAddons, projectAddons);
 
 			AggregationResults<Item> results = mongoTemplate.aggregate(aggregation, "items", Item.class);
-			return results.getMappedResults().stream().map(Item::getItemAddons).filter(Objects::nonNull).flatMap(List::stream)
-					.collect(Collectors.toList());
+			return results.getMappedResults().stream().map(Item::getItemAddons).filter(Objects::nonNull)
+					.flatMap(List::stream).collect(Collectors.toList());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
-		
+
 	}
 
 }

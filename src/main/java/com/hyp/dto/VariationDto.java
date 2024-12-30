@@ -17,5 +17,6 @@ public class VariationDto extends BaseDto {
 	private List<String> addonGroupId;
 	private int variationAllowAddon;
 	private String variationId;
+	private transient List<AddonGroupDto> addonGroups;
 
 }

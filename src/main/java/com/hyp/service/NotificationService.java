@@ -98,7 +98,7 @@ public class NotificationService {
 	}
 
 	@Async
-	public void sendOrderNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
+	public void sendNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
 		try {
 			List<Parameter> params = new ArrayList<>();
 			for (String param : parameters) {
@@ -131,7 +131,21 @@ public class NotificationService {
 	}
 
 	@Async
-	public void sendOrderNotification(String mobile, String templateName, List<String> parameters) {
+	public void sendUserNotification(String mobile, String templateName, List<String> parameters) {
+		sendNotification(mobile, templateName, parameters);
+	}
+
+	@Async
+	public void sendInternalGroupNotification(String templateName, List<String> parameters) {
+		String alertMobileNum = redisService.getAlertUsers();
+		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
+		for (String mobile : mobileNumbers) {
+			sendNotification(mobile, templateName, parameters);
+		}
+	}
+
+	@Async
+	public void sendNotification(String mobile, String templateName, List<String> parameters) {
 		try {
 			List<Parameter> params = new ArrayList<>();
 			for (String param : parameters) {

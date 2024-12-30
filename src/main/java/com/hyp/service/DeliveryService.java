@@ -30,7 +30,7 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
-import com.hyp.model.DeliveryOrderStatusResponse;
+import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.model.DeliveryRiderLocation;
@@ -87,6 +87,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Autowired
 	MailService mailService;
+	
+	@Autowired
+	NotificationService notificationService;
 
 	@Autowired
 	private StringRedisTemplate stringRedisTemplate;
@@ -177,7 +180,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			log.info("getDeliveryQuote Request {}", objectMapper.writeValueAsString(deliveryQuoteRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
-			String endpoint = "/v1.0/store/channel/vendor/quote";
+			String endpoint = "/v1.0/store/channel/vendor/quote";		
 			DeliveryQuote quoteResponseMono = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(deliveryQuoteRequest)).retrieve().bodyToMono(DeliveryQuote.class)
 					.block();
@@ -188,7 +191,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			throw new RuntimeException("Operation failed due to unauthorized access. Token refreshed.", e);
 		} catch (WebClientResponseException.InternalServerError e) {
 			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			log.error("Error in getDeliveryQuote: {}", e);
 			throw new DeliveryException("Error in getDeliveryQuote: " + e.getMessage());
 		}
@@ -276,7 +280,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			throw new DeliveryException("Internal Server Error from Partner " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in cancelDeliveryOrder: {}", e);
-			throw new DeliveryException("Error in cancelDeliveryOrder: " + e.getMessage());
+			throw new RuntimeException("Error in cancelDeliveryOrder: " + e.getMessage());
 		}
 	}
 
@@ -309,15 +313,15 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
-	public DeliveryOrderStatusResponse getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
+	public DeliveryOrderStatus getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
 		try {
 
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)
 					.defaultHeader(HttpHeaders.AUTHORIZATION, getToken()).build();
 			String endpoint = "v1.0/store/channel/vendor/order/" + deliveryOrderId;
 			log.info("getDeliveryStatus endPoint {}", endpoint);
-			DeliveryOrderStatusResponse deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
-					.bodyToMono(DeliveryOrderStatusResponse.class).block();
+			DeliveryOrderStatus deliveryOrderStatusResponse = webClient.get().uri(endpoint).retrieve()
+					.bodyToMono(DeliveryOrderStatus.class).block();
 			log.info("getDeliveryStatus Response {}", objectMapper.writeValueAsString(deliveryOrderStatusResponse));
 			return deliveryOrderStatusResponse;
 		} catch (WebClientResponseException.Unauthorized e) {
@@ -331,7 +335,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	public void processDeliveryCallback(Delivery delivery, DeliveryOrderStatus deliveryOrderData)
+	public void processDeliveryCallback(Delivery delivery, DeliveryOrderData deliveryOrderData)
 			throws DeliveryException {
 		try {
 			delivery.setStatus(DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus()));
@@ -454,7 +458,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	@Retryable(retryFor = { Exception.class, WebClientResponseException.Unauthorized.class })
-	public void unAllocateOrderFulfill(String deliveryOrderId) throws DeliveryException {
+	public void unallocateOrderFulfill(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/fulfillment/cancel";
 		try {
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl)

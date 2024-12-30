@@ -72,6 +72,7 @@ public class OrderDto extends BaseDto {
 	private String deliveryTrackingLink;
 	private String screen;
 	private String seat;
+	private String paymentOrderId;
 	
 	@Data
 	@NoArgsConstructor

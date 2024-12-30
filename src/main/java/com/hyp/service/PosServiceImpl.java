@@ -14,7 +14,7 @@ import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -42,7 +42,6 @@ import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
-
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -59,7 +58,10 @@ public class PosServiceImpl implements PosService {
 	ObjectMapper objectMapper;
 
 	@Autowired
-	RedisTemplate<String, Object> redisTemplate;
+	MongoTemplate mongoTemplate;
+
+	@Autowired
+	RedisService redisService;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
@@ -105,7 +107,7 @@ public class PosServiceImpl implements PosService {
 			long existingRestQuery = System.currentTimeMillis();
 			Restaurant existingRestaurant = restaurantService
 					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
-			if(existingRestaurant != null) {
+			if (existingRestaurant != null) {
 				deletePosData(existingRestaurant.getId());
 			}
 			log.info("Time taken for existingRestQuery: " + (System.currentTimeMillis() - existingRestQuery) + "ms");
@@ -139,7 +141,7 @@ public class PosServiceImpl implements PosService {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void saveEntities(Restaurant restaurant, PosData posData) {
 		long startTime = System.currentTimeMillis();
 
@@ -179,7 +181,6 @@ public class PosServiceImpl implements PosService {
 				}
 			});
 
-			// Log time taken for each save operation
 			CompletableFuture
 					.allOf(orderTypeFuture, attributeFuture, discountFuture, categoryFuture, taxFuture, variationFuture,
 							addonItemFuture, addonGroupFuture)
@@ -245,67 +246,77 @@ public class PosServiceImpl implements PosService {
 
 	@Override
 	public boolean updateStock(PosStockRequest stockRequest) {
+		long startTime = System.currentTimeMillis();
 		try {
-			for (String id : stockRequest.getItemId()) {
-				if (stockRequest.getType().equalsIgnoreCase("item")) {
-					updateItemStock(id, stockRequest);
-				} else {
-					updateAddonItemStock(id, stockRequest);
-				}
+			long autoTurnOn = System.currentTimeMillis();
+			final LocalDateTime autoTurnOnTime = (!stockRequest.isInStock()) ? parseAutoTurnOnTime(stockRequest) : null;
+			long ttl = autoTurnOnTime != null ? calculateTTLInSeconds(autoTurnOnTime) : 0;
+			log.info("Prepared autoTurnOnTime in {} ms ", autoTurnOn);
+
+			if (stockRequest.getType().equalsIgnoreCase("item")) {
+				long updateItemStock = System.currentTimeMillis();
+				updateItemStock(stockRequest, autoTurnOnTime, ttl);
+				log.info("Total updateItemStock execution time: {} ms", System.currentTimeMillis() - updateItemStock);
+			} else {
+				long addonItemStockUpdate = System.currentTimeMillis();
+				updateAddonItemStock(stockRequest, autoTurnOnTime, ttl);
+				log.info("Total updateAddonItemStock execution time: {} ms",
+						System.currentTimeMillis() - addonItemStockUpdate);
+
 			}
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;
+		} finally {
+			log.info("Total updateStock execution time: {} ms", System.currentTimeMillis() - startTime);
 		}
 	}
 
-	private void setRedisData(String itemType, String id, long ttl, boolean inStock) {
-		String redisKey = itemType + ":" + id + ":stock";
-		redisTemplate.opsForValue().set(redisKey, inStock, Duration.ofSeconds(ttl));
-	}
+	public void updateItemStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
+		long findByIdsStart = System.currentTimeMillis();
+		List<Item> items = itemService.findByIds(stockRequest.getItemId());
+		log.info("Fetched items in {} ms", System.currentTimeMillis() - findByIdsStart);
 
-	private void removeRedisKey(String itemType, String id) {
-		String redisKey = itemType + ":" + id + ":stock";
-		redisTemplate.delete(redisKey);
-	}
-
-	private void updateItemStock(String id, PosStockRequest stockRequest) {
-		Item item = itemService.findById(id);
-		if (item != null) {
+		items.forEach(item -> {
 			item.setActive(stockRequest.isInStock() ? "1" : "0");
+			String redisKey = stockRequest.getType() + ":" + item.getId() + ":stock";
 			if (!stockRequest.isInStock()) {
-				LocalDateTime autoTurnOnTime = parseAutoTurnOnTime(stockRequest);
-				item.setAutoTurnOnTime(autoTurnOnTime);
-				long ttl = calculateTTLInSeconds(autoTurnOnTime);
+				item.setAutoTurnOnTime(autoTurnOn);
 				if (ttl > 0) {
-					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
+					redisService.setRedisData(redisKey, stockRequest, ttl);
 				}
-				log.info("Calculated AutoTuronOnTime {} and TTL {} for Item {}", autoTurnOnTime, ttl, id);
 			} else {
-				removeRedisKey(stockRequest.getType(), id);
+				item.setAutoTurnOnTime(null);
+				redisService.removeRedisKey(redisKey);
 			}
-			itemService.update(item);
-		}
+		});
+		long bulkWriteStart = System.currentTimeMillis();
+		itemService.bulkUpdate(items, Item.class);
+		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
-	private void updateAddonItemStock(String id, PosStockRequest stockRequest) {
-		AddonItem addOnItem = addonItemService.findById(id);
-		if (addOnItem != null) {
-			addOnItem.setActive(stockRequest.isInStock() ? "1" : "0");
+	private void updateAddonItemStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
+		long findByIdsStart = System.currentTimeMillis();
+		List<AddonItem> addonItems = addonItemService.findByIds(stockRequest.getItemId());
+		log.info("Fetched items in {} ms", System.currentTimeMillis() - findByIdsStart);
+
+		addonItems.forEach(addonItem -> {
+			addonItem.setActive(stockRequest.isInStock() ? "1" : "0");
+			String redisKey = stockRequest.getType() + ":" + addonItem.getId() + ":stock";
 			if (!stockRequest.isInStock()) {
-				LocalDateTime autoTurnOnTime = parseAutoTurnOnTime(stockRequest);
-				addOnItem.setAutoTurnOnTime(autoTurnOnTime);
-				long ttl = calculateTTLInSeconds(autoTurnOnTime);
+				addonItem.setAutoTurnOnTime(autoTurnOn);
 				if (ttl > 0) {
-					setRedisData(stockRequest.getType(), id, ttl, stockRequest.isInStock());
+					redisService.setRedisData(redisKey, stockRequest, ttl);
 				}
-				log.info("Calculated AutoTuronOnTime {} and TTL {} for AddonItem {}", autoTurnOnTime, ttl, id);
 			} else {
-				removeRedisKey(stockRequest.getType(), id);
+				addonItem.setAutoTurnOnTime(null);
+				redisService.removeRedisKey(redisKey);
 			}
-			addonItemService.update(addOnItem);
-		}
+		});
+		long bulkWriteStart = System.currentTimeMillis();
+		addonItemService.bulkUpdate(addonItems, AddonItem.class);
+		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
 	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {

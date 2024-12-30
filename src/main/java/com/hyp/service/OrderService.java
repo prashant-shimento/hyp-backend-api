@@ -4,17 +4,11 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.hyp.constants.Constants;
@@ -29,7 +23,6 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
-import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.PaymentType;
@@ -47,6 +40,9 @@ import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
 	@Autowired
@@ -125,6 +121,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	StringRedisTemplate stringRedisTemplate;
 
 	public Order create(OrderDto orderDto) throws Exception {
+		long validation = System.currentTimeMillis(); 
+
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
 		}
@@ -191,13 +189,18 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				orderItem.setItemAttribute(itemService.findById(orderItem.getId()).getItemAttributeId());
 			}
 		}
+		log.info("Time taken for validations: " + (System.currentTimeMillis() - validation) + "ms");
 
 		Order order = orderTranslation.getEntity(orderDto);
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
+		long saveOrder = System.currentTimeMillis(); 
 		order = this.save(order);
+		log.info("Time taken for saveOrder: " + (System.currentTimeMillis() - saveOrder) + "ms");
+		long customerfindById = System.currentTimeMillis(); 
 		Customer customer = customerService.findById(order.getCustomerId());
+		log.info("Time taken for customerfindById: " + (System.currentTimeMillis() - customerfindById) + "ms");
 
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 		if (partner != null) {
@@ -208,11 +211,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
-		String alertMobileNum = redisService.getAlertUsers();
-		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
-		for (String mobile : mobileNumbers) {
-			notificationService.sendOrderNotification(mobile, Constants.META_ORDER_ALERT_TEMPLATE, parameters);
-		}
+		long sendInternalGroupNotification = System.currentTimeMillis(); 
+		notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+		log.info("Time taken for sendNotification: " + (System.currentTimeMillis() - sendInternalGroupNotification) + "ms");
 
 		return order;
 
@@ -245,7 +246,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
 						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(), restaurant.getContact(),
 						restaurant.getSupportContact());
-				notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
+				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
 				order = this.update(order);
 				Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
@@ -347,8 +348,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		switch (orderStatus) {
 		case PAID:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
-					order.getId(), order.getStatus());
-			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
+					order.getId(), order.getStatus(), restaurant.getSupportContact(), restaurant.getContact());
+			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
 					templateParameters);
 			break;
 
@@ -356,19 +357,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
 					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
 					restaurant.getContact(), restaurant.getSupportContact());
-			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
+			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
 					templateParameters, delivery.getFulfillment().getTrackCode());
 			break;
 		case DELIVERED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
 					restaurant.getSupportContact(), restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
-			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
+			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
 					templateParameters);
 			break;
 		case CANCELLED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
 					restaurant.getRestaurantName());
-			notificationService.sendOrderNotification(customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE,
+			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE,
 					templateParameters);
 			break;
 		default:

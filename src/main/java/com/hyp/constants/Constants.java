@@ -34,6 +34,7 @@ public interface Constants {
 	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
 	List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
 	List<String> RESTAURANT_API_PARAMS = Arrays.asList("restaurantName", "menuSharingCode", "contact");
+	List<String> PAYMENT_API_PARAMS = Arrays.asList("id", "orderId", "paymentOrderId","paymentId","provider","status","amount","paymentId");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";
