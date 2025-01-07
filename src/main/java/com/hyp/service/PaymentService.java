@@ -60,9 +60,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			JSONObject notes = new JSONObject();
 			notes.put("restaurant", restaurant.getId() + ":" + restaurant.getRestaurantName());
 			orderRequest.put("notes", notes);
-			long paymentCreate = System.currentTimeMillis();
 			Order order = razorpayClient.orders.create(orderRequest);
-			log.info("Time taken for paymentCreate: " + (System.currentTimeMillis() - paymentCreate) + "ms");
 
 			Payment payment = new Payment();
 			payment.setId(CommonUtils.genId());
@@ -73,15 +71,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			payment.setCurrency(order.get("currency"));
 			payment.setProvider(Constants.RAZOR_PAY);
 			payment.setOrderId(orderId);
-			long orderUpdate = System.currentTimeMillis();
 			orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
-			log.info("Time taken for orderUpdate: " + (System.currentTimeMillis() - orderUpdate) + "ms");
-
 			String redisKey = "order:" + orderId + ":state";
 			redisService.setRedisData(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15).toSeconds());
 			String redisPaymentKey = "order:" + orderId + ":payment";
 			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4).toSeconds());
-
 			return save(payment);
 		} catch (Exception e) {
 			e.printStackTrace();

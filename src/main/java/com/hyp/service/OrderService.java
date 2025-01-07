@@ -121,8 +121,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	StringRedisTemplate stringRedisTemplate;
 
 	public Order create(OrderDto orderDto) throws Exception {
-		long validation = System.currentTimeMillis(); 
-
 		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
 			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
 		}
@@ -189,19 +187,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				orderItem.setItemAttribute(itemService.findById(orderItem.getId()).getItemAttributeId());
 			}
 		}
-		log.info("Time taken for validations: " + (System.currentTimeMillis() - validation) + "ms");
-
 		Order order = orderTranslation.getEntity(orderDto);
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
-		long saveOrder = System.currentTimeMillis(); 
 		order = this.save(order);
-		log.info("Time taken for saveOrder: " + (System.currentTimeMillis() - saveOrder) + "ms");
-		long customerfindById = System.currentTimeMillis(); 
 		Customer customer = customerService.findById(order.getCustomerId());
-		log.info("Time taken for customerfindById: " + (System.currentTimeMillis() - customerfindById) + "ms");
-
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 		if (partner != null) {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation
@@ -211,10 +202,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
-		long sendInternalGroupNotification = System.currentTimeMillis(); 
 		notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
-		log.info("Time taken for sendNotification: " + (System.currentTimeMillis() - sendInternalGroupNotification) + "ms");
-
 		return order;
 
 	}
@@ -243,20 +231,24 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			if (newOrderStatus == OrderStatusType.ACCEPTED) {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(), restaurant.getContact(),
-						restaurant.getSupportContact());
-				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
-						parameters);
+
 				order = this.update(order);
 				Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-				if (partner == null) {
-					String redisKey = "order:" + order.getId() + ":fulfill";
-					redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
-				}
-				if (partner == null) {
-					String redisKey = "order:" + order.getId() + ":delivery";
-					redisTemplate.opsForValue().set(redisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6));
+				if (partner != null) {
+					List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+							restaurant.getRestaurantName(), order.getId(), order.getScreen(), order.getSeat());
+					notificationService.sendNotification(customer.getMobile(),
+							Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
+				} else {
+					List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+							restaurant.getRestaurantName(), restaurant.getCity(), order.getId(),
+							restaurant.getContact(), restaurant.getSupportContact());
+					notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
+							parameters);
+					String fulfillRedisKey = "order:" + order.getId() + ":fulfill";
+					redisTemplate.opsForValue().set(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
+					String deliveryRedisKey = "order:" + order.getId() + ":delivery";
+					redisTemplate.opsForValue().set(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6));
 				}
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
@@ -361,10 +353,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					templateParameters, delivery.getFulfillment().getTrackCode());
 			break;
 		case DELIVERED:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
-					restaurant.getSupportContact(), restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
-					templateParameters);
+			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
+			if (partner != null) {
+				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+						restaurant.getSupportContact());
+				notificationService.sendNotification(customer.getMobile(),
+						Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
+			} else {
+				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+						restaurant.getContact(), restaurant.getSupportContact(), restaurant.getRestaurantName(),
+						restaurant.getWebsiteUrl());
+				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
+						templateParameters);
+			}
 			break;
 		case CANCELLED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
