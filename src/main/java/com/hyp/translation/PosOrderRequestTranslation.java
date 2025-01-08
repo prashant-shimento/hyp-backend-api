@@ -18,9 +18,9 @@ import com.hyp.entity.Order.OrderItem;
 import com.hyp.entity.Order.OrderItemTax;
 import com.hyp.entity.Order.OrderTax;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.DiscountType;
 import com.hyp.enums.OrderType;
-import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.enums.TaxType;
 import com.hyp.exception.RequestTranslationException;
@@ -153,7 +153,7 @@ public class PosOrderRequestTranslation {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
 		orderInfoDetails.setCustomer(getCustomerDetails(customer, address));
-		orderInfoDetails.setOrder(getOrderDetails(order));
+		orderInfoDetails.setOrder(getOrderDetails(order, restaurant));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
 		return orderInfoDetails;
@@ -163,7 +163,7 @@ public class PosOrderRequestTranslation {
 		OrderInfoDetails orderInfoDetails = new OrderInfoDetails();
 		orderInfoDetails.setRestaurant(getRestaurantDetails(restaurant));
 		orderInfoDetails.setCustomer(getCustomerDetails(customer, order));
-		orderInfoDetails.setOrder(getOrderDetails(order));
+		orderInfoDetails.setOrder(getOrderDetails(order, restaurant));
 		orderInfoDetails.setOrderItem(getOrderItems(order));
 		orderInfoDetails.setTax(getTax(order.getOrderTax()));
 		return orderInfoDetails;
@@ -193,7 +193,7 @@ public class PosOrderRequestTranslation {
 		return customerRequest;
 	}
 
-	public OrderRequest getOrderDetails(Order order) {
+	public OrderRequest getOrderDetails(Order order, Restaurant restaurant) {
 		OrderDetails orderDetails = new OrderDetails();
 		orderDetails.setOrderId(order.getId());
 		orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
@@ -215,7 +215,8 @@ public class PosOrderRequestTranslation {
 		orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
 		orderDetails.setDescription(order.getDescription());
 		orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-		orderDetails.setEnableDelivery(Constants.VENDOR_HANDLE_DELIVERY);
+		orderDetails.setEnableDelivery(restaurant.getDeliveryPartner() == DeliveryPartner.SELF 
+				? Constants.RESTAURANT_HANDLE_DELIVERY : Constants.VENDOR_HANDLE_DELIVERY);
 		orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(
 				orderDetails.getEnableDelivery() == Constants.RESTAURANT_HANDLE_DELIVERY ? order.getDeliveryCharge()
 						: 0));

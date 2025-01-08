@@ -83,7 +83,6 @@ public class OrderListener implements MessageListener {
 			Order order = orderService.findById(orderId);
 			if (order != null) {
 				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
-					log.info("Order status updated as cancelled for {}", orderId);
 					Payment payment = paymentService.findByOrderId(orderId);
 					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
 					if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
@@ -91,6 +90,8 @@ public class OrderListener implements MessageListener {
 						payment.setStatus(paymentStatus);
 						paymentService.save(payment);
 						orderService.processOrder(order);
+						log.info("Order processed via expiry for {}", orderId);
+
 					}
 				}
 			}

@@ -16,7 +16,6 @@ import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
-import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.RiderStatusType;
@@ -75,12 +74,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		Response response;
 		try {
 			Order createdOrder = orderService.create(orderDto);
-			long createPaymentOrder = System.currentTimeMillis(); 
-			Payment payment = paymentService.createPaymentOrder(createdOrder.getId(), createdOrder.getGrandTotalAmount());
-			log.info("Time taken for createPaymentOrder: " + (System.currentTimeMillis() - createPaymentOrder) + "ms");
-
 			OrderDto createdOrderDto = orderTranslation.getDto(createdOrder);
-			createdOrderDto.setPaymentOrderId(payment.getPaymentOrderId());
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {

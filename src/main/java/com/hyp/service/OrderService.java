@@ -193,13 +193,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setCreatedAt(LocalDateTime.now());
 		order = this.save(order);
 		Customer customer = customerService.findById(order.getCustomerId());
-		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-		if (partner != null) {
+		if (order.getPaymentType() == PaymentType.COD) {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation
 					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
 			posService.createPosOrder(posOrderRequest);
 		}
-
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
 		notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
@@ -271,6 +269,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					deliveryService.save(delivery);
 				}
 				updateOrderStatus(order.getId(), OrderStatusType.CANCELLED);
+			} else {
+				updateOrderStatus(order.getId(), newOrderStatus);
 			}
 			messageTemplate.convertAndSend("/topic/order-status", order);
 			return order;
