@@ -65,6 +65,7 @@ public interface Constants {
 	String META_ORDER_ALERT_TEMPLATE = "order_alert";
 	String META_DELIVERY_DELAY_ALERT_TEMPLATE = "delivery_delay_alert";
 	String META_ORDER_PAID_TEMPLATE = "order_payment_success";
+	String META_ORDER_CREATED_THEATRE_TEMPLATE = "theatre_order_placed";
 	String META_ORDER_CONFIRMED_THEATRE_TEMPLATE = "theatre_order_accepted";
 	String META_ORDER_DELIVERED_THEATRE_TEMPLATE = "theatre_order_delivered";
 	String META_GENERIC_ALERT_TEMPLATE = "generic_alert";

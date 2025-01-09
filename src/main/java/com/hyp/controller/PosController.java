@@ -10,14 +10,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hyp.entity.Address;
-import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
-import com.hyp.request.DeliveryOrderRequest;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosDataRequest;
-import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
 import com.hyp.response.PosResponse;
@@ -28,7 +25,6 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
-import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 
 import io.swagger.v3.oas.annotations.Hidden;
@@ -64,6 +60,9 @@ public class PosController {
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
+	
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
 
 	@PostMapping("/menu")
 	public ResponseEntity<PosResponse> saveMenuData(@RequestBody PosDataRequest posDataRequest) {
@@ -139,16 +138,7 @@ public class PosController {
 		PosResponse response = null;
 		try {
 			Order order = orderService.findById(orderId);
-			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
-			Customer customer = customerService.findById(order.getCustomerId());
-			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
-					restaurantService.findById(order.getRestaurantId()), order, customer, address);
-			if (posDataService.createPosOrder(posOrderRequest)) {
-				DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
-						.getDeliveryOrderRequest(restaurant, address, customer, order);
-				deliveryService.createOrder(deliveryOrderRequest, order);
-			}
+			orderEventPublisher.publishProcessOrderEvent(order);
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();

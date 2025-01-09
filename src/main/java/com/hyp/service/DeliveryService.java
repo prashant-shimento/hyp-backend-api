@@ -13,8 +13,11 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.client.PidgeClient;
+import com.hyp.entity.Address;
+import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
+import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
@@ -79,12 +82,31 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	@Autowired
 	RedisService redisService;
 
+	@Autowired
+	CustomerService customerService;
+
+	@Autowired
+	AddressService addressService;
+
 	public Delivery findByOrderId(String orderId) {
 		return deliveryRepository.findByOrderId(orderId);
 	}
 
 	public Delivery findByDeliveryOrderId(String deliveryOrderId) {
 		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
+	}
+
+	public void proceesDeliveryOrder(Order order) {
+		try {
+			Customer customer = customerService.findById(order.getCustomerId());
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
+					address, customer, order);
+			createOrder(deliveryOrderRequest, order);
+		} catch (DeliveryException e) {
+			log.error("Error occured while proceesDeliveryOrder for orderId {} cause: ", order.getId(), e.getMessage());
+		}
 	}
 
 	public void createOrder(DeliveryOrderRequest deliveryOrderRequest, Order order) throws DeliveryException {
@@ -184,7 +206,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	}
 
-	private void processDeliveryStandardFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
+	public void processDeliveryStandardFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
 		DeliveryNetworks selectedNetwork = getServicabilityToken(delivery);
 		if (selectedNetwork != null) {
 			String token = selectedNetwork.getToken();

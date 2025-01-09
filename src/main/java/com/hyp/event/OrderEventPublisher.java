@@ -5,7 +5,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import com.hyp.entity.Order;
-import com.hyp.enums.OrderStatusType;
 
 @Component
 public class OrderEventPublisher {
@@ -20,6 +19,16 @@ public class OrderEventPublisher {
 
 	public void publishOrderStatusChangeEvent(Order order) {
 		OrderStatusChangeEvent event = new OrderStatusChangeEvent(this, order);
+		applicationEventPublisher.publishEvent(event);
+	}
+	
+	public void publishPosOrderEvent(Order order) {
+		PosOrderEvent event = new PosOrderEvent(this, order);
+		applicationEventPublisher.publishEvent(event);
+	}
+	
+	public void publishDeliveryOrderEvent(Order order) {
+		DeliveryOrderEvent event = new DeliveryOrderEvent(this, order);
 		applicationEventPublisher.publishEvent(event);
 	}
 

@@ -16,6 +16,8 @@ import com.hyp.request.PosStockRequest;
 @Service
 public interface PosService {
 
+	public void processPosOrder(Order order);
+
 	public boolean savePosData(PosDataRequest posDataRequest);
 
 	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
@@ -27,9 +29,9 @@ public interface PosService {
 	public boolean updateRestaurant(PosStatusRequest updateStatus);
 
 	public boolean updateStock(PosStockRequest stockRequest);
-	
+
 	public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus);
-	
+
 	public void updatePosRiderStatus(Delivery delivery, Order order);
 
 }

@@ -30,6 +30,7 @@ public class Playground {
 				throw new Exception("Invalid Paramers");
 			}
 		}
+		
 	}
 
 	public static boolean isValidQueryParamOperator(String operator) {

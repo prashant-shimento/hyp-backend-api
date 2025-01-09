@@ -1,5 +1,6 @@
 package com.hyp.listener;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +13,18 @@ import com.hyp.constants.Constants;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
+import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.PartnerType;
 import com.hyp.event.OrderEvent;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.event.OrderStatusChangeEvent;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
-import com.hyp.service.OrderService;
+import com.hyp.service.PartnerService;
+import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.util.CommonUtils;
 
@@ -27,9 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class OrderEventListener {
-
-	@Autowired
-	private OrderService orderService;
 
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
@@ -46,12 +49,23 @@ public class OrderEventListener {
 	@Autowired
 	NotificationService notificationService;
 
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
+
+	@Autowired
+	private PartnerService partnerService;
+
+	@Autowired
+	private RedisService redisService;
+
 	@Async
 	@EventListener
 	public void handleProcessOrder(OrderEvent event) {
 		log.info("Order Event listener handleProcessOrder");
 		Order order = event.getOrder();
-		orderService.processOrder(order);
+		orderEventPublisher.publishPosOrderEvent(order);
+
+		orderEventPublisher.publishDeliveryOrderEvent(order);
 	}
 
 	@Async
@@ -66,7 +80,36 @@ public class OrderEventListener {
 		Customer customer = customerService.findById(order.getCustomerId());
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 		Delivery delivery = deliveryService.findByOrderId(order.getId());
+		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 		switch (order.getStatus()) {
+		case CREATED:
+			if (partner != null) {
+				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+						restaurant.getRestaurantName(), order.getId());
+				notificationService.sendNotification(customer.getMobile(),
+						Constants.META_ORDER_CREATED_THEATRE_TEMPLATE, parameters);
+			}
+			break;
+		case ACCEPTED:
+			if (partner != null) {
+				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+						restaurant.getRestaurantName(), order.getId(), order.getScreen(), order.getSeat());
+				notificationService.sendNotification(customer.getMobile(),
+						Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
+			} else {
+				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
+						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(), restaurant.getContact(),
+						restaurant.getSupportContact());
+				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
+						parameters);
+				String fulfillRedisKey = "order:" + order.getId() + ":fulfill";
+				redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED,
+						Duration.ofMinutes(5).getSeconds());
+				String deliveryRedisKey = "order:" + order.getId() + ":delivery";
+				redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED,
+						Duration.ofMinutes(6).getSeconds());
+			}
+			break;
 		case PAID:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
 					order.getId(), order.getStatus(), restaurant.getSupportContact(), restaurant.getContact());
@@ -82,10 +125,18 @@ public class OrderEventListener {
 					templateParameters, delivery.getFulfillment().getTrackCode());
 			break;
 		case DELIVERED:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getContact(),
-					restaurant.getSupportContact(), restaurant.getRestaurantName(), restaurant.getWebsiteUrl());
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
-					templateParameters);
+			if (partner != null) {
+				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+						restaurant.getSupportContact());
+				notificationService.sendNotification(customer.getMobile(),
+						Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
+			} else {
+				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
+						restaurant.getContact(), restaurant.getSupportContact(), restaurant.getRestaurantName(),
+						restaurant.getWebsiteUrl());
+				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
+						templateParameters);
+			}
 			break;
 		case CANCELLED:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),

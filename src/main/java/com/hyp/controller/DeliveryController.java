@@ -18,10 +18,10 @@ import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.Address;
-import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
@@ -29,7 +29,6 @@ import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
-import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
@@ -72,6 +71,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
 	@Autowired
 	CustomerService customerService;
+	
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
 
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
@@ -137,13 +139,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			throws EntityNotFoundException, DeliveryException {
 		Order order = Optional.ofNullable(orderService.findById(orderId))
 				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
-		Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
-		Customer customer = customerService.findById(order.getCustomerId());
-		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
-				address, customer, order);
-		deliveryService.createOrder(deliveryOrderRequest, order);
-
+		orderEventPublisher.publishDeliveryOrderEvent(order);
 		Response response = new Response(null, false, "Delivery Order Created");
 		return ResponseEntity.ok(response);
 

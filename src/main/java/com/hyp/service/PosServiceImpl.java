@@ -23,6 +23,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Category;
+import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Item;
 import com.hyp.entity.Order;
@@ -30,6 +31,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.PosException;
+import com.hyp.exception.RequestTranslationException;
 import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.PosData;
 import com.hyp.request.FileUploadRequest;
@@ -62,6 +64,9 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	RedisService redisService;
+
+	@Autowired
+	CustomerService customerService;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
@@ -98,6 +103,22 @@ public class PosServiceImpl implements PosService {
 		this.addonItemService = addonItemService;
 		this.itemService = itemService;
 		this.bucketService = bucketService;
+	}
+
+	@Override
+	public void processPosOrder(Order order) {
+		Customer customer = customerService.findById(order.getCustomerId());
+		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+		try {
+			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(restaurant, order,
+					customer);
+			createPosOrder(posOrderRequest);
+		} catch (RequestTranslationException e) {
+			log.error("Error occured on RequestTranslationException for order {} cause: ", order.getId(),
+					e.getMessage());
+		} catch (PosException e) {
+			log.error("Error occured on PosException for order {} cause: ", order.getId(), e.getMessage());
+		}
 	}
 
 	@Override

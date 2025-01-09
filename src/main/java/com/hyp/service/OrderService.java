@@ -1,14 +1,10 @@
 package com.hyp.service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.hyp.constants.Constants;
@@ -20,21 +16,15 @@ import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
-import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.PartnerType;
 import com.hyp.enums.PaymentType;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
-import com.hyp.exception.PosException;
-import com.hyp.exception.RequestTranslationException;
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.repository.OrderRepository;
-import com.hyp.request.DeliveryOrderRequest;
-import com.hyp.request.MailNotificationRequest;
 import com.hyp.request.PosCallbackRequest;
-import com.hyp.request.PosOrderRequest;
-import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
@@ -45,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class OrderService extends BaseServiceImpl<Order, String> {
+
 	@Autowired
 	OrderRepository orderRepository;
 
@@ -76,9 +67,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	AddressService addressService;
 
 	@Autowired
-	PosService posService;
-
-	@Autowired
 	DeliveryService deliveryService;
 
 	@Autowired
@@ -88,55 +76,34 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	PosOrderRequestTranslation posOrderRequestTranslation;
 
 	@Autowired
-	SimpMessagingTemplate messageTemplate;
-
-	@Autowired
 	LocationService locationService;
-
-	@Autowired
-	MetaService metaService;
-
-	@Autowired
-	AttributeService attributeService;
-
-	@Autowired
-	CustomerService customerservice;
 
 	@Autowired
 	PartnerService partnerService;
 
 	@Autowired
-	MailService mailService;
-
-	@Autowired
 	NotificationService notificationService;
-
-	@Autowired
-	RedisTemplate<String, Object> redisTemplate;
 
 	@Autowired
 	RedisService redisService;
 
 	@Autowired
-	StringRedisTemplate stringRedisTemplate;
+	private OrderEventPublisher orderEventPublisher;
 
 	public Order create(OrderDto orderDto) throws Exception {
-		long validation = System.currentTimeMillis(); 
 
-		if (!restaurantService.isExistsById(orderDto.getRestaurantId())) {
-			throw new Exception("Restaurant not found " + orderDto.getRestaurantId());
-		}
-		Restaurant restaurant = restaurantService.findById(orderDto.getRestaurantId());
-		if (!customerService.isExistsById(orderDto.getCustomerId())) {
-			throw new Exception("Customer not found " + orderDto.getCustomerId());
-		}
+		Restaurant restaurant = Optional.ofNullable(restaurantService.findById(orderDto.getRestaurantId())).orElseThrow(
+				() -> new EntityNotFoundException(Restaurant.class.getSimpleName(), orderDto.getRestaurantId()));
+
+		Customer customer = Optional.ofNullable(customerService.findById(orderDto.getCustomerId())).orElseThrow(
+				() -> new EntityNotFoundException(Customer.class.getSimpleName(), orderDto.getCustomerId()));
 
 		Address address = null;
 		if (orderDto.getDeliveryDetails() != null) {
-			if (!addressService.isExistsById(orderDto.getDeliveryDetails().getAddressId())) {
-				throw new Exception("Delivery Address not found: " + orderDto.getDeliveryDetails().getAddressId());
-			}
-			address = addressService.findById(orderDto.getDeliveryDetails().getAddressId());
+			address = Optional.ofNullable(addressService.findById(orderDto.getDeliveryDetails().getAddressId()))
+					.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(),
+							orderDto.getDeliveryDetails().getAddressId()));
+
 			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
 					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
 					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
@@ -169,7 +136,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 
 		for (OrderItem orderItem : orderDto.getOrderItems()) {
-
 			if (orderItem.getVariationId() != null) {
 				if (!variationService.isExistsById(orderItem.getId())) {
 					throw new Exception("Variation not found " + orderItem.getId());
@@ -194,12 +160,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
 		order = this.save(order);
-		Customer customer = customerService.findById(order.getCustomerId());
-		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-		if (partner != null) {
-			PosOrderRequest posOrderRequest = posOrderRequestTranslation
-					.getPosOrderRequest(restaurantService.findById(order.getRestaurantId()), order, customer);
-			posService.createPosOrder(posOrderRequest);
+
+		if (order.getPaymentType() == PaymentType.COD) {
+			orderEventPublisher.publishPosOrderEvent(order);
+			orderEventPublisher.publishOrderStatusChangeEvent(order);
 		}
 
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
@@ -228,41 +192,21 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 
 			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
-			Customer customer = customerService.findById(order.getCustomerId());
 			order.setStatus(newOrderStatus);
 			if (newOrderStatus == OrderStatusType.ACCEPTED) {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
-
-				order = this.update(order);
-				Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-				if (partner != null) {
-					List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-							restaurant.getRestaurantName(), order.getId(), order.getScreen(), order.getSeat());
-					notificationService.sendNotification(customer.getMobile(),
-							Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
-				} else {
-					List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-							restaurant.getRestaurantName(), restaurant.getCity(), order.getId(),
-							restaurant.getContact(), restaurant.getSupportContact());
-					notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
-							parameters);
-					String fulfillRedisKey = "order:" + order.getId() + ":fulfill";
-					redisTemplate.opsForValue().set(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5));
-					String deliveryRedisKey = "order:" + order.getId() + ":delivery";
-					redisTemplate.opsForValue().set(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6));
-				}
+				order = update(order);
 			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
-				String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
+				String fulFill = redisService.getRedisData("fulfull").orElse("smart");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					if (fulFill.equalsIgnoreCase("smart")) {
 						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
 					} else {
-						deliveryService.processDeliveryFulfill(delivery, Constants.PET_POOJA);
+						deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
 					}
 				}
-				order = this.update(order);
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
 				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -272,22 +216,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
 					deliveryService.save(delivery);
 				}
-				updateOrderStatus(order.getId(), OrderStatusType.CANCELLED);
 			}
-			messageTemplate.convertAndSend("/topic/order-status", order);
+			updateOrderStatus(order.getId(), newOrderStatus);
 			return order;
 
 		} catch (DeliveryException e) {
-			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.DELIVERY_ERROR);
-			MailNotificationRequest notificationRequest = new MailNotificationRequest("Delivery Error Notification",
-					String.format(
-							"An exception occurred while creating an order in the Delivery Service.\n"
-									+ "Order ID: %s\n" + "Error Details: %s\n" + "Time of Error (IST): %s",
-							posCallbackRequest.getOrderId(), e.getMessage(),
-							LocalDateTime.now(ZoneId.of("Asia/Kolkata"))
-									.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))));
-
-			mailService.sendNotificationEmail(notificationRequest);
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
@@ -295,88 +228,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 	}
 
-	public void processOrder(Order order) {
-		try {
-
-			Customer customer = customerService.findById(order.getCustomerId());
-			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-			if (partner == null) {
-				Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
-
-				PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(
-						restaurantService.findById(order.getRestaurantId()), order, customer, address);
-
-				if (posService.createPosOrder(posOrderRequest)) {
-					DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation
-							.getDeliveryOrderRequest(restaurant, address, customer, order);
-					deliveryService.createOrder(deliveryOrderRequest, order);
-				}
-
-			}
-
-		} catch (RequestTranslationException e) {
-			// Need to handle Payment Refund or Retry Mechanism
-			throw new RuntimeException("Exception Occured while requestTranslation " + e.getMessage());
-		} catch (PosException e) {
-			this.updateOrderStatus(order.getId(), OrderStatusType.POS_ERROR);
-			// Need to handle Payment Refund or Retry Mechanism
-			throw new RuntimeException("Exception Occured while createOrder in POS Service " + e.getMessage());
-		} catch (DeliveryException e) {
-			this.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_ERROR);
-			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
-		} catch (Exception e) {
-			throw new RuntimeException("Exception Occured while Processing Order " + e.getMessage());
-		}
-	}
-
 	public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
-		List<String> templateParameters = null;
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
-		this.save(order);
-		messageTemplate.convertAndSend("/topic/order-status", order);
-		Customer customer = customerService.findById(order.getCustomerId());
-		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		Delivery delivery = deliveryService.findByOrderId(order.getId());
-		switch (orderStatus) {
-		case PAID:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
-					order.getId(), order.getStatus(), restaurant.getSupportContact(), restaurant.getContact());
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
-					templateParameters);
-			break;
-
-		case PICKED_UP:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
-					restaurant.getContact(), restaurant.getSupportContact());
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
-					templateParameters, delivery.getFulfillment().getTrackCode());
-			break;
-		case DELIVERED:
-			Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
-			if (partner != null) {
-				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-						restaurant.getSupportContact());
-				notificationService.sendNotification(customer.getMobile(),
-						Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
-			} else {
-				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-						restaurant.getContact(), restaurant.getSupportContact(), restaurant.getRestaurantName(),
-						restaurant.getWebsiteUrl());
-				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
-						templateParameters);
-			}
-			break;
-		case CANCELLED:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-					restaurant.getRestaurantName());
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE,
-					templateParameters);
-			break;
-		default:
-			break;
-		}
+		save(order);
+		orderEventPublisher.publishOrderStatusChangeEvent(order);
 	}
 }

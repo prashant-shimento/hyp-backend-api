@@ -180,7 +180,9 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
 				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-			orderService.processOrder(order);
+			payment.setStatus("paid");
+			paymentService.save(payment);
+			orderEventPublisher.publishProcessOrderEvent(order);
 		}
 
 	}
