@@ -1,6 +1,7 @@
 package com.hyp.service;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -43,7 +44,7 @@ public class RedisService {
 	}
 
 	@Async
-	public void removeRedisKey(String key) {
+	public void removeRedisData(String key) {
 		try {
 			Boolean isDeleted = redisObjectTemplate.delete(key);
 			if (Boolean.TRUE.equals(isDeleted)) {
@@ -55,4 +56,15 @@ public class RedisService {
 			log.error("Failed to delete Redis key: {}", key, e);
 		}
 	}
+
+	public Optional<String> getRedisData(String key) {
+		try {
+			String value = redisStringTemplate.opsForValue().get(key);
+			return Optional.ofNullable(value);
+		} catch (Exception e) {
+			log.error("Error fetching value from Redis for key: {}", key, e);
+			return Optional.empty();
+		}
+	}
+
 }

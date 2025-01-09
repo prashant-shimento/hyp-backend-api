@@ -20,6 +20,7 @@ import com.hyp.dto.RefundDto;
 import com.hyp.entity.Order;
 import com.hyp.entity.Payment;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.response.Response;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
@@ -35,12 +36,15 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 
 	@Autowired
 	PaymentService paymentService;
-	
+
 	@Autowired
 	PaymentTranslation paymentTranslation;
 
 	@Autowired
 	OrderService orderService;
+
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
 
 	@Autowired
 	RazorpaySignatureVerifier razorPaySignatureVerifier;
@@ -210,7 +214,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 				orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 				payment.setStatus(paymentStatus);
 				paymentService.save(payment);
-				orderService.processOrder(order);
+				orderEventPublisher.publishProcessOrderEvent(order);
 			}
 		}
 	}

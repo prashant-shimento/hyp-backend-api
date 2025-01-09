@@ -1,6 +1,13 @@
 package com.hyp.exception;
 
-public class DeliveryException extends Exception{
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor
+@Getter
+public class DeliveryException extends Exception {
+
+	private String action;
 
 	/**
 	 * 
@@ -9,6 +16,21 @@ public class DeliveryException extends Exception{
 
 	public DeliveryException(String message) {
 		super(message);
+	}
+
+	public DeliveryException(String action, String message) {
+		super(message);
+		this.action = action;
+	}
+
+	public DeliveryException(String action, String message, Throwable cause) {
+		super(message, cause);
+		this.action = action;
+	}
+
+	public DeliveryException(String action, Throwable cause) {
+		super(cause);
+		this.action = action;
 	}
 
 }

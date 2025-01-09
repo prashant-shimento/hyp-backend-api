@@ -288,7 +288,7 @@ public class PosServiceImpl implements PosService {
 				}
 			} else {
 				item.setAutoTurnOnTime(null);
-				redisService.removeRedisKey(redisKey);
+				redisService.removeRedisData(redisKey);
 			}
 		});
 		long bulkWriteStart = System.currentTimeMillis();
@@ -311,7 +311,7 @@ public class PosServiceImpl implements PosService {
 				}
 			} else {
 				addonItem.setAutoTurnOnTime(null);
-				redisService.removeRedisKey(redisKey);
+				redisService.removeRedisData(redisKey);
 			}
 		});
 		long bulkWriteStart = System.currentTimeMillis();

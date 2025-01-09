@@ -101,7 +101,8 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
 			if (OrderStatusType.CANCELLED.name().equalsIgnoreCase(orderDto.getStatus())) {
-				if (orderStatus.equals(OrderStatusType.ACCEPTED)) {
+				if (OrderStatusType.ACCEPTED.equals(orderStatus) || 
+						OrderStatusType.PAID.equals(orderStatus)) {
 					PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
 							.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
 					posService.updatePosOrder(posOrderUpdateRequest);

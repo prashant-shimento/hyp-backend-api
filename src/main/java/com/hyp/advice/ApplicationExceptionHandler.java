@@ -1,34 +1,43 @@
 package com.hyp.advice;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.hyp.constants.ErrorConstants;
+import com.hyp.exception.BadRequestException;
+import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
+import com.hyp.response.Response;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class ApplicationExceptionHandler {
 
-	@ResponseStatus(HttpStatus.BAD_REQUEST)
-	@ExceptionHandler(MethodArgumentNotValidException.class)
-	public Map<String, String> handleInvalidArgument(MethodArgumentNotValidException ex) {
-		Map<String, String> errorMap = new HashMap<>();
-		ex.getBindingResult().getFieldErrors().forEach(error -> {
-			errorMap.put(error.getField(), error.getDefaultMessage());
-		});
-		return errorMap;
+	@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+	@ExceptionHandler(DeliveryException.class)
+	public ResponseEntity<Response> handleGlobalDeliveryException(DeliveryException ex) {
+		log.error("Exception occurred in Delivery Service " + ex.getMessage());
+		Response response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR_DELIVERY);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 	}
 
-	@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+	@ResponseStatus(HttpStatus.NOT_FOUND)
 	@ExceptionHandler(EntityNotFoundException.class)
-	public Map<String, String> handleEntityNotFoundException(EntityNotFoundException ex) {
-		Map<String, String> errorMap = new HashMap<>();
-		errorMap.put("errorMessage", ex.getMessage());
-		return errorMap;
+	public ResponseEntity<Response> handleEntityNotFoundException(EntityNotFoundException ex) {
+		log.error("Entity not found in {} for {} " + ex.getEntityName(), ex.getEntityValue());
+		Response response = new Response(null, true, ex.getMessage());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+	}
+
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<Response> handleBadRequestException(BadRequestException ex) {
+		log.error("Bad request on {} for {} " + ex.getEntity(), ex.getMessage());
+		Response response = new Response(null, true, ex.getMessage());
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 	}
 }

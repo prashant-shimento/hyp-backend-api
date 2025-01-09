@@ -1,6 +1,5 @@
 package com.hyp.listener;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +16,7 @@ import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
@@ -56,6 +56,9 @@ public class OrderListener implements MessageListener {
 
 	@Autowired
 	RedisService redisService;
+	
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
 
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
@@ -89,7 +92,7 @@ public class OrderListener implements MessageListener {
 						orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 						payment.setStatus(paymentStatus);
 						paymentService.save(payment);
-						orderService.processOrder(order);
+						orderEventPublisher.publishProcessOrderEvent(order);
 						log.info("Order processed via expiry for {}", orderId);
 
 					}
@@ -101,22 +104,17 @@ public class OrderListener implements MessageListener {
 			log.info("Received Order Fulfill Expiry from Redis for {}", orderId);
 			Order order = orderService.findById(orderId);
 			if (order != null) {
-				if (order.getStatus().equals(OrderStatusType.ACCEPTED) || order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
+				if (order.getStatus().equals(OrderStatusType.ACCEPTED)
+						|| order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
 					Delivery delivery = deliveryService.findByOrderId(order.getId());
-					String fulFill = stringRedisTemplate.opsForValue().get("fulfill");
-					if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-						try {
-							if (fulFill.equalsIgnoreCase("smart")) {
-								deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
-							} else {
-								deliveryService.processDeliveryFulfill(delivery, Constants.SYSTEM);
-							}
-						} catch (DeliveryException e) {
-							log.error("Exception occured on redis expiry delivery fulfill");
-							orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
-						}
-						log.info("Order is fulfilled on redis expiry for {}", orderId);
+					String fulfillType = stringRedisTemplate.opsForValue().get("fulfill");
+					try {
+						deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
+					} catch (DeliveryException e) {
+						log.error("Exception occured on redis expiry delivery fulfill");
+						orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
 					}
+					log.info("Order is fulfilled on redis expiry for {}", orderId);
 				}
 			}
 		}
@@ -132,7 +130,8 @@ public class OrderListener implements MessageListener {
 					if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 						List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
 								order.getStatus(), customer.getName(), customer.getMobile(), "-", "-");
-						notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
+						notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE,
+								parameters);
 						log.info("Sent delivery delay alert for {}", orderId);
 					}
 				}

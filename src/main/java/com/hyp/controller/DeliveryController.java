@@ -5,8 +5,6 @@ import java.util.Comparator;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +22,9 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.exception.BadRequestException;
+import com.hyp.exception.DeliveryException;
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
@@ -71,245 +72,159 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
 	@Autowired
 	CustomerService customerService;
-	
-	@Autowired
-	private StringRedisTemplate redisTemplate;
 
 	@PostMapping("/callback")
-	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData) {
-		Delivery delivery = deliveryService.findByDeliveryOrderId(deliveryOrderData.getId());
-		Response response;
-		try {
-			if (delivery == null) {
-				response = new Response(null, true, "Delivery Id not found " + deliveryOrderData.getId());
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
-			response = new Response(null, false, "Success");
-			return ResponseEntity.ok().build();
-		} catch (Exception e) {
-			log.error("Exception occurred in updateDeliveryOrderStatus " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
+			throws EntityNotFoundException, DeliveryException {
+		Delivery delivery = Optional.ofNullable(deliveryService.findByDeliveryOrderId(deliveryOrderData.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", deliveryOrderData.getId()));
+		deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
+		return ResponseEntity.ok(new Response(null, false, "Success"));
 	}
 
 	@GetMapping("/quote/{restaurantId}")
-	public ResponseEntity<Response> getDeliveryQuote(@PathVariable String restaurantId,
-			String addressId) {
-		Response response = null;
-		try {
-			Restaurant restaurant = restaurantService.findById(restaurantId);
-			if (restaurant == null) {
-				response = new Response(null, true, "Restaurant not found " + restaurantId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Address address = addressService.findById(addressId);
-			if (address == null) {
-				response = new Response(null, true, "Address not found " + addressId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
+	public ResponseEntity<Response> getDeliveryQuote(@PathVariable String restaurantId, String addressId)
+			throws EntityNotFoundException, BadRequestException, DeliveryException {
 
-			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
-					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
-					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
-				response = new Response(null, true, ErrorConstants.LOCATION_NOT_DELIVERBLE);
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-			}
+		Restaurant restaurant = Optional.ofNullable(restaurantService.findById(restaurantId))
+				.orElseThrow(() -> new EntityNotFoundException(Restaurant.class.getSimpleName(), restaurantId));
 
-			DeliveryQuote deliveryQuote = deliveryService
-					.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
+		Address address = Optional.ofNullable(addressService.findById(addressId))
+				.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(), addressId));
 
-			if(deliveryQuote.getData().getItems().isEmpty()) {
-				response = new Response(null, true, ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
-				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-			}
-			Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
-					.filter(item -> item.isPickupNow())
-					.filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
-					.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).findFirst();
-			return filteredQuotes.isPresent()
-					? ResponseEntity.ok(new Response(Collections.singletonList(filteredQuotes.get()), false,
-							"Delivery Quotes Fetched"))
-					: ResponseEntity.notFound().build();
-
-		} catch (Exception e) {
-			log.error("Exception occurred in getDeliveryQuote " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
+				address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+				restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+			throw new BadRequestException("Location", "The location is not deliverable.");
 		}
+
+		DeliveryQuote deliveryQuote = deliveryService
+				.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
+
+		if (deliveryQuote.getData().getItems().isEmpty()) {
+			throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
+		}
+
+		Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
+				.filter(item -> item.isPickupNow()).filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
+				.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).findFirst();
+		if (!filteredQuotes.isPresent()) {
+			throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
+		}
+		return ResponseEntity
+				.ok(new Response(Collections.singletonList(filteredQuotes.get()), false, "Delivery Quotes Fetched"));
 	}
 
 	@Hidden
 	@GetMapping("/rider-location/{orderId}")
-	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
+	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId)
+			throws EntityNotFoundException, DeliveryException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+		DeliveryRiderLocation deliveryRiderLocation = deliveryService
+				.getDeliveryRiderLocation(delivery.getDeliveryOrderId());
 
-			DeliveryRiderLocation deliveryRiderLocation = deliveryService.getRiderCurrentLocation(orderId);
+		Response response = new Response(Collections.singletonList(deliveryRiderLocation), false,
+				"Delivery Quotes Fetched");
+		return ResponseEntity.ok(response);
 
-			response = new Response(Collections.singletonList(deliveryRiderLocation), false, "Delivery Quotes Fetched");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in getRiderLocation " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
 	}
 
 	@PostMapping("/create/{orderId}")
-	public ResponseEntity<Response> createDeliveryOrder(@PathVariable String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
-			Customer customer = customerService.findById(order.getCustomerId());
-			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-			DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
-					address, customer, order);
-			deliveryService.createOrder(deliveryOrderRequest, order);
+	public ResponseEntity<Response> createDeliveryOrder(@PathVariable String orderId)
+			throws EntityNotFoundException, DeliveryException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+		Customer customer = customerService.findById(order.getCustomerId());
+		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+		DeliveryOrderRequest deliveryOrderRequest = DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant,
+				address, customer, order);
+		deliveryService.createOrder(deliveryOrderRequest, order);
 
-			response = new Response(null, false, "Delivery Order Created");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in createDeliveryOrder " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+		Response response = new Response(null, false, "Delivery Order Created");
+		return ResponseEntity.ok(response);
+
 	}
 
 	@PostMapping("/fulfill/{orderId}")
 	public ResponseEntity<Response> fulfillOrder(@PathVariable String orderId,
-			@RequestParam(defaultValue = "", required = false) String fulfillType) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			if (fulfillType.equalsIgnoreCase("smart")) {
-				deliveryService.processDeliverySmartFulfill(delivery, Constants.SMART);
-			} else {
-				deliveryService.processDeliveryFulfill(delivery, Constants.API);
-			}
-			response = new Response(Collections.singletonList(delivery), false, "Delivery Fullfilled");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in smartFulfill " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+			@RequestParam(defaultValue = "", required = false) String fulfillType)
+			throws EntityNotFoundException, DeliveryException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+		deliveryService.processDeliveryOrderFulfill(delivery, Constants.API, fulfillType);
+
+		Response response = new Response(Collections.singletonList(deliveryTranslation.getDto(delivery)), false,
+				"Delivery Fullfilled");
+		return ResponseEntity.ok(response);
+
 	}
 
 	@PostMapping("/consume/{orderId}")
-	public ResponseEntity<Response> consumeDeliveryCallback(@PathVariable String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			if (delivery == null) {
-				response = new Response(null, true, "Delivery Id not found ");
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			DeliveryOrderStatus deliverOrderStatus = deliveryService
-					.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
-			deliveryService.processDeliveryCallback(delivery, deliverOrderStatus.getData());
-			response = new Response(Collections.singletonList(delivery), false, "Delivery Processed Consumed");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+	public ResponseEntity<Response> consumeDeliveryCallback(@PathVariable String orderId)
+			throws EntityNotFoundException, DeliveryException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+
+		DeliveryOrderStatus deliverOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+		deliveryService.processDeliveryCallback(delivery, deliverOrderStatus.getData());
+		Response response = new Response(Collections.singletonList(deliveryTranslation.getDto(delivery)), false,
+				"Delivery Processed Consumed");
+		return ResponseEntity.ok(response);
+
 	}
-	
-	@GetMapping("/token/{token}")
-	public ResponseEntity<Response> updateToken(@PathVariable String token) {
-		Response response;
-		try {
-	        redisTemplate.opsForValue().set("pidgeToken", token);
-			response = new Response(null, false, "Updated Pidge Auth Token");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in consumeDeliveryCallback " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
-	}
-	
+
 	@PostMapping("/unallocate/{orderId}")
-	public ResponseEntity<Response> unallocate(@PathVariable String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			deliveryService.unallocateOrderFulfill(delivery.getDeliveryOrderId());
-			response = new Response(null, false, "Order Unallocated Successfully");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in unallocate " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+	public ResponseEntity<Response> unallocate(@PathVariable String orderId)
+			throws DeliveryException, EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+
+		deliveryService.unallocateDeliveryOrder(delivery.getDeliveryOrderId());
+		Response response = new Response(null, false, "Order Unallocated Successfully");
+		return ResponseEntity.ok(response);
 	}
-	
+
 	@PostMapping("/cancel/{orderId}")
-	public ResponseEntity<Response> cancelDeliveryOrder(@PathVariable String orderId) {
+	public ResponseEntity<Response> cancelDeliveryOrder(@PathVariable String orderId)
+			throws DeliveryException, EntityNotFoundException {
 		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
-			response = new Response(null, false, "Delivery Order Cancelled");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in cancelDeliveryOrder " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+
+		deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+		response = new Response(null, false, "Delivery Order Cancelled");
+		return ResponseEntity.ok(response);
 	}
-	
+
 	@GetMapping("/status/{orderId}")
-	public ResponseEntity<Response> getDeliveryOrderStatus(@PathVariable String orderId) {
-		Response response;
-		try {
-			Order order = orderService.findById(orderId);
-			if (order == null) {
-				response = new Response(null, true, "Order not found " + orderId);
-				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-			}
-			Delivery delivery = deliveryService.findByOrderId(order.getId());
-			DeliveryOrderStatus deliveryOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
-			response = new Response(Collections.singletonList(deliveryOrderStatus.getData()), false, "Delivery Order Status Fetched");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			log.error("Exception occurred in getDeliveryOrderStatus " + e.getMessage());
-			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
+	public ResponseEntity<Response> getDeliveryOrderStatus(@PathVariable String orderId)
+			throws DeliveryException, EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+
+		DeliveryOrderStatus deliveryOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+		Response response = new Response(Collections.singletonList(deliveryOrderStatus.getData()), false,
+				"Delivery Order Status Fetched");
+		return ResponseEntity.ok(response);
 	}
 
 }
