@@ -1,6 +1,5 @@
 package com.hyp.listener;
 
-import java.time.Duration;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +14,6 @@ import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.event.OrderEvent;
 import com.hyp.event.OrderEventPublisher;
@@ -55,8 +53,6 @@ public class OrderEventListener {
 	@Autowired
 	private PartnerService partnerService;
 
-	@Autowired
-	private RedisService redisService;
 
 	@Async
 	@EventListener
@@ -102,12 +98,7 @@ public class OrderEventListener {
 						restaurant.getSupportContact());
 				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
-				String fulfillRedisKey = "order:" + order.getId() + ":fulfill";
-				redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED,
-						Duration.ofMinutes(5).getSeconds());
-				String deliveryRedisKey = "order:" + order.getId() + ":delivery";
-				redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED,
-						Duration.ofMinutes(6).getSeconds());
+				deliveryService.setFullfillExpiry(order.getId());
 			}
 			break;
 		case PAID:

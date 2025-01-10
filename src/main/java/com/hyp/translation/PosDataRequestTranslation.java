@@ -132,7 +132,7 @@ public class PosDataRequestTranslation {
 		variation.setItemPackingCharges(variationRequest.getItem_packingcharges());
 		variation.setVariationRank(variationRequest.getVariationrank());
 		variation.setVariationAllowAddon(variationRequest.getVariationallowaddon());
-		variation.setVariation_id(variationRequest.getVariationid());
+		variation.setVariationId(variationRequest.getVariationid());
 		List<String> addonGroupIds = new ArrayList<>();
 		if (variationRequest.getVariationallowaddon() == 1) {
 			addonGroupIds = variationRequest.getAddon() == null ? Collections.emptyList()

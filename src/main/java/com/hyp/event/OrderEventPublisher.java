@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 
 @Component
@@ -29,6 +30,11 @@ public class OrderEventPublisher {
 	
 	public void publishDeliveryOrderEvent(Order order) {
 		DeliveryOrderEvent event = new DeliveryOrderEvent(this, order);
+		applicationEventPublisher.publishEvent(event);
+	}
+
+	public void publishDeliveryEvent(Delivery delivery) {
+		DeliveryEvent event = new DeliveryEvent(this, delivery);
 		applicationEventPublisher.publishEvent(event);
 	}
 

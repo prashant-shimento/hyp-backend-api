@@ -112,7 +112,8 @@ public class PidgeClient {
 						deliveryFulfillRequest.getIds().toString()))
 				.onErrorMap(e -> {
 					log.error("Final failure after retries. Error: {}", e.getMessage(), e);
-					DeliveryException deliveryException = new DeliveryException("fulfillDeliveryOrder", e.getMessage());
+					DeliveryException deliveryException = new DeliveryException(
+							"fulfillDeliveryOrder" + " " + deliveryFulfillRequest.getIds().toString(), e.getMessage());
 					sendAlert(deliveryException);
 					return deliveryException;
 				});
@@ -129,7 +130,7 @@ public class PidgeClient {
 				.onErrorMap(e -> {
 					log.error("Final failure after retries for DeliveryOrderId {}. Alerting about failure...",
 							deliveryOrderId);
-					DeliveryException deliveryException = new DeliveryException("cancelDeliveryOrder", e.getMessage());
+					DeliveryException deliveryException = new DeliveryException("cancelDeliveryOrder" + " " + deliveryOrderId, e.getMessage());
 					sendAlert(deliveryException);
 					return deliveryException;
 				}));
@@ -154,7 +155,7 @@ public class PidgeClient {
 						deliveryFulfillRequest.getIds(), e))
 				.onErrorMap(e -> {
 					log.error("Final failure after retries for smartFulfillDeliveryOrder. Alerting failure...");
-					DeliveryException deliveryException = new DeliveryException("smartFulfillDeliveryOrder",
+					DeliveryException deliveryException = new DeliveryException("smartFulfillDeliveryOrder " + deliveryFulfillRequest.getIds().toString(),
 							e.getMessage());
 					sendAlert(deliveryException);
 					return deliveryException;
@@ -172,7 +173,7 @@ public class PidgeClient {
 				.onErrorMap(e -> {
 					log.error("Final failure after retries for DeliveryOrderId: {}. Alerting failure...",
 							deliveryOrderId);
-					DeliveryException deliveryException = new DeliveryException("unallocateDeliveryOrder",
+					DeliveryException deliveryException = new DeliveryException("unallocateDeliveryOrder "+ deliveryOrderId,
 							e.getMessage());
 					sendAlert(deliveryException);
 					return deliveryException;
@@ -212,8 +213,7 @@ public class PidgeClient {
 
 		} catch (WebClientResponseException e) {
 			log.error("WebClientResponseException occurred while getting quote : {}", e.getMessage(), e);
-			DeliveryException deliveryException = new DeliveryException("getDeliveryQuote",
-					e.getMessage());
+			DeliveryException deliveryException = new DeliveryException("getDeliveryQuote", e.getMessage());
 			sendAlert(deliveryException);
 			throw deliveryException;
 
@@ -330,7 +330,8 @@ public class PidgeClient {
 		} catch (WebClientResponseException e) {
 			log.error("WebClientResponseException occurred while fetching delivery order status: {}", e.getMessage(),
 					e);
-			DeliveryException deliveryException = new DeliveryException("Error in generateToken api call : " + e.getMessage());
+			DeliveryException deliveryException = new DeliveryException(
+					"Error in generateToken api call : " + e.getMessage());
 			sendAlert(deliveryException);
 			throw deliveryException;
 		} catch (Exception e) {

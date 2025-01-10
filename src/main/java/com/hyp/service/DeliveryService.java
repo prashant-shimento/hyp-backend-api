@@ -21,6 +21,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
@@ -88,6 +89,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	@Autowired
 	AddressService addressService;
 
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
+
 	public Delivery findByOrderId(String orderId) {
 		return deliveryRepository.findByOrderId(orderId);
 	}
@@ -143,6 +147,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDelvieryStatus(DeliveryFulfillStatusType.CANCELLED));
+				orderEventPublisher.publishDeliveryEvent(delivery);
 				return;
 			}
 			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
@@ -195,7 +200,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 						delivery.getId());
 				return;
 			}
-			if ("smart".equalsIgnoreCase(fulfilledBy)) {
+			if ("smart".equalsIgnoreCase(fulfillType)) {
 				processDeliverySmartFulfill(delivery, fulfilledBy);
 			} else {
 				processDeliveryStandardFulfill(delivery, fulfilledBy);
@@ -290,5 +295,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		orderService.updateOrderStatus(delivery.getOrderId(), OrderStatusType.DELIVERY_ERROR);
 		log.error("Exception occurred in {} : {}", action, e.getMessage(), e);
 		throw new DeliveryException(action, "Exception occurred in Delivery Service : " + e.getMessage(), e);
+	}
+
+	public void setFullfillExpiry(String orderId) {
+		String fulfillRedisKey = "order:" + orderId + ":fulfill";
+		redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5).getSeconds());
+		String deliveryRedisKey = "order:" + orderId + ":delivery";
+		redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6).getSeconds());
 	}
 }

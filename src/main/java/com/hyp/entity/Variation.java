@@ -2,6 +2,8 @@ package com.hyp.entity;
 
 import java.util.List;
 
+import javax.persistence.Transient;
+
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -44,11 +46,9 @@ public class Variation extends BaseEntity {
 	private int variationAllowAddon;
 
 	@Field("variation_id")
-	private String variation_id;
+	private String variationId;
 	
 	@Field("addon_groups")
 	private transient List<AddonGroup> addonGroups;
-	
-	private transient String id;
 	
 }
