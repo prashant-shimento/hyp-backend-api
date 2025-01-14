@@ -93,11 +93,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	private OrderEventPublisher orderEventPublisher;
 
 	public Delivery findByOrderId(String orderId) {
-		return deliveryRepository.findByOrderId(orderId);
+		return deliveryRepository.findByOrderIdAndIsDeletedFalse(orderId);
 	}
 
 	public Delivery findByDeliveryOrderId(String deliveryOrderId) {
-		return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
+		return deliveryRepository.findByDeliveryOrderIdAndIsDeletedFalse(deliveryOrderId);
 	}
 
 	public void proceesDeliveryOrder(Order order) {
@@ -223,7 +223,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			delivery.setFulfillmentType(fulfilledBy);
 			delivery.setFulfillmentAt(LocalDateTime.now());
 			save(delivery);
-			pidgeClient.fulfillDeliveryOrder(DeliveryRequestTranslation.getOrderFulfillRequest(delivery));
+			pidgeClient.fulfillDeliveryOrder(DeliveryRequestTranslation.getOrderFulfillRequest(delivery)).subscribe();
 		} else {
 			throw new DeliveryException(
 					"No matching network found with the specified networkId or minimum price network");
@@ -265,7 +265,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	public void processDeliverySmartFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
 		try {
-			pidgeClient.smartFulfillDeliveryOrder(DeliveryRequestTranslation.getSmartFulfillRequest(delivery));
+			pidgeClient.smartFulfillDeliveryOrder(DeliveryRequestTranslation.getSmartFulfillRequest(delivery)).subscribe();
 			delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
 			delivery.setFulfillmentType(fulfilledBy);
 			delivery.setFulfillmentAt(LocalDateTime.now());
@@ -276,7 +276,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
-		pidgeClient.cancelDeliveryOrder(deliveryOrderId);
+		pidgeClient.cancelDeliveryOrder(deliveryOrderId).subscribe();
+		Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
+		delivery.setDeleted(true);
+		delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
+		save(delivery);
 	}
 
 	public DeliveryRiderLocation getDeliveryRiderLocation(String deliveryOrderId) throws DeliveryException {
@@ -288,7 +292,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	public void unallocateDeliveryOrder(String deliveryOrderId) throws DeliveryException {
-		pidgeClient.unallocateDeliveryOrder(deliveryOrderId);
+		pidgeClient.unallocateDeliveryOrder(deliveryOrderId).subscribe();
+		Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
+		delivery.setStatus(DeliveryOrderStatusType.PENDING);
+		save(delivery);
 	}
 
 	private void handleDeliveryError(String action, Delivery delivery, Exception e) throws DeliveryException {

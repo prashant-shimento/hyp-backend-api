@@ -6,7 +6,7 @@ import com.hyp.entity.Delivery;
 
 public interface DeliveryRepository extends MongoRepository<Delivery, String> {
 
-	public Delivery findByOrderId(String orderId);
+	public Delivery findByOrderIdAndIsDeletedFalse(String orderId);
 	
-	public Delivery findByDeliveryOrderId(String deliveryOrderId);
+	public Delivery findByDeliveryOrderIdAndIsDeletedFalse(String deliveryOrderId);
 }

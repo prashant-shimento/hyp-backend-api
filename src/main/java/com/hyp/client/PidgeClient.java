@@ -122,7 +122,8 @@ public class PidgeClient {
 	public Mono<Void> cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/cancel";
 		LoggingUtils.logRequest("cancelDeliveryOrder", endpoint);
-		return executeWithRetry(getClient().post().uri(endpoint).retrieve().bodyToMono(Void.class)
+		return executeWithRetry(getClient().post().uri(endpoint).retrieve()
+				.bodyToMono(Void.class)
 				.doOnSuccess(unused -> log.info("cancelDeliveryOrder completed successfully for DeliveryOrderId: {}",
 						deliveryOrderId))
 				.doOnError(e -> log.error("Error in cancelDeliveryOrder for DeliveryOrderId {}: {}", deliveryOrderId,
@@ -139,11 +140,12 @@ public class PidgeClient {
 	public Mono<Object> smartFulfillDeliveryOrder(DeliveryFulfillRequest deliveryFulfillRequest)
 			throws DeliveryException {
 		String endpoint = "/v1.0/store/channel/vendor/order/fulfill/smart";
-		LoggingUtils.logRequest("smartFulfillDeliveryOrder", deliveryFulfillRequest);
 		deliveryFulfillRequest.setSmartId(smartId);
+		LoggingUtils.logRequest("smartFulfillDeliveryOrder", deliveryFulfillRequest);
 
 		return executeWithRetry(getClient().post().uri(endpoint).body(BodyInserters.fromValue(deliveryFulfillRequest))
-				.retrieve().bodyToMono(DeliveryFulfillResponse.class).flatMap(response -> {
+				.retrieve().bodyToMono(DeliveryFulfillResponse.class)
+				.flatMap(response -> {
 					LoggingUtils.logResponse("smartFulfillDeliveryOrder", response);
 					if (!response.getData().isFulfilled()) {
 						String errorMessage = "Order not fulfilled for IDs: " + deliveryFulfillRequest.getIds();

@@ -213,8 +213,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
 						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
 					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
-					delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
-					deliveryService.save(delivery);
 				}
 			}
 			updateOrderStatus(order.getId(), newOrderStatus);
