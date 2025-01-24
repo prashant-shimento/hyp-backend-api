@@ -34,7 +34,8 @@ public interface Constants {
 	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
 	List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
 	List<String> RESTAURANT_API_PARAMS = Arrays.asList("restaurantName", "menuSharingCode", "contact");
-	List<String> PAYMENT_API_PARAMS = Arrays.asList("id", "orderId", "paymentOrderId","paymentId","provider","status","amount","paymentId");
+	List<String> PAYMENT_API_PARAMS = Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider",
+			"status", "amount", "paymentId");
 
 	// Constants for logging API integration
 	String INBOUND_API_LOG = "InboundAPILog";
@@ -69,12 +70,12 @@ public interface Constants {
 	String META_ORDER_CONFIRMED_THEATRE_TEMPLATE = "theatre_order_accepted";
 	String META_ORDER_DELIVERED_THEATRE_TEMPLATE = "theatre_order_delivered";
 	String META_GENERIC_ALERT_TEMPLATE = "generic_alert";
-
-
+	String META_MENU_PUSH_ALERT_TEMPLATE = "menu_push_alert";
+	String META_STOCK_UPDATE_ALERT_TEMPLATE = "stock_update_alert";
 
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
 
-	public static final String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS" ;
+	public static final String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
 	String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
 	String FACEBOOK_MESSAGE = "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";

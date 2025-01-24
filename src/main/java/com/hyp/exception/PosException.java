@@ -1,6 +1,8 @@
 package com.hyp.exception;
 
-public class PosException extends Exception{
+public class PosException extends Exception {
+
+	private String action;
 
 	/**
 	 * 
@@ -11,4 +13,26 @@ public class PosException extends Exception{
 		super(message);
 	}
 
+	public PosException(String action, String message) {
+		super(message);
+		this.setAction(action);
+	}
+
+	public PosException(String action, String message, Throwable cause) {
+		super(message, cause);
+		this.setAction(action);
+	}
+
+	public PosException(String action, Throwable cause) {
+		super(cause);
+		this.setAction(action);
+	}
+
+	public String getAction() {
+		return action;
+	}
+
+	public void setAction(String action) {
+		this.action = action;
+	}
 }

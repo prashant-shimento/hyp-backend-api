@@ -21,6 +21,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hyp.constants.Constants;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Category;
 import com.hyp.entity.Customer;
@@ -39,11 +40,13 @@ import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
-import com.hyp.request.PosStockRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.request.PosStatusRequest;
+import com.hyp.request.PosStockRequest;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
+import com.hyp.util.CommonUtils;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -67,6 +70,9 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	CustomerService customerService;
+
+	@Autowired
+	NotificationService notificationService;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
@@ -144,8 +150,19 @@ public class PosServiceImpl implements PosService {
 			restaurantService.save(restaurant);
 			log.info("Time taken for restaurantSave: " + (System.currentTimeMillis() - restaurantSave) + "ms");
 			saveEntities(restaurant, posData);
+
+			List<String> parameters = CommonUtils.buildStringList(
+					posDataRequest.getRestaurants().get(0).getDetails().getRestaurantname(),
+					posDataRequest.getRestaurants().get(0).getRestaurantid(),
+					posDataRequest.getRestaurants().get(0).getDetails().getMenusharingcode());
+
+			notificationService.sendInternalGroupNotification(Constants.META_MENU_PUSH_ALERT_TEMPLATE, parameters);
+
 			return true;
 		} catch (Exception e) {
+			log.error("Exception occurred while saving POS data: {}", e.getMessage(), e);
+			PosException posException = new PosException("Error in savePosData API call: " + e.getMessage(), e);
+			sendAlert(posException);
 			e.printStackTrace();
 			return false;
 		}
@@ -283,11 +300,12 @@ public class PosServiceImpl implements PosService {
 				updateAddonItemStock(stockRequest, autoTurnOnTime, ttl);
 				log.info("Total updateAddonItemStock execution time: {} ms",
 						System.currentTimeMillis() - addonItemStockUpdate);
-
 			}
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Exception occurred while updating stock: {}", e.getMessage(), e);
+			PosException posException = new PosException("Error in updateStock API call: " + e.getMessage(), e);
+			sendAlert(posException);
 			return false;
 		} finally {
 			log.info("Total updateStock execution time: {} ms", System.currentTimeMillis() - startTime);
@@ -315,6 +333,7 @@ public class PosServiceImpl implements PosService {
 		long bulkWriteStart = System.currentTimeMillis();
 		itemService.bulkUpdate(items, Item.class);
 		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
+		sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
 	}
 
 	private void updateAddonItemStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
@@ -338,6 +357,7 @@ public class PosServiceImpl implements PosService {
 		long bulkWriteStart = System.currentTimeMillis();
 		addonItemService.bulkUpdate(addonItems, AddonItem.class);
 		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
+		sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
 	}
 
 	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {
@@ -457,6 +477,17 @@ public class PosServiceImpl implements PosService {
 			log.info("Time taken for saving {}: {} ms", label, (System.currentTimeMillis() - startTime));
 			return result;
 		});
+	}
+
+	private void sendNotification(String alertTemplate, PosStockRequest stockRequest) {
+		List<String> parameters = CommonUtils.buildStringList(stockRequest.getRestaurantId(), stockRequest.isInStock(),
+				stockRequest.getCustomTurnOnTime(), stockRequest.getMessage());
+		notificationService.sendInternalGroupNotification(alertTemplate, parameters);
+	}
+
+	public void sendAlert(PosException e) {
+		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,
+				List.of(e.getAction(), e.getMessage(), "POS"));
 	}
 
 }
