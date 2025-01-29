@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.annotation.CreatedDate;
@@ -126,6 +127,9 @@ public class Order {
 	@Field("seat")
 	private String seat;
 	
+	@Field("order_logs")
+    private List<OrderLog> orderLogs = new ArrayList<>();
+	
 
 	@Data
 	@NoArgsConstructor
@@ -234,6 +238,21 @@ public class Order {
 		@Field("network_id")
 		private int networkId;
 	}
+	
+	@Data
+    @NoArgsConstructor
+    public static class OrderLog {
+        @Field("status")
+        private String status;
+        
+        @Field("logged_at")
+        private LocalDateTime loggedAt;
+
+        public OrderLog(String status) {
+            this.status = status;
+            this.loggedAt = LocalDateTime.now();
+        }
+    }
 	
 	
 

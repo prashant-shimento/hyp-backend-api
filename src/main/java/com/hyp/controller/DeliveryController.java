@@ -139,10 +139,12 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			throws EntityNotFoundException, DeliveryException {
 		Order order = Optional.ofNullable(orderService.findById(orderId))
 				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		if(Optional.ofNullable(deliveryService.findByOrderId(orderId)).isPresent()) {
+			throw new DeliveryException("Delivery order already exists for Order ID: " + orderId); 
+		}
 		orderEventPublisher.publishDeliveryOrderEvent(order);
 		Response response = new Response(null, false, "Delivery Order Created");
 		return ResponseEntity.ok(response);
-
 	}
 
 	@PostMapping("/fulfill/{orderId}")

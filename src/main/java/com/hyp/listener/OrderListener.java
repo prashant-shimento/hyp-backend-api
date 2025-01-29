@@ -71,11 +71,11 @@ public class OrderListener implements MessageListener {
 				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
 					Payment payment = paymentService.findByOrderId(orderId);
 					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
-					if (paymentStatus.equalsIgnoreCase("created")) {
-						log.info("Order status updated as cancelled for {}", orderId);
-						order.setStatus(OrderStatusType.CANCELLED);
-						orderService.save(order);
-					}
+					payment.setStatus(paymentStatus);
+					paymentService.save(payment);
+					log.info("Order status updated as cancelled for {}", orderId);
+					order.setStatus(OrderStatusType.CANCELLED);
+					orderService.save(order);
 
 				}
 			}

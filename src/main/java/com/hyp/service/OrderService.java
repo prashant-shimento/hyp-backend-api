@@ -136,7 +136,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		}
 
 		for (OrderItem orderItem : orderDto.getOrderItems()) {
-			if (orderItem.getVariationId() != null) {
+			if (orderItem.getVariationId() != null || orderItem.getVariationName() != null) {
 				if (!variationService.isExistsById(orderItem.getId())) {
 					throw new Exception("Variation not found " + orderItem.getId());
 				}
@@ -159,6 +159,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setStatus(OrderStatusType.CREATED);
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
+		order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
 		order = this.save(order);
 
 		if (order.getPaymentType() == PaymentType.COD) {
@@ -229,6 +230,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
 		Order order = this.findById(orderId);
 		order.setStatus(orderStatus);
+		order.getOrderLogs().add(new Order.OrderLog(orderStatus.name()));
 		save(order);
 		orderEventPublisher.publishOrderStatusChangeEvent(order);
 	}

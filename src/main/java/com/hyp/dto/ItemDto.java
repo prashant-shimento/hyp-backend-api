@@ -2,11 +2,20 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.hyp.entity.Tax;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Setter
+@Getter
+@JsonInclude(Include.NON_NULL)
 public class ItemDto extends BaseDto {
 	private String itemDescription;
 	private String itemRank;

@@ -1,11 +1,11 @@
 package com.hyp.dto;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.hyp.entity.Attribute;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -73,6 +73,8 @@ public class OrderDto extends BaseDto {
 	private String screen;
 	private String seat;
 	private String paymentOrderId;
+    private List<OrderLog> orderLogs = new ArrayList<>();
+
 	
 	@Data
 	@NoArgsConstructor
@@ -163,4 +165,11 @@ public class OrderDto extends BaseDto {
 		private String pickUpNow;
 		private Double networkId;
 	}
+	
+	@Data
+    @NoArgsConstructor
+    public static class OrderLog {
+        private String status;
+        private LocalDateTime loggedAt;
+    }
 }

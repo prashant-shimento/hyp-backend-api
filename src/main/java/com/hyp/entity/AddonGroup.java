@@ -39,6 +39,6 @@ public class AddonGroup extends BaseEntity {
 	private String addonItemSelectionMin;
 
 	@Field("addon_items")
-	private transient List<AddonItem> addonItems;
+	private List<AddonItem> addonItems;
 
 }

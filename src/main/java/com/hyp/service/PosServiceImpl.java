@@ -30,6 +30,7 @@ import com.hyp.entity.Item;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryFulfillStatusType;
+import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
@@ -73,6 +74,9 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	NotificationService notificationService;
+	
+	@Autowired
+	PartnerService partnerService;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
@@ -118,6 +122,10 @@ public class PosServiceImpl implements PosService {
 		try {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(restaurant, order,
 					customer);
+			if(partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.RESTAURANT) != null) {
+				String name = customer.getName();
+				posOrderRequest.getOrderInfo().getOrderInfoDetails().getCustomer().getCustomerDetails().setName(name);
+			}
 			createPosOrder(posOrderRequest);
 		} catch (RequestTranslationException e) {
 			log.error("Error occured on RequestTranslationException for order {} cause: ", order.getId(),
