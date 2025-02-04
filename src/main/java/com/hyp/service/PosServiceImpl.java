@@ -29,6 +29,7 @@ import com.hyp.entity.Delivery;
 import com.hyp.entity.Item;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
@@ -74,7 +75,7 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	NotificationService notificationService;
-	
+
 	@Autowired
 	PartnerService partnerService;
 
@@ -122,7 +123,7 @@ public class PosServiceImpl implements PosService {
 		try {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(restaurant, order,
 					customer);
-			if(partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.RESTAURANT) != null) {
+			if (partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.RESTAURANT) != null) {
 				String name = customer.getName();
 				posOrderRequest.getOrderInfo().getOrderInfoDetails().getCustomer().getCustomerDetails().setName(name);
 			}
@@ -325,6 +326,12 @@ public class PosServiceImpl implements PosService {
 		List<Item> items = itemService.findByIds(stockRequest.getItemId());
 		log.info("Fetched items in {} ms", System.currentTimeMillis() - findByIdsStart);
 
+		if (items.isEmpty()) {
+			log.info("No items found. Checking variations...");
+			updateVariationStock(stockRequest, autoTurnOn, ttl);
+			return;
+		}
+
 		items.forEach(item -> {
 			item.setActive(stockRequest.isInStock() ? "1" : "0");
 			String redisKey = stockRequest.getType() + ":" + item.getId() + ":stock";
@@ -341,7 +348,38 @@ public class PosServiceImpl implements PosService {
 		long bulkWriteStart = System.currentTimeMillis();
 		itemService.bulkUpdate(items, Item.class);
 		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
-		sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
+		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
+	}
+
+	public void updateVariationStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
+		long findByVariationsStart = System.currentTimeMillis();
+		List<Variation> variations = variationService.findByIds(stockRequest.getItemId());
+		log.info("Fetched variations in {} ms", System.currentTimeMillis() - findByVariationsStart);
+
+		if (variations.isEmpty()) {
+			log.warn("No items or variations found for given IDs: {}", stockRequest.getItemId());
+			return;
+		}
+
+		variations.forEach(variation -> {
+			variation.setActive(stockRequest.isInStock() ? "1" : "0");
+			String redisKey = "variation:" + variation.getId() + ":stock";
+			if (!stockRequest.isInStock()) {
+				variation.setAutoTurnOnTime(autoTurnOn);
+				if (ttl > 0) {
+					redisService.setRedisData(redisKey, stockRequest, ttl);
+				}
+			} else {
+				variation.setAutoTurnOnTime(null);
+				redisService.removeRedisData(redisKey);
+			}
+		});
+
+		long bulkWriteStart = System.currentTimeMillis();
+		variationService.bulkUpdate(variations, Variation.class);
+		log.info("Bulk write for variations completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
+
+		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
 	}
 
 	private void updateAddonItemStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
@@ -365,7 +403,7 @@ public class PosServiceImpl implements PosService {
 		long bulkWriteStart = System.currentTimeMillis();
 		addonItemService.bulkUpdate(addonItems, AddonItem.class);
 		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
-		sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
+		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
 	}
 
 	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {
@@ -487,11 +525,11 @@ public class PosServiceImpl implements PosService {
 		});
 	}
 
-	private void sendNotification(String alertTemplate, PosStockRequest stockRequest) {
-		List<String> parameters = CommonUtils.buildStringList(stockRequest.getRestaurantId(), stockRequest.isInStock(),
-				stockRequest.getCustomTurnOnTime(), stockRequest.getMessage());
-		notificationService.sendInternalGroupNotification(alertTemplate, parameters);
-	}
+//	private void sendNotification(String alertTemplate, PosStockRequest stockRequest) {
+//		List<String> parameters = CommonUtils.buildStringList(stockRequest.getRestaurantId(), stockRequest.isInStock(),
+//				stockRequest.getCustomTurnOnTime(), stockRequest.getMessage());
+//		notificationService.sendInternalGroupNotification(alertTemplate, parameters);
+//	}
 
 	public void sendAlert(PosException e) {
 		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,

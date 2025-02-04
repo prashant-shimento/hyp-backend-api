@@ -12,8 +12,11 @@ import org.springframework.stereotype.Component;
 
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Item;
+import com.hyp.entity.Variation;
 import com.hyp.service.AddonItemService;
 import com.hyp.service.ItemService;
+import com.hyp.service.VariationService;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -25,6 +28,9 @@ public class ItemStockListener implements MessageListener {
 
 	@Autowired
 	AddonItemService addonItemService;
+	
+	@Autowired
+	VariationService variationService;
 
 	@Autowired
 	SimpMessagingTemplate messageTemplate;
@@ -47,6 +53,9 @@ public class ItemStockListener implements MessageListener {
 					break;
 				case "addon":
 					processAddonStockChange(entityId);
+					break;
+				case "variation":
+					processVariationStockChange(entityId);
 					break;
 				default:
 					log.warn("Unknown entity type: {}", entityType);
@@ -91,4 +100,19 @@ public class ItemStockListener implements MessageListener {
 		}
 	}
 
+	private void processVariationStockChange(String variationId) {
+	    Variation variation = variationService.findById(variationId);
+	    if (variation != null) {
+	        variation.setActive("1");
+	        variationService.save(variation);
+
+	        Map<String, Object> payload = new HashMap<>();
+	        payload.put("inStock", true);
+	        payload.put("itemID", Collections.singletonList(variationId));
+
+	        log.info("Sent stock update message for variation {}", variationId);
+	    } else {
+	        log.warn("Variation not found for ID: {}", variationId);
+	    }
+	}
 }

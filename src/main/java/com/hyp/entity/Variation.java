@@ -1,8 +1,7 @@
 package com.hyp.entity;
 
+import java.time.LocalDateTime;
 import java.util.List;
-
-import javax.persistence.Transient;
 
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -50,5 +49,8 @@ public class Variation extends BaseEntity {
 	
 	@Field("addon_groups")
 	private transient List<AddonGroup> addonGroups;
+	
+	@Field("auto_turn_on_time")
+    private LocalDateTime autoTurnOnTime;
 	
 }
