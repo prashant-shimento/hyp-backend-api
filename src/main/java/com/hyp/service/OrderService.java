@@ -209,7 +209,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					}
 				}
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
-				paymentService.createRefund(order.getId(), order.getTotalAmount(), true);
+				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), true);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
 						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
