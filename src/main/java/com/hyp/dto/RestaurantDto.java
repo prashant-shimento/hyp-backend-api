@@ -21,7 +21,7 @@ public class RestaurantDto extends BaseDto {
 	private String country;
 	private List<String> images;
 	private String restaurantName;
-    private String websiteUrl;
+	private String websiteUrl;
 	private String address;
 	private String contact;
 	private String landmark;
@@ -39,6 +39,9 @@ public class RestaurantDto extends BaseDto {
 	private String packagingApplicableOn;
 	private String packagingCharge;
 	private String packagingChargeType;
+	private Double deliverySharePercentage;
+	private Double discountPercentage;
+	private String supportContact;
 	private Location location;
 	private String fssai;
 	private List<String> screens;

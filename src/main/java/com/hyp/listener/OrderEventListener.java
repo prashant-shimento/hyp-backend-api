@@ -22,7 +22,6 @@ import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
 import com.hyp.service.PartnerService;
-import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.util.CommonUtils;
 
@@ -52,7 +51,6 @@ public class OrderEventListener {
 
 	@Autowired
 	private PartnerService partnerService;
-
 
 	@Async
 	@EventListener

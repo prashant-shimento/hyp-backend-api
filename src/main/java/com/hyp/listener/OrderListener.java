@@ -56,7 +56,7 @@ public class OrderListener implements MessageListener {
 
 	@Autowired
 	RedisService redisService;
-	
+
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
 
@@ -68,13 +68,13 @@ public class OrderListener implements MessageListener {
 			log.info("Received Order Expiry from Redis for {}", orderId);
 			Order order = orderService.findById(orderId);
 			if (order != null) {
-				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
+				if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(order.getStatus().name())) {
 					Payment payment = paymentService.findByOrderId(orderId);
 					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
 					payment.setStatus(paymentStatus);
 					paymentService.save(payment);
-					log.info("Order status updated as cancelled for {}", orderId);
-					order.setStatus(OrderStatusType.CANCELLED);
+					log.info("Order status updated as dropped_off for {}", orderId);
+					order.setStatus(OrderStatusType.DROPPED_OFF);
 					orderService.save(order);
 
 				}

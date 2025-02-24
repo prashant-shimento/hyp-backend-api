@@ -42,9 +42,9 @@ public class Restaurant {
 
 	@Field("restaurant_name")
 	private String restaurantName;
-	
+
 	@Field("website_url")
-    private String websiteUrl;
+	private String websiteUrl;
 
 	@Field("packaging_applicable_on")
 	private String packagingApplicableOn;
@@ -59,6 +59,12 @@ public class Restaurant {
 
 	@Field("packaging_charge_type")
 	private String packagingChargeType;
+
+	@Field("delivery_share_percentage")
+	private Double deliverySharePercentage;
+
+	@Field("discount_percentage")
+	private Double discountPercentage;
 
 	private String contact;
 
@@ -117,10 +123,10 @@ public class Restaurant {
 	@Field("updated_at")
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
-	
+
 	@Field("screens")
 	private List<String> screens;
-	
+
 	@Field("logo_url")
 	private String logoUrl;
 
