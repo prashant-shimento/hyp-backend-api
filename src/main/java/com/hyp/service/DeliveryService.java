@@ -169,6 +169,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
 			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(25).toSeconds());
 		}
+		
+		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)) {
+			 String locationKey = "rider_location:" + delivery.getOrderId() + ":" + fullFillStatus;
+	         redisService.setRedisData(locationKey, fullFillStatus, Duration.ofMinutes(5).toSeconds());
+	    }
 
 		delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
 		delivery.setService(deliveryFulfill.getChannel().getName());

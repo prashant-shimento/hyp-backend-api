@@ -72,6 +72,8 @@ public interface Constants {
 	String META_GENERIC_ALERT_TEMPLATE = "generic_alert";
 	String META_MENU_PUSH_ALERT_TEMPLATE = "menu_push_alert";
 	String META_STOCK_UPDATE_ALERT_TEMPLATE = "stock_update_alert";
+	String META_RIDER_DELAY_ALERT_TEMPLATE = "rider_not_moving";
+
 
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
 
