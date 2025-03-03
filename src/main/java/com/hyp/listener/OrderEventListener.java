@@ -96,7 +96,7 @@ public class OrderEventListener {
 						restaurant.getSupportContact());
 				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
-				deliveryService.setFullfillExpiry(order.getId());
+				//deliveryService.setFullfillExpiry(order.getId()); #Commenting out to trigger delivery immediately
 			}
 			break;
 		case PAID:

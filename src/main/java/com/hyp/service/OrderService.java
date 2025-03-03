@@ -198,7 +198,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 				order = update(order);
-			} else if (newOrderStatus == OrderStatusType.READY_FOR_DELIVERY) {
 				String fulFill = redisService.getRedisData("fulfull").orElse("smart");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
