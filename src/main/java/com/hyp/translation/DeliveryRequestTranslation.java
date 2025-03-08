@@ -100,7 +100,7 @@ public class DeliveryRequestTranslation {
 		receiverDetail.setName(customer.getName());
 		List<Trip> trips = new ArrayList<>();
 		Trip trip = new Trip();
-		trip.setReferenceId("order-"+order.getId()+"-items-"+order.getOrderItems().size());
+		trip.setReferenceId(order.getId());
 		trip.setReceiverDetail(receiverDetail);
 		trip.setSourceOrderId(order.getId());
 		trip.setBillAmount(order.getTotalAmount());
