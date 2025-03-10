@@ -129,6 +129,12 @@ public class Restaurant {
 
 	@Field("logo_url")
 	private String logoUrl;
+	
+	@Field("email")
+	private String email;
+	
+	@Field("partner_id")
+	private String partnerId;
 
 	@Getter
 	@Setter

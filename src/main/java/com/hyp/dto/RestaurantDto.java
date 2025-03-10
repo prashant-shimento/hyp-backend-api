@@ -46,5 +46,7 @@ public class RestaurantDto extends BaseDto {
 	private String fssai;
 	private List<String> screens;
 	private String logoUrl;
+	private String email;
+	private String partnerId;
 
 }

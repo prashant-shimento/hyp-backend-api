@@ -147,7 +147,7 @@ public class PidgeClient {
 				.retrieve().bodyToMono(DeliveryFulfillResponse.class)
 				.flatMap(response -> {
 					LoggingUtils.logResponse("smartFulfillDeliveryOrder", response);
-					if (!response.getData().isFulfilled()) {
+					if (!response.getData().isFulfilled() || response.getData().getMessage().equalsIgnoreCase("Allocation successful")) {
 						String errorMessage = "Order not fulfilled for IDs: " + deliveryFulfillRequest.getIds();
 						log.error(errorMessage);
 						return Mono.error(new DeliveryException(errorMessage));
