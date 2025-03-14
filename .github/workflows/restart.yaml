@@ -1,0 +1,26 @@
+name: CI/CD Production Pipeline
+
+on:
+  workflow_dispatch:  # Allows manual and API-based triggers
+
+jobs:
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to VPS
+      env:
+        VPS_PRIVATE: ${{ secrets.PRODUCTION_VPS_PRIVATE }}
+        VPS_HOST: ${{ secrets.PRODUCTION_VPS_HOST }}
+        VPS_USER: ${{ secrets.PRODUCTION_VPS_USER }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.PRODUCTION_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
+          echo "Stopping existing container..."
+          docker stop hyp-backend-api || true
+          docker rm hyp-backend-api || true
+          docker run --restart always -p 9090:9090 -d lognathp/hyp-backend-api:production
+        EOF
