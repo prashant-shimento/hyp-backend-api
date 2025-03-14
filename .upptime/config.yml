@@ -1,0 +1,5 @@
+owner: lognathp
+repo: hyp-backend-api
+sites:
+  - name: API Health Check
+    url: https://api.hyperapps.in/api/v2/actuator/health
