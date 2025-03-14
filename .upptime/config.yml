@@ -1,5 +1,31 @@
-owner: lognathp
-repo: hyp-backend-api
+# Change these first
+owner: your-github-username  # Replace with your GitHub username or org
+repo: hyp-backend  # Replace with your repo name
+
 sites:
-  - name: API Health Check
+  - name: Hyperapps Backend
     url: https://api.hyperapps.in/api/v2/actuator/health
+
+status-website:
+  # If you have a custom domain, add it here; otherwise, remove 'cname'
+  # cname: status.hyperapps.in  # Uncomment and set if you own a domain
+  baseUrl: /hyp-backend  # Ensure GitHub Pages uses the correct path
+  logoUrl: https://raw.githubusercontent.com/upptime/upptime.js.org/master/static/img/icon.svg
+  name: Hyperapps Status
+  introTitle: "**Hyperapps Status** - API Health Monitoring"
+  introMessage: |
+    This is the real-time status page for Hyperapps Backend. 
+    It is powered by **Upptime**, GitHub Actions, and GitHub Pages.
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/your-github-username/hyp-backend
+
+# Notifications (Optional)
+notifications:
+  - type: slack
+    webhookUrl: "https://hooks.slack.com/services/your-webhook-url"
+
+# Issue management (Upptime can create GitHub issues when downtime occurs)
+assignees: ["your-github-username"]
