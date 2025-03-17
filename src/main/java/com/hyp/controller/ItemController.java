@@ -26,26 +26,26 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 @RequestMapping("/item")
-public class ItemController extends BaseListController<ItemDto, Item, String> {
+public class ItemController extends BaseController<ItemDto, Item, String> {
 
 	@Autowired
 	public ItemTranslation itemTranslation;
-	
+
 	@Autowired
 	public VariationTranslation variationTranslation;
-	
+
 	@Autowired
 	public AddonGroupsTranslation addonGroupsTranslation;
-	
+
 	@Autowired
 	private ItemService itemService;
-	
+
 	@GetMapping("/{itemId}/variations")
 	public ResponseEntity<Response> getVariationsDetails(@PathVariable String itemId) {
 		Response response = new Response();
 		try {
 			List<VariationDto> variations = variationTranslation.getDtoList(itemService.getVariationsByItemId(itemId));
-			if(variations == null || variations.isEmpty()) {
+			if (variations == null || variations.isEmpty()) {
 				response = new Response(null, true, "Variations not found for Item : " + itemId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}
@@ -58,13 +58,13 @@ public class ItemController extends BaseListController<ItemDto, Item, String> {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+
 	@GetMapping("/{itemId}/addons")
 	public ResponseEntity<Response> getAddons(@PathVariable String itemId) {
 		Response response = new Response();
 		try {
 			List<AddonGroupDto> addonGroups = addonGroupsTranslation.getDtoList(itemService.getAddonsByItemId(itemId));
-			if(addonGroups == null || addonGroups.isEmpty()) {
+			if (addonGroups == null || addonGroups.isEmpty()) {
 				response = new Response(null, true, "Addons not found for Item : " + itemId);
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 			}

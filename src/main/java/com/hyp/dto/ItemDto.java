@@ -24,7 +24,7 @@ public class ItemDto extends BaseDto {
 	private List<String> addon;
 	private String itemFavorite;
 	private List<String> itemTax;
-	private boolean inStock;
+	private Boolean inStock;
 	private String itemAllowVariation;
 	private List<String> variation;
 	private String itemPackingCharges;
@@ -36,12 +36,12 @@ public class ItemDto extends BaseDto {
 	private String itemImageUrl;
 	private String itemName;
 	private List<String> cuisine;
-    private String active;
-    private String ignoreDiscounts;
-    private String itemAttributeId;
-    private String isRecommend;
-    private String gstType;
-    private String itemCategoryId;
+	private String active;
+	private String ignoreDiscounts;
+	private String itemAttributeId;
+	private String isRecommend;
+	private String gstType;
+	private String itemCategoryId;
 	private List<Tax> taxes;
 
 }

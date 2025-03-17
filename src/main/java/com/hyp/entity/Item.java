@@ -21,86 +21,85 @@ import lombok.ToString;
 public class Item extends BaseEntity {
 
 	private static final long serialVersionUID = 1L;
-	
-    @Field("itemdescription")
-    private String itemDescription;
 
-    @Field("item_rank")
-    private String itemRank;
+	@Field("itemdescription")
+	private String itemDescription;
 
-    @Field("item_allow_addon")
-    private String itemAllowAddon;
+	@Field("item_rank")
+	private String itemRank;
 
-    @Field("variation_group_name")
-    private String variationGroupName;
+	@Field("item_allow_addon")
+	private String itemAllowAddon;
 
-    private List<String> addon;
+	@Field("variation_group_name")
+	private String variationGroupName;
 
-    @Field("item_favorite")
-    private String itemFavorite;
+	private List<String> addon;
 
-    @Field("item_tax")
-    private List<String> itemTax;
+	@Field("item_favorite")
+	private String itemFavorite;
 
-    @Field("in_stock")
-    private boolean inStock;
+	@Field("item_tax")
+	private List<String> itemTax;
 
-    @Field("item_allow_variation")
-    private String itemAllowVariation;
+	@Field("in_stock")
+	private Boolean inStock;
 
-    private List<String> variation;
+	@Field("item_allow_variation")
+	private String itemAllowVariation;
 
-    @Field("item_packing_charges")
-    private String itemPackingCharges;
+	private List<String> variation;
 
-    @Field("ignore_taxes")
-    private String ignoreTaxes;
+	@Field("item_packing_charges")
+	private String itemPackingCharges;
 
-    private String price;
+	@Field("ignore_taxes")
+	private String ignoreTaxes;
 
-    @Field("item_order_type")
-    private List<String> itemOrderType;
+	private String price;
 
-    @Field("minimum_preparation_time")
-    private String minimumPreparationTime;
+	@Field("item_order_type")
+	private List<String> itemOrderType;
 
-    @Field("item_addon_based_on")
-    private String itemAddonBasedOn;
+	@Field("minimum_preparation_time")
+	private String minimumPreparationTime;
 
-    @Field("item_image_url")
-    private String itemImageUrl;
+	@Field("item_addon_based_on")
+	private String itemAddonBasedOn;
 
-    @Field("item_name")
-    private String itemName;
+	@Field("item_image_url")
+	private String itemImageUrl;
 
-    private List<String> cuisine;
+	@Field("item_name")
+	private String itemName;
 
-    private String active;
+	private List<String> cuisine;
 
-    @Field("ignore_discounts")
-    private String ignoreDiscounts;
+	private String active;
 
-    @Field("item_attribute_id")
-    private String itemAttributeId;
+	@Field("ignore_discounts")
+	private String ignoreDiscounts;
 
-    @Field("is_recommend")
-    private String isRecommend;
+	@Field("item_attribute_id")
+	private String itemAttributeId;
 
-    @Field("gst_type")
-    private String gstType;
+	@Field("is_recommend")
+	private String isRecommend;
 
-    @Field("item_category_id")
-    private String itemCategoryId;
-    
-    @Field("auto_turn_on_time")
-    private LocalDateTime autoTurnOnTime;
-    
+	@Field("gst_type")
+	private String gstType;
+
+	@Field("item_category_id")
+	private String itemCategoryId;
+
+	@Field("auto_turn_on_time")
+	private LocalDateTime autoTurnOnTime;
+
 	private transient List<Tax> taxes;
-	
+
 	@Field("item_variations")
 	private transient List<Variation> itemVariations;
-	
+
 	@Field("item_addons")
 	private transient List<AddonGroup> itemAddons;
 }
-
