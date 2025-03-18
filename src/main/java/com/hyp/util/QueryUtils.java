@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -33,10 +34,16 @@ public class QueryUtils {
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
 		Integer limit = null;
 		Integer offset = null;
-		Sort sort = Sort.by(Sort.Direction.DESC, "created_at");
+		Sort sort = null;
+		String sortField = requestParam.get("sortField");
+
+		if (sortField != null && allowedParams.contains(sortField)) {
+			sort = Sort.by(Sort.Direction.DESC, sortField);
+		}
 
 		for (String key : requestParam.keySet()) {
-			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
+			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")
+					&& !key.equalsIgnoreCase("sortField")) {
 				String[] parts = key.split("_");
 				if (parts.length != 2 || !allowedParams.contains(parts[0]) || !isValidQueryParamOperator(parts[1])) {
 					return null;
@@ -61,7 +68,8 @@ public class QueryUtils {
 				offset = Integer.parseInt(value);
 			}
 
-			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")) {
+			if (!key.equalsIgnoreCase("limit") && !key.equalsIgnoreCase("offset")
+					&& !key.equalsIgnoreCase("sortField")) {
 
 				String[] parts = key.split("_");
 
@@ -104,10 +112,14 @@ public class QueryUtils {
 					query.with(Sort.by(Sort.Direction.ASC, fieldName));
 					break;
 				case "like":
-					query.addCriteria(Criteria.where(fieldName).regex(".*" + parsedValue + ".*"));
+					String patternValue = String.valueOf(parsedValue);
+					query.addCriteria(Criteria.where(fieldName).regex(
+							Pattern.compile(".*" + Pattern.quote(patternValue) + ".*", Pattern.CASE_INSENSITIVE)));
 					break;
 				case "nlike":
-					query.addCriteria(Criteria.where(fieldName).not().regex(".*" + parsedValue + ".*"));
+					String patternValues = String.valueOf(parsedValue);
+					query.addCriteria(Criteria.where(fieldName).not().regex(
+							Pattern.compile(".*" + Pattern.quote(patternValues) + ".*", Pattern.CASE_INSENSITIVE)));
 					break;
 				default:
 					return query;

@@ -266,11 +266,13 @@ public class PidgeClient {
 
 		} catch (WebClientResponseException e) {
 			log.error("WebClientResponseException occurred while getting rider location : {}", e.getMessage(), e);
-			DeliveryException deliveryException = new DeliveryException("getDeliveryRiderLocation",
-					"Error in getDeliveryRiderLocation api call for orderID " + deliveryOrderId + " : "
-							+ e.getMessage());
-			sendAlert(deliveryException);
-			throw deliveryException;
+//			DeliveryException deliveryException = new DeliveryException("getDeliveryRiderLocation",
+//					"Error in getDeliveryRiderLocation api call for orderID " + deliveryOrderId + " : "
+//							+ e.getMessage());
+//			sendAlert(deliveryException);
+//			throw deliveryException;
+			throw new DeliveryException("Error in getDeliveryRiderLocation api call for orderID " + deliveryOrderId
+					+ " : " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error in getRiderCurrentLocation: {}", e.getMessage(), e);
 			throw new DeliveryException("Error in getRiderCurrentLocation: " + e.getMessage());
