@@ -112,6 +112,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
 			}
 			order = orderService.save(order);
+			orderService.updateOrderStatus(orderId, order.getStatus());
 			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
