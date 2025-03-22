@@ -17,7 +17,7 @@ import com.hyp.service.VariationService;
 
 @RestController
 @RequestMapping("/variation")
-public class VariationController extends BaseListController<VariationDto, Variation, String>{
+public class VariationController extends BaseController<VariationDto, Variation, String>{
 
 	@Autowired
 	VariationService variationService;

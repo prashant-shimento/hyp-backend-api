@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.hyp.client.OneSignalClient;
 import com.hyp.constants.Constants;
 import com.hyp.entity.Feedback;
 import com.hyp.entity.Partner;
@@ -20,8 +21,10 @@ import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FacebookMessageRequest.Component;
 import com.hyp.request.FacebookMessageRequest.Language;
 import com.hyp.request.FacebookMessageRequest.Parameter;
+import com.hyp.request.OneSignalNotificationRequest;
 import com.hyp.enums.PartnerType;
 import com.hyp.exception.NotificationException;
+import com.hyp.exception.OneSignalException;
 
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -42,6 +45,9 @@ public class NotificationService {
 	@Autowired
 	private WebClient.Builder webClientBuilder;
 
+	@Autowired
+	private OneSignalClient oneSignalClient;
+	
 	@Autowired
 	private MetaService metaService;
 
@@ -171,6 +177,10 @@ public class NotificationService {
 			log.error("Error occured in sendOrderNotification " + e.getMessage());
 			e.printStackTrace();
 		}
+	}
+	
+	public void sendOneSignalNotification(OneSignalNotificationRequest oneSignalNotificationRequest) throws OneSignalException {
+		oneSignalClient.sendNotification(oneSignalNotificationRequest);
 	}
 
 }

@@ -1,8 +1,11 @@
 package com.hyp.listener;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
@@ -14,15 +17,21 @@ import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
+import com.hyp.entity.User;
 import com.hyp.enums.PartnerType;
+import com.hyp.enums.PosPartner;
 import com.hyp.event.OrderEvent;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.event.OrderStatusChangeEvent;
+import com.hyp.exception.OneSignalException;
+import com.hyp.request.OneSignalNotificationAlias;
+import com.hyp.request.OneSignalNotificationRequest;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
 import com.hyp.service.PartnerService;
 import com.hyp.service.RestaurantService;
+import com.hyp.service.UserService;
 import com.hyp.util.CommonUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -51,14 +60,21 @@ public class OrderEventListener {
 
 	@Autowired
 	private PartnerService partnerService;
+	
+	@Autowired
+	UserService userService;
+	
+	@Value("${onesignal.app.id}")
+	private String appId;
 
 	@Async
 	@EventListener
 	public void handleProcessOrder(OrderEvent event) {
 		log.info("Order Event listener handleProcessOrder");
 		Order order = event.getOrder();
-		orderEventPublisher.publishPosOrderEvent(order);
-
+		if(restaurantService.findById(order.getRestaurantId()).getPosPartner().equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
+			orderEventPublisher.publishPosOrderEvent(order);			
+		}
 		orderEventPublisher.publishDeliveryOrderEvent(order);
 	}
 
@@ -72,6 +88,7 @@ public class OrderEventListener {
 		messageTemplate.convertAndSend("/topic/order-status", order);
 
 		Customer customer = customerService.findById(order.getCustomerId());
+		User user = userService.findByRestaurantId(order.getRestaurantId());
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 		Delivery delivery = deliveryService.findByOrderId(order.getId());
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
@@ -100,6 +117,25 @@ public class OrderEventListener {
 			}
 			break;
 		case PAID:
+			if(restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
+				Map<String, Object> customDataMap = new HashMap<>();
+				customDataMap.put("userName", user.getName());
+				customDataMap.put("orderId", order.getId());
+				customDataMap.put("customerName", customer.getName());
+				OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
+				.targetChannel("push")
+				.includeAliases(OneSignalNotificationAlias.builder()
+						.externalId(List.of(user.getId())).build())
+				.appId(appId)
+				.templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
+				.customData(customDataMap)
+				.build();			
+				try {
+					notificationService.sendOneSignalNotification(request);
+				} catch (OneSignalException e) {
+					log.error("Error occurred in sending push notification " + request.toString());
+				}
+			}
 			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
 					order.getId(), order.getStatus(), restaurant.getSupportContact(), restaurant.getContact());
 			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,

@@ -18,7 +18,7 @@ import com.hyp.translation.AddonGroupsTranslation;
 
 @RestController
 @RequestMapping("/addon-group")
-public class AddonGroupController extends BaseListController<AddonGroupDto, AddonGroup, String> {
+public class AddonGroupController extends BaseController<AddonGroupDto, AddonGroup, String> {
 
 	@Autowired
 	public AddonGroupsTranslation addonGroupTranslation;

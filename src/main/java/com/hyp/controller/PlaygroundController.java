@@ -19,12 +19,12 @@ import com.hyp.model.FacebookMessageResponse;
 import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FileUploadRequest;
 import com.hyp.request.MailNotificationRequest;
-import com.hyp.request.PosStatusRequest;
-import com.hyp.request.PosStockRequest;
+import com.hyp.request.OneSignalNotificationRequest;
 import com.hyp.response.Response;
 import com.hyp.service.BucketService;
 import com.hyp.service.MailService;
 import com.hyp.service.MetaService;
+import com.hyp.service.NotificationService;
 
 @RestController
 @RequestMapping("/play-ground")
@@ -41,6 +41,9 @@ public class PlaygroundController {
 	
 	@Autowired
     RedisTemplate<String, Object> redisTemplate;
+	
+	@Autowired
+	NotificationService notificationService;
 
 	
 	
@@ -93,6 +96,20 @@ public class PlaygroundController {
 			String redisKey = "order:" + orderId + ":state";
 	        redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING.name(), Duration.ofMinutes(1));
 			response = new Response(null, false, "Redis Key Set Successfully !");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+	
+	@PostMapping("/one-signal/notification")
+	public ResponseEntity<Response> sendNotification(@RequestBody OneSignalNotificationRequest oneSignalNotificationRequest) {
+		Response response;
+		try {
+			notificationService.sendOneSignalNotification(oneSignalNotificationRequest);
+			response = new Response(null, false, "Notification Sent !");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
 			response = new Response(null, true, e.getMessage());

@@ -133,8 +133,16 @@ public class Restaurant {
 	@Field("email")
 	private String email;
 	
-	@Field("partner_id")
-	private String partnerId;
+	@Field("restaurant_partner")
+	private String restaurantPartner;
+	
+	@Field("pos_partner")
+	private String posPartner;
+	
+	@Field("payment_partner")
+	private String paymentPartner;
+	
+	
 
 	@Getter
 	@Setter
