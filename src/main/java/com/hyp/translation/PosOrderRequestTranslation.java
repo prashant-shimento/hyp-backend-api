@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +47,7 @@ import com.hyp.request.PosOrderRequest.TaxOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
+import com.hyp.service.PartnerService;
 import com.hyp.util.CommonUtils;
 
 @Service
@@ -62,6 +64,9 @@ public class PosOrderRequestTranslation {
 
 	@Value("${app.domain}")
 	private String domain;
+	
+	@Autowired
+	private PartnerService partnerService;
 
 	public PosOrderUpdateRequest getPosOrderUpdateRequest(Restaurant restaurant, Order order, String cancelReason)
 			throws RequestTranslationException {
@@ -184,9 +189,7 @@ public class PosOrderRequestTranslation {
 	public static CustomerOrderRequest getCustomerDetails(Customer customer, Order order) {
 		CustomerDetails customerDetails = new CustomerDetails();
 		customerDetails.setEmail(customer.getEmail());
-		String name = String.format("%s-%s-%s", Optional.ofNullable(order.getScreen()).orElse("N/A"),
-				Optional.ofNullable(order.getSeat()).orElse("N/A"), customer.getName());
-		customerDetails.setName(name);
+		customerDetails.setName(customer.getName());
 		customerDetails.setPhone(customer.getMobile());
 		CustomerOrderRequest customerRequest = new CustomerOrderRequest();
 		customerRequest.setCustomerDetails(customerDetails);

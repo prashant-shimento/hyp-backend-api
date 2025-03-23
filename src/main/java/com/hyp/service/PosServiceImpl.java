@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -123,8 +124,9 @@ public class PosServiceImpl implements PosService {
 		try {
 			PosOrderRequest posOrderRequest = posOrderRequestTranslation.getPosOrderRequest(restaurant, order,
 					customer);
-			if (partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.RESTAURANT) != null) {
-				String name = customer.getName();
+			if (partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.THEATRE) != null) {
+				String name = String.format("%s-%s-%s", Optional.ofNullable(order.getScreen()).orElse("N/A"),
+						Optional.ofNullable(order.getSeat()).orElse("N/A"),customer.getName());
 				posOrderRequest.getOrderInfo().getOrderInfoDetails().getCustomer().getCustomerDetails().setName(name);
 			}
 			createPosOrder(posOrderRequest);
