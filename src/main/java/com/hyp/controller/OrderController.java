@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.PosPartner;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
@@ -29,6 +32,7 @@ import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
+import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
@@ -65,6 +69,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
 	@Autowired
 	PaymentService paymentService;
+	
+	@Autowired
+	RedisService redisService;
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
@@ -96,6 +103,18 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			OrderStatusType orderStatus = order.getStatus();
 			orderTranslation.updateEntityFromDto(orderDto, order);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			if(OrderStatusType.ACCEPTED.name().equalsIgnoreCase(orderDto.getStatus())
+					&& restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
+				String fulFill = redisService.getRedisData("fulfull").orElse("smart");
+				Delivery delivery = deliveryService.findByOrderId(order.getId());
+				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+					if (fulFill.equalsIgnoreCase("smart")) {
+						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+					} else {
+						deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
+					}
+				}
+			}
 			if (OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())) {
 				orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERED);
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
