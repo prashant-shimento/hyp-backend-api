@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -112,5 +113,11 @@ public class CommonUtils {
 		ZonedDateTime currentTimeUtc = ZonedDateTime.now(ZoneId.of("UTC"));
 		Duration duration = Duration.between(currentTimeUtc, utcTime);
 		return duration.getSeconds();
+	}
+	
+	public static String generateMockDeliveryOrderId() {
+		String digits = String.valueOf(System.currentTimeMillis()).substring(2, 17); 
+		String suffix = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5).toUpperCase(); 
+		return digits + suffix;
 	}
 }

@@ -1,0 +1,62 @@
+{
+  "data": {
+    "distance": [
+      {
+        "ref": "4324324",
+        "distance": 7884.770037849537
+      }
+    ],
+    "items": [
+      {
+        "network_id": "8",
+        "network_name": "Preeti Network",
+        "service": "ppn-private",
+        "pickup_now": false,
+        "quote": {
+          "price": 0,
+          "price_breakup": {
+            "base_delivery_charge": 0,
+            "total_gst_amount": 0,
+            "surge": 0,
+            "additional_charges": [],
+            "items": [
+              {
+                "amount": 0,
+                "tax": 0,
+                "total": 0,
+                "order_id": "4324324"
+              }
+            ]
+          },
+          "eta": {
+            "pickup": null,
+            "drop": null
+          }
+        },
+        "error": null
+      },
+      {
+        "network_id": "2",
+        "network_name": "wefast",
+        "service": "wefast",
+        "pickup_now": true,
+        "quote": {
+          "price": 53.1,
+          "distance": null,
+          "eta": {
+            "pickup": null,
+            "pickup_min": null,
+            "drop": null,
+            "drop_min": null
+          },
+          "price_breakup": {
+            "base_delivery_charge": 45,
+            "total_gst_amount": 8.1,
+            "surge": 0
+          }
+        },
+        "error": null
+      }
+    ]
+  }
+}

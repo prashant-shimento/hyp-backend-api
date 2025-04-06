@@ -120,5 +120,5 @@ jobs:
           fi
           docker rmi lognathp/hyp-backend-api:production
           docker pull lognathp/hyp-backend-api:production
-          docker run --restart always -p 9090:9090 -d lognathp/hyp-backend-api:production
+          docker run --restart always -p 9090:9090 -e ENV=production -d lognathp/hyp-backend-api:production
         EOF

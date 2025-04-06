@@ -122,5 +122,5 @@ jobs:
             fi
             docker rmi lognathp/hyp-backend-api:staging
             docker pull lognathp/hyp-backend-api:staging
-            docker run -p 9090:9090 -d lognathp/hyp-backend-api:staging
+            docker run -p 9090:9090 -e ENV=staging -d lognathp/hyp-backend-api:staging
           EOF
