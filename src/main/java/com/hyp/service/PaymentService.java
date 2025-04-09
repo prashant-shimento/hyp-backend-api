@@ -126,7 +126,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			JSONObject refundRequest = new JSONObject();
 			refundRequest.put("amount", CommonUtils.getISOAmount(amount));
 			if (instantRefund) {
-				refundRequest.put("speeed", "optimum");
+				refundRequest.put("speed", "optimum");
 			}
 			Refund refund = razorpayClient.payments.refund(payment.getPaymentId(), refundRequest);
 

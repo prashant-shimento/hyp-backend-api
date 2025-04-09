@@ -58,7 +58,7 @@ public class ApiLog {
 	
 	@Field("created_at")
 	@CreatedDate
-	private LocalDateTime createdAt;
+	private LocalDateTime createdAt = LocalDateTime.now();;
 
 	@Field("updated_at")
 	@LastModifiedDate

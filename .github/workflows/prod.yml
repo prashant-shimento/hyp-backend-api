@@ -50,6 +50,7 @@ jobs:
         REDIS_HOST: ${{ secrets.PRODUCTION_REDIS_HOST }}
         REDIS_PORT: ${{ secrets.PRODUCTION_REDIS_PORT }}
         REDIS_PASSWORD: ${{ secrets.PRODUCTION_REDIS_PASSWORD }}
+        ONE_SIGNAL_KEY: ${{ secrets.ONE_SIGNAL_KEY }}
 
     - name: Create .env file
       run: |
@@ -81,6 +82,7 @@ jobs:
         echo "REDIS_HOST=${{ secrets.PRODUCTION_REDIS_HOST }}" >> .env
         echo "REDIS_PORT=${{ secrets.PRODUCTION_REDIS_PORT }}" >> .env
         echo "REDIS_PASSWORD=${{ secrets.PRODUCTION_REDIS_PASSWORD }}" >> .env
+        echo "ONE_SIGNAL_KEY=${{ secrets.ONE_SIGNAL_KEY }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
@@ -114,9 +116,9 @@ jobs:
         ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
           CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
           if [ ! -z '$CONTAINER_ID' ]; then
-          	docker stop $CONTAINER_ID
-          	docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
-          	docker rm $CONTAINER_ID
+            docker stop $CONTAINER_ID
+            docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
+            docker rm $CONTAINER_ID
           fi
           docker rmi lognathp/hyp-backend-api:production
           docker pull lognathp/hyp-backend-api:production
