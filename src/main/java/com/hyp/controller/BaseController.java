@@ -3,6 +3,7 @@ package com.hyp.controller;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.GenericTypeResolver;
@@ -119,6 +120,32 @@ public abstract class BaseController<DTO, T, ID> {
 		}
 	}
 
+	@PatchMapping
+	public ResponseEntity<Response> updateAll(@RequestBody DTO dto) {
+		try {
+			List<T> entities = service.findAll();
+
+			if (entities != null && !entities.isEmpty()) {
+				for (T entity : entities) {
+					translationService.updateEntityFromDto(dto, entity);
+				}
+
+				List<T> updatedEntities = service.saveAll(entities);
+
+				List<DTO> updatedDtoList = updatedEntities.stream().map(translationService::getDto)
+						.collect(Collectors.toList());
+
+				Response response = new Response(updatedDtoList, false, "success");
+				return ResponseEntity.ok(response);
+			} else {
+				return ResponseEntity.notFound().build();
+			}
+		} catch (Exception ex) {
+			Response response = new Response(null, true, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Response> delete(@PathVariable ID id) {
 		try {
@@ -133,4 +160,5 @@ public abstract class BaseController<DTO, T, ID> {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+
 }
