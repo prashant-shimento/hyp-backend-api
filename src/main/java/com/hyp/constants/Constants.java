@@ -18,6 +18,7 @@ public interface Constants {
 	String API = "API";
 	String SMART = "SMART";
 	String ON_CANCEL = "ON_CANCEL";
+	String SELF = "SELF";
 
 	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id", "status", "customerId", "createdAt", "totalAmount", "orderType",

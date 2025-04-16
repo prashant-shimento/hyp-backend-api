@@ -55,7 +55,7 @@ public class Restaurant {
 	private String packagingCharge;
 
 	@Field("calculate_tax_on_delivery")
-	private int calculateTaxOnDelivery;
+	private Integer calculateTaxOnDelivery;
 
 	@Field("packaging_charge_type")
 	private String packagingChargeType;
@@ -93,7 +93,7 @@ public class Restaurant {
 	private List<DeliveryHours> deliveryHours;
 
 	@Field("calculate_tax_on_packing")
-	private int calculateTaxOnPacking;
+	private Integer calculateTaxOnPacking;
 
 	@Field("deliverycharge")
 	private String deliveryCharge;
@@ -108,7 +108,7 @@ public class Restaurant {
 	private String statusReason;
 
 	@Field("delivery_radius")
-	private double deliveryRadius;
+	private Double deliveryRadius;
 
 	@Field("delivery_partner")
 	private DeliveryPartner deliveryPartner;

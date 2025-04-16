@@ -2,20 +2,25 @@ package com.hyp.service;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.Optional;
 
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import com.hyp.constants.Constants;
 import com.hyp.dto.RazorpayVerifyDto;
+import com.hyp.entity.Partner;
 import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.model.PaymentConfig;
 import com.hyp.repository.PaymentRepository;
 import com.hyp.util.CommonUtils;
+import com.hyp.util.EncryptionUtils;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.Refund;
@@ -26,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class PaymentService extends BaseServiceImpl<Payment, String> {
-    
+
 	@Value("${razorpay.key}")
 	private String razorPayKey;
 
@@ -41,7 +46,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	@Autowired
 	RestaurantService restaurantService;
-	
+
+	@Autowired
+	PartnerService partnerService;
+
 	@Autowired
 	RedisService redisService;
 
@@ -50,8 +58,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	public Payment createPaymentOrder(String orderId, double amount) {
 		try {
-			RazorpayClient razorpayClient = new RazorpayClient(razorPayKey, razorPaySecret);
 			Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
+			RazorpayClient razorpayClient = getRazorpayClient(orderId);
 			JSONObject orderRequest = new JSONObject();
 			orderRequest.put("amount", CommonUtils.getISOAmount(amount));
 			orderRequest.put("currency", "INR");
@@ -74,10 +82,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			String redisKey = "order:" + orderId + ":state";
 			redisService.setRedisData(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15).toSeconds());
 			String redisPaymentKey = "order:" + orderId + ":payment";
-			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4).toSeconds());
+			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING,
+					Duration.ofMinutes(4).toSeconds());
 			return save(payment);
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error creating payment order {}", e.getMessage());
 			throw new RuntimeException("Error creating payment order: " + e.getMessage(), e);
 		}
 	}
@@ -90,18 +99,19 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			verifyRequest.put("razorpay_signature", razorPayVerifyDto.getRazorpaySignature());
 			return Utils.verifyPaymentSignature(verifyRequest, razorPaySecret);
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in verifySignature {}", e.getMessage());
 			throw new RuntimeException("Error in verifySignature: " + e.getMessage(), e);
 		}
 	}
 
 	public String fetchOrderStatus(String orderId) {
 		try {
-			RazorpayClient razorpayClient = new RazorpayClient(razorPayKey, razorPaySecret);
-			Order order = razorpayClient.orders.fetch(orderId);
+			RazorpayClient razorpayClient = getRazorpayClient(orderId);
+			Payment payment = findByOrderId(orderId);
+			Order order = razorpayClient.orders.fetch(payment.getPaymentOrderId());
 			return order.get("status");
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in fetchOrderStatus {}", e.getMessage());
 			throw new RuntimeException("Error fetchOrderStatus: " + e.getMessage(), e);
 		}
 	}
@@ -122,7 +132,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		try {
 			Payment payment = paymentRepository.findByOrderId(orderId);
 
-			RazorpayClient razorpayClient = new RazorpayClient(razorPayKey, razorPaySecret);
+			RazorpayClient razorpayClient = getRazorpayClient(orderId);
 			JSONObject refundRequest = new JSONObject();
 			refundRequest.put("amount", CommonUtils.getISOAmount(amount));
 			if (instantRefund) {
@@ -145,9 +155,41 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 					OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
 			return payment;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in creating refund order {}", e.getMessage());
 			throw new RuntimeException("Error creating refund order: " + e.getMessage(), e);
 		}
 	}
+
+	@Cacheable(value = "paymentConfigCache", key = "#restaurant.id")
+	private PaymentConfig getPaymentConfig(Restaurant restaurant) {
+	    return Optional.ofNullable(restaurant.getPaymentPartner())
+	        .map(partnerService::findById)
+	        .map(Partner::getApiConfigs)
+	        .map(apiConfig -> PaymentConfig.builder()
+	            .key(apiConfig.getKey())
+	            .secret(apiConfig.getSecret())
+	            .build())
+	        .orElseGet(() -> {
+	            log.warn("Falling back to default payment config for restaurant: {}", restaurant.getId());
+	            return PaymentConfig.builder()
+	                .key(razorPayKey)
+	                .secret(razorPaySecret)
+	                .build();
+	        });
+	}
+	
+	private RazorpayClient getRazorpayClient(String orderId) {
+		try {
+			Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
+			PaymentConfig paymentConfig = getPaymentConfig(restaurant);
+			return new RazorpayClient(
+				EncryptionUtils.decrypt(paymentConfig.getKey()),
+				EncryptionUtils.decrypt(paymentConfig.getSecret())
+			);
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to initialize RazorpayClient", e);
+		}
+	}
+
 
 }

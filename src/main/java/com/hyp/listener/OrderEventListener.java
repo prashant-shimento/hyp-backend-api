@@ -88,7 +88,6 @@ public class OrderEventListener {
 		messageTemplate.convertAndSend("/topic/order-status", order);
 
 		Customer customer = customerService.findById(order.getCustomerId());
-		User user = userService.findByRestaurantId(order.getRestaurantId());
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 		Delivery delivery = deliveryService.findByOrderId(order.getId());
 		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
@@ -118,6 +117,7 @@ public class OrderEventListener {
 			break;
 		case PAID:
 			if(restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
+				User user = userService.findByRestaurantId(order.getRestaurantId());
 				Map<String, Object> customDataMap = new HashMap<>();
 				customDataMap.put("userName", user.getName());
 				customDataMap.put("orderId", order.getId());

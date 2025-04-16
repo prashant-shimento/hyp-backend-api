@@ -14,5 +14,6 @@ public class RestaurantService extends BaseServiceImpl<Restaurant, String> {
 	public Restaurant findByMenuSharingCode(String menusharingcode) {
         return restaurantRepository.findByMenuSharingCode(menusharingcode);
     }
+	
 
 }

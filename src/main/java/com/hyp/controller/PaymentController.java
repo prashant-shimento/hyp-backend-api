@@ -207,7 +207,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 	}
 
 	private void processPaymentStatus(Order order, Payment payment) {
-		String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+		String paymentStatus = paymentService.fetchOrderStatus(order.getId());
 		if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
 			if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
 					|| order.getStatus().equals(OrderStatusType.PAYMENT_FAILED)

@@ -6,9 +6,9 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.model.ApiConfig;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.PartnerType;
-import com.hyp.model.ApiConfig;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

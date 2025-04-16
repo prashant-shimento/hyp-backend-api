@@ -34,19 +34,19 @@ class LocationServiceTest {
 		Restaurant rest1 = new Restaurant();
 		rest1.setId("rest1");
 		rest1.setLocation(new Location(28.7042, 77.10216));
-		rest1.setDeliveryRadius(1);
+		rest1.setDeliveryRadius(1.0);
 		restaurants.add(rest1);
 
 		Restaurant rest2 = new Restaurant();
 		rest2.setId("rest2");
 		rest2.setLocation(new Location(28.7043, 77.1025));
-		rest2.setDeliveryRadius(2);
+		rest2.setDeliveryRadius(2.0);
 		restaurants.add(rest2);
 
 		Restaurant rest3 = new Restaurant();
 		rest3.setId("rest3");
 		rest3.setLocation(new Location(19.0760, 72.8777));
-		rest3.setDeliveryRadius(1);
+		rest3.setDeliveryRadius(1.0);
 		restaurants.add(rest3);
 
 		List<String> serviceableRestaurants = locationService.getServicableRestaurants(addressPlaceData, restaurants);
@@ -68,19 +68,19 @@ class LocationServiceTest {
 		Restaurant rest1 = new Restaurant();
 		rest1.setId("rest1");
 		rest1.setLocation(new Location(28.7042, 77.10216));
-		rest1.setDeliveryRadius(1);
+		rest1.setDeliveryRadius(1.0);
 		restaurants.add(rest1);
 
 		Restaurant rest2 = new Restaurant();
 		rest2.setId("rest2");
 		rest2.setLocation(new Location(28.7043, 77.1025));
-		rest2.setDeliveryRadius(1);
+		rest2.setDeliveryRadius(1.0);
 		restaurants.add(rest2);
 
 		Restaurant rest3 = new Restaurant();
 		rest3.setId("rest3");
 		rest3.setLocation(new Location(28.7041, 77.1025));
-		rest3.setDeliveryRadius(0);
+		rest3.setDeliveryRadius(0.0);
 		restaurants.add(rest3);
 
 		List<String> serviceableRestaurants = locationService.getServicableRestaurants(addressPlaceData, restaurants);

@@ -255,7 +255,7 @@ public class PosDataRequestTranslation {
 		if (existingRestaurant != null && existingRestaurant.getDeliveryRadius() != 0) {
 			restaurant.setDeliveryRadius(existingRestaurant.getDeliveryRadius());
 		} else {
-			restaurant.setDeliveryRadius(10);
+			restaurant.setDeliveryRadius(10.0);
 		}
 		if (existingRestaurant != null && !StringUtils.isEmpty(existingRestaurant.getPincode())) {
 			restaurant.setPincode(existingRestaurant.getPincode());

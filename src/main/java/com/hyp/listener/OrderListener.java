@@ -70,7 +70,7 @@ public class OrderListener implements MessageListener {
 			if (order != null) {
 				if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(order.getStatus().name())) {
 					Payment payment = paymentService.findByOrderId(orderId);
-					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+					String paymentStatus = paymentService.fetchOrderStatus(orderId);
 					payment.setStatus(paymentStatus);
 					paymentService.save(payment);
 					log.info("Order status updated as dropped_off for {}", orderId);
@@ -87,7 +87,7 @@ public class OrderListener implements MessageListener {
 			if (order != null) {
 				if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
 					Payment payment = paymentService.findByOrderId(orderId);
-					String paymentStatus = paymentService.fetchOrderStatus(payment.getPaymentOrderId());
+					String paymentStatus = paymentService.fetchOrderStatus(orderId);
 					if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
 						orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 						payment.setStatus(paymentStatus);

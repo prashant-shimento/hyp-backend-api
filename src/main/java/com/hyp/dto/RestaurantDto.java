@@ -2,6 +2,7 @@ package com.hyp.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.enums.DeliveryPartner;
@@ -14,6 +15,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RestaurantDto extends BaseDto {
 	private boolean active;
 	private String menuSharingCode;
@@ -33,9 +35,9 @@ public class RestaurantDto extends BaseDto {
 	private String deliveryCharge;
 	private List<DeliveryHours> deliveryHours;
 	private DeliveryPartner deliveryPartner;
-	private double deliveryRadius;
+	private Double deliveryRadius;
 	private RestaurantTax tax;
-	private int calculateTaxOnDelivery;
+	private Integer calculateTaxOnDelivery;
 	private String packagingApplicableOn;
 	private String packagingCharge;
 	private String packagingChargeType;
