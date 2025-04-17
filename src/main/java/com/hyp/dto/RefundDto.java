@@ -6,4 +6,5 @@ import lombok.Data;
 public class RefundDto {
 	private String orderId;
 	private double amount;
+	private String refundSpeed;
 }

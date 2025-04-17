@@ -26,7 +26,7 @@ public class DeliveryOrderEventListener {
 	public void handleProcessDeliveryOrder(DeliveryOrderEvent event) {
 		log.info("Delivery Order Event listener handleProcessDeliveryOrder");
 		Order order = event.getOrder();
-		deliveryService.proceesDeliveryOrder(order);
+		deliveryService.processDeliveryOrder(order);
 	}
 	
 	@Async

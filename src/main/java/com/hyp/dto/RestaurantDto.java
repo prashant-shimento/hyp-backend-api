@@ -52,5 +52,8 @@ public class RestaurantDto extends BaseDto {
 	private String restaurantPartner;
 	private String posPartner;
 	private String paymentPartner;
+	private String instantRefund;
+	private Integer fulfillmentDelay;
+
 
 }

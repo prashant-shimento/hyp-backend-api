@@ -111,7 +111,7 @@ public class OrderListener implements MessageListener {
 					try {
 						deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
 					} catch (DeliveryException e) {
-						log.error("Exception occured on redis expiry delivery fulfill");
+						log.error("Exception occurred on redis expiry delivery fulfill");
 						orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
 					}
 					log.info("Order is fulfilled on redis expiry for {}", orderId);

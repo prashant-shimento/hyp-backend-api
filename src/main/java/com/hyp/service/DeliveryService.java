@@ -29,6 +29,7 @@ import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.model.DeliveryRiderLocation;
+import com.hyp.model.RiderLocation;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
@@ -100,7 +101,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		return deliveryRepository.findByDeliveryOrderIdAndIsDeletedFalse(deliveryOrderId);
 	}
 
-	public void proceesDeliveryOrder(Order order) {
+	public void processDeliveryOrder(Order order) {
 		try {
 			Customer customer = customerService.findById(order.getCustomerId());
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
@@ -109,7 +110,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					address, customer, order);
 			createOrder(deliveryOrderRequest, order);
 		} catch (DeliveryException e) {
-			log.error("Error occured while proceesDeliveryOrder for orderId {} cause: ", order.getId(), e.getMessage());
+			log.error("Error occurred while processDeliveryOrder for orderId {} cause: {}", order.getId(), e.getMessage());
 		}
 	}
 
@@ -167,7 +168,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
 				|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
 			String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
-			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(25).toSeconds());
+			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(12).toSeconds());
 		}
 		
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)) {
@@ -309,10 +310,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		throw new DeliveryException(action, "Exception occurred in Delivery Service : " + e.getMessage(), e);
 	}
 
-	public void setFullfillExpiry(String orderId) {
+	public void setFulfillExpiry(String orderId, int expiry) {
 		String fulfillRedisKey = "order:" + orderId + ":fulfill";
-		redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(5).getSeconds());
+		redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(expiry).getSeconds());
 		String deliveryRedisKey = "order:" + orderId + ":delivery";
-		redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(6).getSeconds());
+		redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(expiry + 2).getSeconds());
+	}
+	
+	public RiderLocation getRiderLocation(String deliveryOrderId) throws DeliveryException {
+		return pidgeClient.getRiderLocation(deliveryOrderId);
 	}
 }

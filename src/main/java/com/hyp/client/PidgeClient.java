@@ -22,6 +22,7 @@ import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
+import com.hyp.model.RiderLocation;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryFulfillResponse;
 import com.hyp.request.DeliveryOrderRequest;
@@ -375,6 +376,21 @@ public class PidgeClient {
 	public void sendAlert(DeliveryException e) {
 		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,
 				List.of(e.getAction(), e.getMessage(), "DELIVERY"));
+	}
+
+	@Retryable(retryFor = { WebClientResponseException.Unauthorized.class })
+	public RiderLocation getRiderLocation(String deliveryOrderId) throws DeliveryException {
+		String endpoint = "v1.0/store/tracking/rider-location?id=" + deliveryOrderId;
+		try {
+			LoggingUtils.logRequest("getRiderLocation", endpoint);
+			RiderLocation response = getClient().get().uri(endpoint).retrieve()
+					.bodyToMono(RiderLocation.class)
+					.doOnNext(res -> LoggingUtils.logResponse("getRiderLocation", res)).block();
+			return response;
+		}catch (Exception e) {
+			log.error("Error in getRiderLocation: {}", e.getMessage(), e);
+			throw new DeliveryException("Error in getRiderLocation: " + e.getMessage());
+		}
 	}
 
 }

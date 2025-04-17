@@ -1,5 +1,6 @@
 package com.hyp.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ import com.hyp.translation.PosOrderRequestTranslation;
 
 import io.swagger.v3.oas.annotations.Hidden;
 
+@Slf4j
 @Hidden
 @RestController
 @RequestMapping("/pos")
@@ -126,8 +128,8 @@ public class PosController {
 					.build();
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		} catch (Exception e) {
-			e.printStackTrace();
-			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occured")
+			log.error("Exception occurred on orderCallBack {}", e.getMessage());
+			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occurred")
 					.error(e.getMessage()).build();
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		}

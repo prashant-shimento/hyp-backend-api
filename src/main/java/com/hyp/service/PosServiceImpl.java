@@ -272,7 +272,7 @@ public class PosServiceImpl implements PosService {
 			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(updateOrderResponse));
 			return updateOrderResponse;
 		} catch (Exception e) {
-			log.error("Error occured during updatePosOrder {}", e);
+			log.error("Error occurred during updatePosOrder {}", e.getMessage());
 			throw new PosException("POS Order Update failed " + e.getMessage());
 		}
 	}
@@ -280,15 +280,15 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
 		try {
-			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
+			log.info("updatePosRiderStatus Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
 			String endpoint = "/rider_status_update";
 			String riderUpdateResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(posRiderUpdateRequest)).retrieve().bodyToMono(String.class).block();
-			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
+			log.info("updatePosRiderStatus Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
 			return riderUpdateResponse;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error occurred during updatePosRiderStatus {}", e.getMessage());
 			return null;
 		}
 	}

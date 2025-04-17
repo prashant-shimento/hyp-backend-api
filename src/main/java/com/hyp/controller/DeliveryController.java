@@ -29,6 +29,7 @@ import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
+import com.hyp.model.RiderLocation;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
@@ -108,9 +109,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 		}
 
 		Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
-				.filter(item -> item.isPickupNow()).filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
-				.sorted(Comparator.comparingDouble(item -> item.getQuote().getPrice())).findFirst();
-		if (!filteredQuotes.isPresent()) {
+                .filter(DeliveryQuote.DeliveryNetworks::isPickupNow).filter(items -> !items.getService().equalsIgnoreCase("loadshare")).min(Comparator.comparingDouble(item -> item.getQuote().getPrice()));
+		if (filteredQuotes.isEmpty()) {
 			throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
 		}
 		return ResponseEntity
@@ -118,8 +118,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	}
 
 	@Hidden
-	@GetMapping("/rider-location/{orderId}")
-	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId)
+	@GetMapping("/rider-detail/{orderId}")
+	public ResponseEntity<Response> getRiderDetails(@PathVariable String orderId)
 			throws EntityNotFoundException, DeliveryException {
 		Order order = Optional.ofNullable(orderService.findById(orderId))
 				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
@@ -129,7 +129,23 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 				.getDeliveryRiderLocation(delivery.getDeliveryOrderId());
 
 		Response response = new Response(Collections.singletonList(deliveryRiderLocation), false,
-				"Delivery Quotes Fetched");
+				"Rider Details Fetched");
+		return ResponseEntity.ok(response);
+
+	}
+	
+	@GetMapping("/rider-location/{orderId}")
+	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId)
+			throws EntityNotFoundException, DeliveryException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+		RiderLocation riderLocation = deliveryService
+				.getRiderLocation(delivery.getDeliveryOrderId());
+
+		Response response = new Response(Collections.singletonList(riderLocation), false,
+				"Rider Location Fetched");
 		return ResponseEntity.ok(response);
 
 	}

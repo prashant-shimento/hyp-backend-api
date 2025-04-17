@@ -19,12 +19,14 @@ import com.hyp.dto.RazorpayVerifyDto;
 import com.hyp.dto.RefundDto;
 import com.hyp.entity.Order;
 import com.hyp.entity.Payment;
+import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.response.Response;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RazorpaySignatureVerifier;
+import com.hyp.service.RestaurantService;
 import com.hyp.translation.PaymentTranslation;
 
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,9 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 
 	@Autowired
 	OrderService orderService;
+	
+	@Autowired
+	RestaurantService restaurantService;
 
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
@@ -100,7 +105,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 				throw new Exception("Payment not found " + orderId);
 			}
 			Order order = orderService.findById(orderId);
-			if (paymentService.verifySignature(razorPayDto)) {
+			if (paymentService.verifySignature(razorPayDto, orderId)) {
 				payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
 				payment.setSignature(razorPayDto.getRazorpaySignature());
 				processPaymentStatus(order, payment);
@@ -130,7 +135,8 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 					|| order.getStatus().equals(OrderStatusType.REFUND_INITIATED)) {
 				throw new Exception("Refund Already " + order.getStatus());
 			}
-			payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), true);
+			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+			payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), restaurant.isInstantRefund());
 			paymentService.save(payment);
 			response = new Response(Collections.singletonList(payment), false, "Refund Intiated");
 			return ResponseEntity.ok(response);

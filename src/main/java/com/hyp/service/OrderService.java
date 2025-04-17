@@ -174,7 +174,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	}
 
-	public Order processOrderCallback(PosCallbackRequest posCallbackRequest) throws Exception {
+	public void processOrderCallback(PosCallbackRequest posCallbackRequest) {
 
 		try {
 			Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
@@ -198,17 +198,30 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 				order = update(order);
-				String fulFill = redisService.getRedisData("fulfull").orElse("smart");
-				Delivery delivery = deliveryService.findByOrderId(order.getId());
-				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-					if (fulFill.equalsIgnoreCase("smart")) {
-						deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
-					} else {
-						deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
-					}
+
+				int delayMinutes = Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(0);
+
+				if (delayMinutes > 0) {
+					log.info("Scheduling fulfillment for order {} after {} minutes", order.getId(), delayMinutes);
+					deliveryService.setFulfillExpiry(order.getId(), delayMinutes);
+					return;
 				}
+				String fulfillmentMode = redisService.getRedisData("fulfill").orElse("smart");
+				Delivery delivery = deliveryService.findByOrderId(order.getId());
+				if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
+					log.warn("No PENDING delivery found for order {}. Skipping fulfillment.", order.getId());
+					return;
+				}
+				if ("smart".equalsIgnoreCase(fulfillmentMode)) {
+					log.info("Processing smart fulfillment for order {}", order.getId());
+					deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+				} else {
+					log.info("Processing standard fulfillment for order {}", order.getId());
+					deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
+				}
+
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
-				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), true);
+				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
 						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
@@ -216,8 +229,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				}
 			}
 			updateOrderStatus(order.getId(), newOrderStatus);
-			return order;
-
 		} catch (DeliveryException e) {
 			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {

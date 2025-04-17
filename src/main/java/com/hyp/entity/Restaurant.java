@@ -95,7 +95,7 @@ public class Restaurant {
 	@Field("calculate_tax_on_packing")
 	private Integer calculateTaxOnPacking;
 
-	@Field("deliverycharge")
+	@Field("delivery_charge")
 	private String deliveryCharge;
 
 	@Field("minimum_delivery_time")
@@ -129,20 +129,24 @@ public class Restaurant {
 
 	@Field("logo_url")
 	private String logoUrl;
-	
+
 	@Field("email")
 	private String email;
-	
+
 	@Field("restaurant_partner")
 	private String restaurantPartner;
-	
+
 	@Field("pos_partner")
 	private String posPartner;
-	
+
 	@Field("payment_partner")
 	private String paymentPartner;
-	
-	
+
+	@Field("instant_refund")
+	private boolean instantRefund;
+
+	@Field("fulfillment_delay")
+	private Integer fulfillmentDelay;
 
 	@Getter
 	@Setter

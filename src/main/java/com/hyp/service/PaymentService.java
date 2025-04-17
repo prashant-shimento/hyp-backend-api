@@ -18,6 +18,7 @@ import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.PaymentConfig;
+import com.hyp.enums.RefundType;
 import com.hyp.repository.PaymentRepository;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.EncryptionUtils;
@@ -31,7 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class PaymentService extends BaseServiceImpl<Payment, String> {
-
+    
 	@Value("${razorpay.key}")
 	private String razorPayKey;
 
@@ -82,8 +83,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			String redisKey = "order:" + orderId + ":state";
 			redisService.setRedisData(redisKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(15).toSeconds());
 			String redisPaymentKey = "order:" + orderId + ":payment";
-			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING,
-					Duration.ofMinutes(4).toSeconds());
+			redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, Duration.ofMinutes(4).toSeconds());
 			return save(payment);
 		} catch (Exception e) {
 			log.error("Error creating payment order {}", e.getMessage());
@@ -91,13 +91,13 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
-	public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto) {
+	public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String orderId) {
 		try {
 			JSONObject verifyRequest = new JSONObject();
 			verifyRequest.put("razorpay_order_id", razorPayVerifyDto.getRazorpayOrderId());
 			verifyRequest.put("razorpay_payment_id", razorPayVerifyDto.getRazorpayPaymentId());
 			verifyRequest.put("razorpay_signature", razorPayVerifyDto.getRazorpaySignature());
-			return Utils.verifyPaymentSignature(verifyRequest, razorPaySecret);
+			return Utils.verifyPaymentSignature(verifyRequest, EncryptionUtils.decrypt(getRazorpayPaymentConfig(orderId).getSecret()));
 		} catch (Exception e) {
 			log.error("Error in verifySignature {}", e.getMessage());
 			throw new RuntimeException("Error in verifySignature: " + e.getMessage(), e);
@@ -136,7 +136,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			JSONObject refundRequest = new JSONObject();
 			refundRequest.put("amount", CommonUtils.getISOAmount(amount));
 			if (instantRefund) {
-				refundRequest.put("speed", "optimum");
+				refundRequest.put("speed", RefundType.optimum.name());
 			}
 			Refund refund = razorpayClient.payments.refund(payment.getPaymentId(), refundRequest);
 
@@ -177,7 +177,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 	                .build();
 	        });
 	}
-	
+
 	private RazorpayClient getRazorpayClient(String orderId) {
 		try {
 			Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
@@ -189,6 +189,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to initialize RazorpayClient", e);
 		}
+	}
+
+	private PaymentConfig getRazorpayPaymentConfig(String orderId) {
+		Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
+		return getPaymentConfig(restaurant);
 	}
 
 
