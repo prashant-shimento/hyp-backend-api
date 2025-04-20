@@ -2,7 +2,7 @@ package com.hyp.playground;
 
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.*;
 import com.itextpdf.layout.*;
@@ -79,10 +79,9 @@ public class PdfGenerator {
     public static void generateInvoicePdf(String outputPath) throws Exception {
         PdfWriter writer = new PdfWriter(new FileOutputStream(outputPath));
         PdfDocument pdf = new PdfDocument(writer);
-        pdf.addEventHandler(PdfDocumentEvent.START_PAGE,
-                new InvoiceWithBannersPDF.BannerHandler(INVOICE_TOP_IMAGE_PATH, INVOICE_BOTTOM_IMAGE_PATH));
+
         pdf.addNewPage();
-       // addPageBanners(pdf);
+        addPageBanners(pdf);
 
         Document doc = new Document(pdf);
         doc.setMargins(160, 36, 100, 36);

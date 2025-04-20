@@ -2,49 +2,55 @@ package com.hyp.service;
 
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
-import com.itextpdf.kernel.events.Event;
-import com.itextpdf.kernel.events.IEventHandler;
-import com.itextpdf.kernel.events.PdfDocumentEvent;
-import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.pdf.event.AbstractPdfDocumentEvent;
+import com.itextpdf.kernel.pdf.event.AbstractPdfDocumentEventHandler;
+import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
+import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
+import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.layout.Canvas;
 import com.itextpdf.layout.element.Image;
 
-public class BannerHandler implements IEventHandler {
+import java.net.MalformedURLException;
+
+public class BannerHandler extends AbstractPdfDocumentEventHandler {
 
     private final ImageData topImageData;
     private final ImageData bottomImageData;
 
-    public BannerHandler(String topImagePath, String bottomImagePath) throws Exception {
+    public BannerHandler(String topImagePath, String bottomImagePath) throws MalformedURLException {
         this.topImageData = ImageDataFactory.create(topImagePath);
         this.bottomImageData = ImageDataFactory.create(bottomImagePath);
     }
 
     @Override
-    public void handleEvent(Event event) {
-        PdfDocumentEvent docEvent = (PdfDocumentEvent) event;
+    protected void onAcceptedEvent(AbstractPdfDocumentEvent abstractPdfDocumentEvent) {
+        PdfDocumentEvent docEvent = (PdfDocumentEvent) abstractPdfDocumentEvent;
+        PdfDocument pdfDoc = docEvent.getDocument();
         PdfPage page = docEvent.getPage();
-        PdfCanvas canvas = new PdfCanvas(page.newContentStreamBefore(), page.getResources(), docEvent.getDocument());
         Rectangle pageSize = page.getPageSize();
+
+        PdfCanvas pdfCanvas = new PdfCanvas(page.newContentStreamBefore(), page.getResources(), pdfDoc);
+        Canvas canvas = new Canvas(pdfCanvas, pageSize);
+
         float pageWidth = pageSize.getWidth();
+        float topMargin = 40;
 
-        Canvas layoutCanvas = new Canvas(page, pageSize);
-
+        // Top Banner
         Image topImage = new Image(topImageData);
         topImage.scaleToFit(pageWidth, 1000);
-        float topMargin = 40;
         float topImageHeight = topImage.getImageScaledHeight();
         topImage.setFixedPosition(0, pageSize.getTop() - topImageHeight - topMargin);
-        layoutCanvas.add(topImage);
+        canvas.add(topImage);
 
+        // Bottom Banner
         Image bottomImage = new Image(bottomImageData);
         bottomImage.scaleToFit(pageWidth, 1000);
-        float bottomImageHeight = bottomImage.getImageScaledHeight();
         bottomImage.setFixedPosition(0, pageSize.getBottom());
-        layoutCanvas.add(bottomImage);
+        canvas.add(bottomImage);
 
-        layoutCanvas.close();
-        canvas.release();
+        canvas.close();
+        pdfCanvas.release();
     }
 }
