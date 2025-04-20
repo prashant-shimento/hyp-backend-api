@@ -18,7 +18,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.entity.Report;
 import com.hyp.exception.BadRequestException;
-import com.hyp.exception.EntityNotFoundException;
 import com.hyp.repository.ReportRepository;
 import com.hyp.request.ReportRequest;
 
@@ -35,7 +34,7 @@ public class ReportService extends BaseServiceImpl<Report, String> {
 	@Autowired
 	private MongoTemplate mongoTemplate;
 
-	public List<Document> executeReport(Report report, ReportRequest reportRequest) throws EntityNotFoundException, BadRequestException {
+	public List<Document> executeReport(Report report, ReportRequest reportRequest) throws BadRequestException {
 		List<Document> query = buildQueryWithParams(report.getQuery(), reportRequest.getParameters());
 		AggregationOperation[] operations = query.stream()
 				.map(stage -> (AggregationOperation) context -> new org.bson.Document(stage))
@@ -72,7 +71,7 @@ public class ReportService extends BaseServiceImpl<Report, String> {
 				Document queryDoc = Document.parse(jsonString);
 				queryList.add(queryDoc);
 			} catch (JsonProcessingException e) {
-				log.error("Exception occured during buildQueryWithParams {}", e.getMessage());
+				log.error("Exception occurred during buildQueryWithParams {}", e.getMessage());
 			}
 		}
 		return queryList;
@@ -80,7 +79,7 @@ public class ReportService extends BaseServiceImpl<Report, String> {
 	
 	private Set<String> extractRequiredParams(String jsonString) {
 	    Set<String> requiredParams = new HashSet<>();
-	    Matcher matcher = Pattern.compile("\\{\\{(.*?)\\}\\}").matcher(jsonString);
+	    Matcher matcher = Pattern.compile("\\{\\{(.*?)}}").matcher(jsonString);
 	    while (matcher.find()) {
 	        requiredParams.add(matcher.group(1));
 	    }
@@ -94,7 +93,7 @@ public class ReportService extends BaseServiceImpl<Report, String> {
         missingParams.removeAll(providedParams);
 
         if (!missingParams.isEmpty()) {
-            throw new BadRequestException(Report.class.getSimpleName(),"Missing required parameters " + missingParams.toString());
+            throw new BadRequestException(Report.class.getSimpleName(),"Missing required parameters " + missingParams);
         }
 	}
 

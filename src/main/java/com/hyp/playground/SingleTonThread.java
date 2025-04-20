@@ -1,18 +1,20 @@
+package com.hyp.playground;
+
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;import java.util.stream.Collector;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class SingleTonThread {
 
 	public static void main(String[] args) {
 //		Thread thread1 = new Thread(() -> {
-//            SingleTonTest singleton1 = SingleTonTest.getInstance();
+//            com.hyp.playground.SingleTonTest singleton1 = com.hyp.playground.SingleTonTest.getInstance();
 //            System.out.println("Thread 1: Singleton instance hashcode: " + singleton1.hashCode());
 //        });
 //
 //        Thread thread2 = new Thread(() -> {
-//        	SingleTonTest singleton2 = SingleTonTest.getInstance();
+//        	com.hyp.playground.SingleTonTest singleton2 = com.hyp.playground.SingleTonTest.getInstance();
 //            System.out.println("Thread 2: Singleton instance hashcode: " + singleton2.hashCode());
 //        });
 //

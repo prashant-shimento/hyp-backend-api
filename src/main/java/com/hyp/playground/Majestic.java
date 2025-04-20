@@ -1,14 +1,10 @@
-import java.util.ArrayList;
+package com.hyp.playground;
+
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
-
-import org.checkerframework.checker.units.qual.s;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -71,6 +67,6 @@ public class Majestic {
 //        departmentMap.put("Engineering", Arrays.asList(employees.get(0), employees.get(1), employees.get(2)));
 //        departmentMap.put("HR", Arrays.asList(employees.get(3), employees.get(4), employees.get(5)));
 //
-//        new Majestic().sortMap(departmentMap);
+//        new com.hyp.playground.Majestic().sortMap(departmentMap);
 	}
 }

@@ -1,3 +1,4 @@
+package com.hyp.playground;
 
 public class SingleTonTest {
 

@@ -79,7 +79,7 @@ public class PlaygroundController {
 	public ResponseEntity<Response> fileUpload(@RequestBody FileUploadRequest fileUploadRequest) {
 		Response response;
 		try {
-			bucketService.uploadFile(fileUploadRequest);
+			bucketService.uploadItemImageFile(fileUploadRequest);
 			response = new Response(null, false, "File Uploaded !");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {

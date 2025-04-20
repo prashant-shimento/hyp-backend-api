@@ -483,7 +483,7 @@ public class PosServiceImpl implements PosService {
 			if (item.getItemImageUrl() != null && !item.getItemImageUrl().isEmpty()) {
 				CompletableFuture<Void> uploadFuture = CompletableFuture.runAsync(() -> {
 					try {
-						String uploadedImageUrl = bucketService.uploadFile(
+						String uploadedImageUrl = bucketService.uploadItemImageFile(
 								FileUploadRequest.builder().fileName(String.join("-", item.getId(), item.getItemName()))
 										.folderName(restaurantId).fileUrl(item.getItemImageUrl()).build());
 

@@ -1,0 +1,20 @@
+{
+  "totalOrders": 3,
+  "startDate": "2025-04-18T00:00:00.000+00:00",
+  "endDate": "2025-04-18T23:59:59.999+00:00",
+  "partner_id": "ACUDTttX1H",
+  "partner_name": "Chaitanya Food Court",
+  "totalAmount": 2873.0,
+  "totalDiscounts": 718.25,
+  "totalTaxes": 102.5,
+  "netBillValue": 2257.25,
+  "platformFee": 0,
+  "paymentGatewayCharges": 45.15,
+  "petPoojaApiCharges": 22.57,
+  "deliveryApiCharges": 15,
+  "netServiceFee": 82.72,
+  "restaurantSharedDeliveryFee": 110.96,
+  "totalRefunded": 0.0,
+  "adjustmentAmount": 110.96,
+  "finalSettlementAmount": 2679.32
+}

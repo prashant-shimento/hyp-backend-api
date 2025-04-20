@@ -1,8 +1,12 @@
 package com.hyp.controller;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.hyp.enums.ReportFormat;
+import com.hyp.service.PdfGeneratorService;
+import jakarta.validation.Valid;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -34,12 +38,19 @@ public class ReportController extends BaseController<ReportDto, Report, String> 
 	@Autowired
 	public ReportService reportService;
 
+	@Autowired
+	public PdfGeneratorService pdfGeneratorService;
+
 	@PostMapping("/{reportId}/generate")
-	public ResponseEntity<Response> generateReport(@PathVariable String reportId, @RequestBody ReportRequest request)
-			throws EntityNotFoundException, BadRequestException {
+	public ResponseEntity<Response> generateReport(@PathVariable String reportId, @RequestBody @Valid ReportRequest reportRequest)
+            throws Exception {
 		Report report = Optional.ofNullable(reportService.findById(reportId))
 				.orElseThrow(() -> new EntityNotFoundException(Report.class.getSimpleName(), reportId));
-		List<Document> reportData = reportService.executeReport(report, request);
+		List<Document> reportData = reportService.executeReport(report, reportRequest);
+		if(reportRequest.getFormat().equals(ReportFormat.PDF)) {
+			String reportUrl = pdfGeneratorService.getReport(report.getName(), reportData);
+			return ResponseEntity.ok(new Response(Collections.singletonList(reportUrl), false, "Report generated successfully."));
+		}
 		return ResponseEntity.ok(new Response(reportData, false, "Report generated successfully."));
 	}
 
