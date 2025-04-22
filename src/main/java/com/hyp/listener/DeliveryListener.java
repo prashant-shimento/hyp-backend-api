@@ -136,6 +136,8 @@ public class DeliveryListener implements MessageListener {
                     log.warn("No fulfillment data found for Order ID: {}", orderId);
                     return;
                 }
+                Duration expiryDuration;
+                DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
 
                 // Fetch last known rider location from logs
                 Optional<Location> lastKnownLocation = delivery.getFulfillment().getLogs().stream()
@@ -144,44 +146,48 @@ public class DeliveryListener implements MessageListener {
 
                 // Fetch current rider location from live tracking API
                 RiderLocation currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
+                log.info("Current Rider location of the order {}, status {},Location: {}", orderId, lastStatus, currentRiderLocation.toString());
 
-                if (lastKnownLocation.isPresent() && currentRiderLocation != null
-                        && currentRiderLocation.getData() != null
-                        && (currentRiderLocation.getData().getLatitude() != null
-                        || currentRiderLocation.getData().getLongitude() != null)) {
-                    Location lastLocation = lastKnownLocation.get();
-                    Location currentLocation = currentRiderLocation.getData();
-
-                    if (Double.compare(lastLocation.getLatitude(), currentLocation.getLatitude()) == 0
-                            && Double.compare(lastLocation.getLongitude(), currentLocation.getLongitude()) == 0) {
-
-                        log.warn("Rider has NOT moved for Order ID: {}", orderId);
-
-                        Rider rider = delivery.getFulfillment().getRider();
-                        List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
-                                delivery.getFulfillment().getStatus(), customer.getName(), customer.getMobile(),
-                                rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
-                        notificationService.sendInternalGroupNotification(Constants.META_RIDER_DELAY_ALERT_TEMPLATE,
-                                parameters);
-                    } else {
-                        log.info("Rider has MOVED for Order ID: {}, updating last known location.", orderId);
-                    }
-                }
-
-                Duration expiryDuration;
-                DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
-                if (List.of(DeliveryFulfillStatusType.OUT_FOR_PICKUP, DeliveryFulfillStatusType.REACHED_PICKUP,
-                        DeliveryFulfillStatusType.PICKED_UP).contains(currentStatus)) {
-                    String riderLocationPickupStage = redisService.getRedisData("riderLocationPickupStage").orElse("5");
-                    expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationPickupStage));
-                } else if (List
-                        .of(DeliveryFulfillStatusType.OUT_FOR_DELIVERY, DeliveryFulfillStatusType.REACHED_DELIVERY)
-                        .contains(currentStatus)) {
-                    String riderLocationOfdStage = redisService.getRedisData("riderLocationOfdStage").orElse("10");
-                    expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationOfdStage));
+                boolean isLocationMissing = currentRiderLocation.getData() == null || currentRiderLocation.getData().getLatitude() == null && currentRiderLocation.getData().getLongitude() == null;
+                if (isLocationMissing) {
+                    log.warn("Rider location is missing or incomplete for Order ID: {}. Setting fallback expiry.", orderId);
+                    expiryDuration = Duration.ofMinutes(2);
                 } else {
-                    log.info("Order ID: {} has reached final status: {}, stopping tracking.", orderId, currentStatus);
-                    return;
+                    if (lastKnownLocation.isPresent()) {
+                        Location lastLocation = lastKnownLocation.get();
+                        Location currentLocation = currentRiderLocation.getData();
+                        Double currentLat = currentLocation.getLatitude();
+                        Double currentLong = currentLocation.getLongitude();
+
+                        if (Double.compare(lastLocation.getLatitude(), currentLat) == 0
+                                && Double.compare(lastLocation.getLongitude(), currentLong) == 0) {
+
+                            log.warn("Rider has NOT moved for Order ID: {}", orderId);
+
+                            Rider rider = delivery.getFulfillment().getRider();
+                            List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
+                                    delivery.getFulfillment().getStatus(), customer.getName(), customer.getMobile(),
+                                    rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
+
+                            notificationService.sendInternalGroupNotification(Constants.META_RIDER_DELAY_ALERT_TEMPLATE, parameters);
+                        } else {
+                            log.info("Rider has MOVED for Order ID: {}, updating last known location.", orderId);
+                        }
+                    }
+
+                    if (List.of(DeliveryFulfillStatusType.OUT_FOR_PICKUP, DeliveryFulfillStatusType.REACHED_PICKUP,
+                            DeliveryFulfillStatusType.PICKED_UP).contains(currentStatus)) {
+                        String riderLocationPickupStage = redisService.getRedisData("riderLocationPickupStage").orElse("5");
+                        expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationPickupStage));
+                    } else if (List.of(DeliveryFulfillStatusType.OUT_FOR_DELIVERY, DeliveryFulfillStatusType.REACHED_DELIVERY)
+                            .contains(currentStatus)) {
+                        String riderLocationOfdStage = redisService.getRedisData("riderLocationOfdStage").orElse("10");
+                        expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationOfdStage));
+                    } else {
+                        log.info("Order ID: {} has reached final status: {}, stopping tracking.", orderId, currentStatus);
+                        return;
+                    }
+
                 }
 
                 String locationKey = "rider_location:" + orderId + ":" + currentStatus;

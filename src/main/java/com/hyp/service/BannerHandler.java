@@ -1,7 +1,6 @@
 package com.hyp.service;
 
 import com.itextpdf.io.image.ImageData;
-import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.pdf.event.AbstractPdfDocumentEvent;
 import com.itextpdf.kernel.pdf.event.AbstractPdfDocumentEventHandler;
 import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
@@ -12,16 +11,14 @@ import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.layout.Canvas;
 import com.itextpdf.layout.element.Image;
 
-import java.net.MalformedURLException;
-
 public class BannerHandler extends AbstractPdfDocumentEventHandler {
 
     private final ImageData topImageData;
     private final ImageData bottomImageData;
 
-    public BannerHandler(String topImagePath, String bottomImagePath) throws MalformedURLException {
-        this.topImageData = ImageDataFactory.create(topImagePath);
-        this.bottomImageData = ImageDataFactory.create(bottomImagePath);
+    public BannerHandler(ImageData topImageData, ImageData bottomImageData) {
+        this.topImageData = topImageData;
+        this.bottomImageData = bottomImageData;
     }
 
     @Override

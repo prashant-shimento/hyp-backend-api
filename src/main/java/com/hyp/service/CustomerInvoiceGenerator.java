@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.dto.CustomerDto;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.CustomerInvoice;
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
 import com.itextpdf.kernel.font.PdfFont;
@@ -20,6 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -30,33 +35,60 @@ import java.util.List;
 public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
 
     final static String REPORT_NAME = "CUSTOMER_INVOICE";
-    private final static String TOP_IMAGE_PATH = "src/main/resources/images/top_invoice.png";
-    private final static String BOTTOM_IMAGE_PATH = "src/main/resources/images/bottom_invoice.png";
-    private final static String BOLD_FONT_PATH = "src/main/resources/fonts/noto-bold.ttf";
-    private final static String REGULAR_FONT_PATH = "src/main/resources/fonts/noto-regular.ttf";
+
     private static final DateTimeFormatter OUTPUT_FORMATTER = DateTimeFormatter.ofPattern("dd MMM, yyyy");
+
+    private final static String TOP_IMAGE_RESOURCE = "images/top_invoice.png";
+    private final static String BOTTOM_IMAGE_RESOURCE = "images/bottom_invoice.png";
+    private final static String BOLD_FONT_RESOURCE = "fonts/noto-bold.ttf";
+    private final static String REGULAR_FONT_RESOURCE = "fonts/noto-regular.ttf";
+
+    private final ImageData topImageData;
+    private final ImageData bottomImageData;
+    private final PdfFont boldFont;
+    private final PdfFont regularFont;
+
     @Autowired
     private BucketService bucketService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
+    public CustomerInvoiceGenerator() throws IOException {
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        topImageData = ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE));
+        bottomImageData = ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE));
+
+        boldFont = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+        regularFont = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
+                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+    }
+
+    private byte[] getResourceBytes(ClassLoader classLoader, String path) throws IOException {
+        try (InputStream is = classLoader.getResourceAsStream(path)) {
+            if (is == null) {
+                throw new FileNotFoundException("Resource not found: " + path);
+            }
+            return is.readAllBytes();
+        }
+    }
+
     @Override
     public String generatePdf(List<Document> reportDoc) throws Exception {
-
         CustomerInvoice invoice = objectMapper.convertValue(reportDoc.get(0), CustomerInvoice.class);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(outputStream);
         PdfDocument pdf = new PdfDocument(writer);
         pdf.addEventHandler(PdfDocumentEvent.START_PAGE,
-                new BannerHandler(TOP_IMAGE_PATH, BOTTOM_IMAGE_PATH));
+                new BannerHandler(topImageData, bottomImageData));
         pdf.addNewPage();
 
         com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
         doc.setMargins(160, 36, 100, 36);
 
-        PdfFont bold = PdfFontFactory.createFont(BOLD_FONT_PATH, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-        PdfFont regular = PdfFontFactory.createFont(REGULAR_FONT_PATH, PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+        PdfFont bold = boldFont;
+        PdfFont regular = regularFont;
 
 
         Table mainInfoTable = new Table(1)
