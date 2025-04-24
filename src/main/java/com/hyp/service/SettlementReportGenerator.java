@@ -42,24 +42,8 @@ public class SettlementReportGenerator implements  ReportPdfGenerator{
     private final static String BOLD_FONT_RESOURCE = "fonts/noto-bold.ttf";
     private final static String REGULAR_FONT_RESOURCE = "fonts/noto-regular.ttf";
 
-    private final ImageData topImageData;
-    private final ImageData bottomImageData;
-    private final PdfFont boldFont;
-    private final PdfFont regularFont;
-
     @Autowired
     private BucketService bucketService;
-
-    public SettlementReportGenerator() throws IOException {
-        ClassLoader classLoader = getClass().getClassLoader();
-
-        topImageData = ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE));
-        bottomImageData = ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE));
-
-        boldFont = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-        regularFont = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
-                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-    }
 
     private byte[] getResourceBytes(ClassLoader classLoader, String path) throws IOException {
         try (InputStream is = classLoader.getResourceAsStream(path)) {
@@ -74,16 +58,22 @@ public class SettlementReportGenerator implements  ReportPdfGenerator{
     public String generatePdf(List<Document> reportDoc) throws Exception {
         Map<String, Object> reportData = reportDoc.isEmpty() ? new HashMap<>() : reportDoc.get(0);
 
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        ImageData topImageData = ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE));
+        ImageData bottomImageData = ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE));
+
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(outputStream);
         PdfDocument pdf = new PdfDocument(writer);
         pdf.addNewPage();
 
-        addPageBanners(pdf);
+        addPageBanners(pdf, topImageData, bottomImageData);
 
         com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
-        PdfFont bold = boldFont;
-        PdfFont regular = regularFont;
+        PdfFont bold = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);;
+        PdfFont regular = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
+                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
 
         Table infoTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
                 .useAllAvailableWidth()
@@ -113,6 +103,7 @@ public class SettlementReportGenerator implements  ReportPdfGenerator{
         addDynamicRows(table, reportData, bold, regular);
         doc.add(table.setMarginTop(10).setMarginBottom(20));
 
+        doc.flush();
         doc.close();
 
         String fileName = REPORT_NAME + "-" + System.currentTimeMillis() + ".pdf";
@@ -222,7 +213,7 @@ public class SettlementReportGenerator implements  ReportPdfGenerator{
                 .setMargin(0);
     }
 
-    public void addPageBanners(PdfDocument pdfDoc) {
+    public void addPageBanners(PdfDocument pdfDoc, ImageData topImageData, ImageData bottomImageData) {
         PdfPage page = pdfDoc.getLastPage();
         Rectangle pageSize = page.getPageSize();
         float pageWidth = pageSize.getWidth();

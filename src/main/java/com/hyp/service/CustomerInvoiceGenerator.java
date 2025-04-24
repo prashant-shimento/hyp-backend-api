@@ -43,27 +43,11 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
     private final static String BOLD_FONT_RESOURCE = "fonts/noto-bold.ttf";
     private final static String REGULAR_FONT_RESOURCE = "fonts/noto-regular.ttf";
 
-    private final ImageData topImageData;
-    private final ImageData bottomImageData;
-    private final PdfFont boldFont;
-    private final PdfFont regularFont;
-
     @Autowired
     private BucketService bucketService;
 
     @Autowired
     private ObjectMapper objectMapper;
-
-    public CustomerInvoiceGenerator() throws IOException {
-        ClassLoader classLoader = getClass().getClassLoader();
-
-        topImageData = ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE));
-        bottomImageData = ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE));
-
-        boldFont = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-        regularFont = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
-                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-    }
 
     private byte[] getResourceBytes(ClassLoader classLoader, String path) throws IOException {
         try (InputStream is = classLoader.getResourceAsStream(path)) {
@@ -76,19 +60,22 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
 
     @Override
     public String generatePdf(List<Document> reportDoc) throws Exception {
+        ClassLoader classLoader = getClass().getClassLoader();
         CustomerInvoice invoice = objectMapper.convertValue(reportDoc.get(0), CustomerInvoice.class);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(outputStream);
         PdfDocument pdf = new PdfDocument(writer);
         pdf.addEventHandler(PdfDocumentEvent.START_PAGE,
-                new BannerHandler(topImageData, bottomImageData));
+                new BannerHandler(ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE)),
+                        ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE))));
         pdf.addNewPage();
 
         com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
         doc.setMargins(160, 36, 100, 36);
 
-        PdfFont bold = boldFont;
-        PdfFont regular = regularFont;
+        PdfFont bold = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+        PdfFont regular = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
+                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
 
 
         Table mainInfoTable = new Table(1)
