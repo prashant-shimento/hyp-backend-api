@@ -101,6 +101,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 			throw new BadRequestException("Location", "The location is not deliverable.");
 		}
 
+		log.info("Requesting Delivery quote for addressId {} and restaurantId {}", addressId, restaurantId);
 		DeliveryQuote deliveryQuote = deliveryService
 				.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 

@@ -42,7 +42,7 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
 		List<Category> category = mongoTemplate.aggregate(aggregation, "categories", Category.class).getMappedResults();
 		long endTime = System.currentTimeMillis(); 
 		long executionTime = endTime - startTime;
-		log.info("Query Execution Time for getAllCategoryItems: " + executionTime + " ms");
+        log.info("Query Execution Time for getAllCategoryItems: {} ms", executionTime);
 		return category;
 	}
 

@@ -117,10 +117,12 @@ jobs:
           CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
           if [ ! -z '$CONTAINER_ID' ]; then
             docker stop $CONTAINER_ID
+            mkdir -p /home/logs
             docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
             docker rm $CONTAINER_ID
           fi
-          docker rmi lognathp/hyp-backend-api:production
+          docker rmi -f lognathp/hyp-backend-api:production || true
           docker pull lognathp/hyp-backend-api:production
+          fuser -k 9090/tcp || true
           docker run --restart always -p 9090:9090 -e ENV=production -d lognathp/hyp-backend-api:production
         EOF
