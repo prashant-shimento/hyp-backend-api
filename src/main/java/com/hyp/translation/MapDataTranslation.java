@@ -150,6 +150,9 @@ public class MapDataTranslation {
 							}
 						}
 					}
+					LatLng location = geocodingResult.geometry.location;
+					address = new AddressDto();
+					address.setLocation(new Location(location.lat, location.lng));
 				}
 				if (premiseFound && streetAddressFound) {
 					break;
