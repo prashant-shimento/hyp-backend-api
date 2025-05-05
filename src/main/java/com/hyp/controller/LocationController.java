@@ -79,7 +79,7 @@ public class LocationController {
 					response = new Response(null, true, "Place not found " + locationRequest.getPlaceId());
 					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 				}
-				addressPlaceData = MapDataTranslation.getPlaceDatatoAddress(rawPlaceData);
+				addressPlaceData = MapDataTranslation.getPlaceDataToAddress(rawPlaceData);
 			} else if (locationRequest.getLatitude() != null && locationRequest.getLongitude() != null) {
 				GeocodingResult[] geocodingResults = locationService
 						.getPlaceByGeocodebyClient(locationRequest.getLatitude(), locationRequest.getLongitude());
@@ -87,7 +87,7 @@ public class LocationController {
 					response = new Response(null, true, "Place not found for given co-ordinates");
 					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
 				}
-				addressPlaceData = MapDataTranslation.getGeocodeDatatoAddress(geocodingResults);
+				addressPlaceData = MapDataTranslation.getGeocodeDataToAddress(geocodingResults);
 			} else {
 				response = new Response(null, true, "Please provide PlaceId or Co-ordinates");
 				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
