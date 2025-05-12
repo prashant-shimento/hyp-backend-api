@@ -13,9 +13,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
+import com.hyp.entity.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -23,14 +25,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.constants.Constants;
-import com.hyp.entity.AddonItem;
-import com.hyp.entity.Category;
-import com.hyp.entity.Customer;
-import com.hyp.entity.Delivery;
-import com.hyp.entity.Item;
-import com.hyp.entity.Order;
-import com.hyp.entity.Restaurant;
-import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
@@ -131,10 +125,10 @@ public class PosServiceImpl implements PosService {
 			}
 			createPosOrder(posOrderRequest);
 		} catch (RequestTranslationException e) {
-			log.error("Error occured on RequestTranslationException for order {} cause: ", order.getId(),
+			log.error("Error occurred on RequestTranslationException for order {} cause: {}", order.getId(),
 					e.getMessage());
 		} catch (PosException e) {
-			log.error("Error occured on PosException for order {} cause: ", order.getId(), e.getMessage());
+			log.error("Error occurred on PosException for order {} cause: {}", order.getId(), e.getMessage());
 		}
 	}
 
@@ -143,23 +137,23 @@ public class PosServiceImpl implements PosService {
 	public boolean savePosData(PosDataRequest posDataRequest) {
 		try {
 			long existingRestQuery = System.currentTimeMillis();
+			String existingRestaurantId = posDataRequest.getRestaurants().get(0).getRestaurantid();
 			Restaurant existingRestaurant = restaurantService
-					.findById(posDataRequest.getRestaurants().get(0).getRestaurantid());
+					.findById(existingRestaurantId);
+			log.info("Time taken for existingRestQuery: {} ms", System.currentTimeMillis() - existingRestQuery);
 			if (existingRestaurant != null) {
 				deletePosData(existingRestaurant.getId());
 			}
-			log.info("Time taken for existingRestQuery: " + (System.currentTimeMillis() - existingRestQuery) + "ms");
 			long restaurantTranslation = System.currentTimeMillis();
 			Restaurant restaurant = PosDataRequestTranslation
 					.translateToRestaurant(posDataRequest.getRestaurants().get(0), existingRestaurant);
-			log.info("Time taken for restaurantTranslation: " + (System.currentTimeMillis() - restaurantTranslation)
-					+ "ms");
-			long posDataTranslation = System.currentTimeMillis();
-			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
-			log.info("Time taken for posDataTranslation: " + (System.currentTimeMillis() - posDataTranslation) + "ms");
+            log.info("Time taken for restaurantTranslation: {} ms", System.currentTimeMillis() - restaurantTranslation);
 			long restaurantSave = System.currentTimeMillis();
 			restaurantService.save(restaurant);
-			log.info("Time taken for restaurantSave: " + (System.currentTimeMillis() - restaurantSave) + "ms");
+            log.info("Time taken for restaurantSave: {} ms", System.currentTimeMillis() - restaurantSave);
+			long posDataTranslation = System.currentTimeMillis();
+			PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
+			log.info("Time taken for posDataTranslation: {} ms", System.currentTimeMillis() - posDataTranslation);
 			saveEntities(restaurant, posData);
 
 			List<String> parameters = CommonUtils.buildStringList(
@@ -174,7 +168,6 @@ public class PosServiceImpl implements PosService {
 			log.error("Exception occurred while saving POS data: {}", e.getMessage(), e);
 			PosException posException = new PosException("Error in savePosData API call: " + e.getMessage(), e);
 			sendAlert(posException);
-			e.printStackTrace();
 			return false;
 		}
 	}
@@ -182,12 +175,19 @@ public class PosServiceImpl implements PosService {
 	@Transactional
 	public void deletePosData(String restaurantId) {
 		try {
-			long deletePosData = System.currentTimeMillis();
+			long itemDelete = System.currentTimeMillis();
 			itemService.softDeleteByRestaurant(Item.class, restaurantId);
+			log.info("Time taken for itemDelete: {} ms", System.currentTimeMillis() - itemDelete);
+			long categoryDelete = System.currentTimeMillis();
 			categoryService.softDeleteByRestaurant(Category.class, restaurantId);
-			log.info("Time taken for deletePosData: " + (System.currentTimeMillis() - deletePosData) + "ms");
+			log.info("Time taken for categoryDelete: {} ms", System.currentTimeMillis() - categoryDelete);
+			long orderTypeDelete = System.currentTimeMillis();
+			orderTypeService.deleteAll(OrderType.class);
+			log.info("Time taken for orderTypeDelete: {} ms", System.currentTimeMillis() - orderTypeDelete);
+
+
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Exception occurred in deletePosData {}", e.getMessage());
 		}
 	}
 
@@ -195,8 +195,10 @@ public class PosServiceImpl implements PosService {
 		long startTime = System.currentTimeMillis();
 
 		try {
-			CompletableFuture<Void> orderTypeFuture = logEntityInsert("order types",
-					() -> orderTypeService.saveAll(posData.getOrderTypes(), restaurant.getId()));
+			CompletableFuture<Void> orderTypeFuture = logEntityInsert("order types", () -> {
+				posData.getOrderTypes().forEach(orderType -> orderType.setRestaurantId(restaurant.getId()));
+				orderTypeService.saveAll(posData.getOrderTypes());
+			});
 
 			CompletableFuture<Void> attributeFuture = logEntityInsert("attributes",
 					() -> attributeService.saveAll(posData.getAttributes(), restaurant.getId()));
@@ -237,12 +239,24 @@ public class PosServiceImpl implements PosService {
 							System.currentTimeMillis() - startTime));
 
 		} catch (Exception e) {
-			log.error("Error occurred during saveEntities for restaurant {}: {}", restaurant.getId(), e);
+			log.error("Error occurred during saveEntities for restaurant {}: {}", restaurant.getId(), e.getMessage());
 		}
 	}
 
+	private CompletableFuture<Void> saveAsync(Runnable task, String name) {
+		return CompletableFuture.runAsync(() -> {
+			long t = System.currentTimeMillis();
+			try {
+				task.run();
+				log.info("Saved {} in {} ms", name, System.currentTimeMillis() - t);
+			} catch (Exception e) {
+				log.error("Failed to save {}: {}", name, e.getMessage(), e);
+			}
+		});
+	}
+
 	@Override
-	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
+	public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
 		try {
 			log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
@@ -251,18 +265,14 @@ public class PosServiceImpl implements PosService {
 					.bodyToMono(String.class).block();
 			log.info("createPosOrder Response {}", objectMapper.writeValueAsString(response));
 
-			if (response != null && !response.isEmpty()) {
-				return true;
-			}
-		} catch (Exception e) {
-			log.error("Error occured during createPosOrder {}", e);
+        } catch (Exception e) {
+			log.error("Error occurred during createPosOrder {}", e.getMessage());
 			throw new PosException("POS Order Creation failed " + e.getMessage());
 		}
-		return false;
 	}
 
 	@Override
-	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
+	public void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
 		try {
 			log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posOrderUpdateRequest));
 			WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
@@ -270,7 +280,6 @@ public class PosServiceImpl implements PosService {
 			String updateOrderResponse = webClient.post().uri(endpoint)
 					.body(BodyInserters.fromValue(posOrderUpdateRequest)).retrieve().bodyToMono(String.class).block();
 			log.info("updatePosOrder Response {}", objectMapper.writeValueAsString(updateOrderResponse));
-			return updateOrderResponse;
 		} catch (Exception e) {
 			log.error("Error occurred during updatePosOrder {}", e.getMessage());
 			throw new PosException("POS Order Update failed " + e.getMessage());
@@ -297,10 +306,8 @@ public class PosServiceImpl implements PosService {
 	public boolean updateStock(PosStockRequest stockRequest) {
 		long startTime = System.currentTimeMillis();
 		try {
-			long autoTurnOn = System.currentTimeMillis();
 			final LocalDateTime autoTurnOnTime = (!stockRequest.isInStock()) ? parseAutoTurnOnTime(stockRequest) : null;
 			long ttl = autoTurnOnTime != null ? calculateTTLInSeconds(autoTurnOnTime) : 0;
-			log.info("Prepared autoTurnOnTime in {} ms ", autoTurnOn);
 
 			if (stockRequest.getType().equalsIgnoreCase("item")) {
 				long updateItemStock = System.currentTimeMillis();
@@ -349,8 +356,7 @@ public class PosServiceImpl implements PosService {
 		});
 		long bulkWriteStart = System.currentTimeMillis();
 		itemService.bulkUpdate(items, Item.class);
-		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
-		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
+		log.info("Bulk write items completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
 	public void updateVariationStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
@@ -380,14 +386,12 @@ public class PosServiceImpl implements PosService {
 		long bulkWriteStart = System.currentTimeMillis();
 		variationService.bulkUpdate(variations, Variation.class);
 		log.info("Bulk write for variations completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
-
-		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
 	}
 
 	private void updateAddonItemStock(PosStockRequest stockRequest, LocalDateTime autoTurnOn, long ttl) {
 		long findByIdsStart = System.currentTimeMillis();
 		List<AddonItem> addonItems = addonItemService.findByIds(stockRequest.getItemId());
-		log.info("Fetched items in {} ms", System.currentTimeMillis() - findByIdsStart);
+		log.info("Fetched addons in {} ms", System.currentTimeMillis() - findByIdsStart);
 
 		addonItems.forEach(addonItem -> {
 			addonItem.setActive(stockRequest.isInStock() ? "1" : "0");
@@ -404,8 +408,7 @@ public class PosServiceImpl implements PosService {
 		});
 		long bulkWriteStart = System.currentTimeMillis();
 		addonItemService.bulkUpdate(addonItems, AddonItem.class);
-		log.info("Bulk write completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
-		// sendNotification(Constants.META_STOCK_UPDATE_ALERT_TEMPLATE, stockRequest);
+		log.info("Bulk write addons completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
 	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {
@@ -417,7 +420,7 @@ public class PosServiceImpl implements PosService {
 		} else if (turnOnTime.length() == 16) {
 			return LocalDateTime.parse(turnOnTime, FORMATTER_WITHOUT_SECONDS);
 		} else {
-			log.error("Invalid TurnOnTime passed " + turnOnTime);
+			log.error("Invalid TurnOnTime passed {}" ,turnOnTime);
 			return LocalDateTime.now().plusHours(2);
 		}
 	}
@@ -461,7 +464,7 @@ public class PosServiceImpl implements PosService {
 	public boolean updateRestaurant(PosStatusRequest updateStatus) {
 		try {
 			Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
-			restaurant.setActive(updateStatus.getStoreStatus().equalsIgnoreCase("1") ? true : false);
+			restaurant.setActive(updateStatus.getStoreStatus().equalsIgnoreCase("1"));
 			if (!restaurant.isActive() && updateStatus.getTurnOnTime() != null
 					&& !updateStatus.getTurnOnTime().isEmpty()) {
 				restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurnOnTime(),
@@ -471,7 +474,7 @@ public class PosServiceImpl implements PosService {
 			restaurantService.update(restaurant);
 			return true;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Exception occurred in updateRestaurant {}", e.getMessage());
 			return false;
 		}
 	}

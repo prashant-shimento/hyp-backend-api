@@ -34,18 +34,10 @@ public interface Constants {
 	List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
 	List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
 	List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
-	List<String> RESTAURANT_API_PARAMS = Arrays.asList("restaurantName", "menuSharingCode", "contact");
+	List<String> RESTAURANT_API_PARAMS = Arrays.asList("id", "restaurantName", "menuSharingCode", "contact");
 	List<String> PAYMENT_API_PARAMS = Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider",
 			"status", "amount", "paymentId");
-
-	// Constants for logging API integration
-	String INBOUND_API_LOG = "InboundAPILog";
-	String OUTBOUND_API_LOG = "OutboundAPILog";
-
-	public enum ApiStatus {
-		SUCCESSFUL, FAILURE
-	}
-
+	List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
 	List<String> FILE_EXTENSIONS = Arrays.asList(".jpg", ".png", ".jpeg");
 
 	static Map<String, String> getContentTypes() {

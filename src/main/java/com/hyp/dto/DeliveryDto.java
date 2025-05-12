@@ -32,6 +32,7 @@ public class DeliveryDto extends BaseDto {
     private String fulfillmentType;
     private LocalDateTime fulfillmentAt;
 
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

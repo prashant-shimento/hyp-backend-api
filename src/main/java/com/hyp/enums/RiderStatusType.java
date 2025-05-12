@@ -7,32 +7,20 @@ public enum RiderStatusType {
     delivered;
 	
 	public static RiderStatusType getRiderStatusByDeliveryRider(DeliveryFulfillStatusType status) {
-		switch (status) {
-		case OUT_FOR_PICKUP:
-			return RiderStatusType.rider_assigned;
-		case REACHED_PICKUP:
-			return RiderStatusType.rider_arrived;
-		case PICKED_UP:
-			return RiderStatusType.pickedup;
-		case DELIVERED:
-			return RiderStatusType.delivered;
-		default:
-			return RiderStatusType.rider_assigned;
-		}
+        return switch (status) {
+            case REACHED_PICKUP -> RiderStatusType.rider_arrived;
+            case PICKED_UP -> RiderStatusType.pickedup;
+            case DELIVERED -> RiderStatusType.delivered;
+            default -> RiderStatusType.rider_assigned;
+        };
 	}
 	
 	public static RiderStatusType getRiderStatusByOrderStatusType(OrderStatusType status) {
-		switch (status) {
-		case OUT_FOR_PICKUP:
-			return RiderStatusType.rider_assigned;
-		case REACHED_PICKUP:
-			return RiderStatusType.rider_arrived;
-		case PICKED_UP:
-			return RiderStatusType.pickedup;
-		case DELIVERED:
-			return RiderStatusType.delivered;
-		default:
-			return RiderStatusType.rider_assigned;
-		}
+        return switch (status) {
+            case REACHED_PICKUP -> RiderStatusType.rider_arrived;
+            case PICKED_UP -> RiderStatusType.pickedup;
+            case DELIVERED -> RiderStatusType.delivered;
+            default -> RiderStatusType.rider_assigned;
+        };
 	}
 }

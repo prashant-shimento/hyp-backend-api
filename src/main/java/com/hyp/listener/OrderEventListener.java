@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.hyp.enums.OrderType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
@@ -75,7 +76,11 @@ public class OrderEventListener {
 		if(restaurantService.findById(order.getRestaurantId()).getPosPartner().equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
 			orderEventPublisher.publishPosOrderEvent(order);			
 		}
-		orderEventPublisher.publishDeliveryOrderEvent(order);
+		log.info("Order Type {}", order.getOrderType());
+		if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
+			orderEventPublisher.publishDeliveryOrderEvent(order);
+		}
+
 	}
 
 	@Async

@@ -20,9 +20,9 @@ public interface PosService {
 
 	public boolean savePosData(PosDataRequest posDataRequest);
 
-	public boolean createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
+	public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
 
-	public String updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
+	public void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
 
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 

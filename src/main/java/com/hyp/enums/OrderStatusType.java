@@ -7,45 +7,27 @@ public enum OrderStatusType {
 	PAYMENT_ERROR, REFUND_INITIATED, REFUND_COMPLETED, REFUND_FAILED, REFUND_PENDING;
 
 	public static OrderStatusType getOrderStatusByPosStatus(String value) {
-		switch (value) {
-		case "-1":
-			return CANCELLED;
-		case "4":
-			return DISPATCHED;
-		case "5":
-			return READY_FOR_DELIVERY;
-		case "10":
-			return DELIVERED;
-		case "1":
-		case "2":
-		case "3":
-			return ACCEPTED;
-		default:
-			return PROCESSING;
-		}
+        return switch (value) {
+            case "-1" -> CANCELLED;
+            case "4" -> DISPATCHED;
+            case "5" -> READY_FOR_DELIVERY;
+            case "10" -> DELIVERED;
+            case "1", "2", "3" -> ACCEPTED;
+            default -> PROCESSING;
+        };
 	}
 
-	public static OrderStatusType getOrderStatusByDelvieryStatus(DeliveryFulfillStatusType value) {
-		switch (value) {
-		case CREATED:
-			return SEARCHING_RIDER;
-		case OUT_FOR_PICKUP:
-			return OUT_FOR_PICKUP;
-		case REACHED_PICKUP:
-			return REACHED_PICKUP;
-		case PICKED_UP:
-			return PICKED_UP;
-		case OUT_FOR_DELIVERY:
-			return OUT_FOR_DELIVERY;
-		case REACHED_DELIVERY:
-			return REACHED_DELIVERY;
-		case DELIVERED:
-			return DELIVERED;
-		case CANCELLED:
-			return DELIVERY_CANCELLATION;
-		default:
-			return SEARCHING_RIDER;
-		}
+	public static OrderStatusType getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType value) {
+        return switch (value) {
+            case OUT_FOR_PICKUP -> OUT_FOR_PICKUP;
+            case REACHED_PICKUP -> REACHED_PICKUP;
+            case PICKED_UP -> PICKED_UP;
+            case OUT_FOR_DELIVERY -> OUT_FOR_DELIVERY;
+            case REACHED_DELIVERY -> REACHED_DELIVERY;
+            case DELIVERED -> DELIVERED;
+            case CANCELLED -> DELIVERY_CANCELLATION;
+            default -> SEARCHING_RIDER;
+        };
 	}
 
 	public static OrderStatusType getOrderStatusByRefundStatus(String value) {

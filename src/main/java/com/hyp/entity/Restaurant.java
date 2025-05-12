@@ -3,6 +3,11 @@ package com.hyp.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.hyp.enums.FeeType;
+import com.hyp.enums.PartnerType;
+import com.hyp.model.PaymentRoute;
+import com.hyp.model.PlatformFee;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -11,12 +16,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
-
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Getter
 @Setter
@@ -147,6 +146,24 @@ public class Restaurant {
 
 	@Field("fulfillment_delay")
 	private Integer fulfillmentDelay;
+
+	@Field("is_serviceable")
+	private Boolean isServiceable;
+
+	@Field("serviceable_message")
+	private String serviceableMessage;
+
+	@Field("platform_fee")
+	private List<PlatformFee> platformFee;
+
+	@Field("delivery_fee")
+	private Double deliveryFee;
+
+	@Field("is_payment_routing_enabled")
+	private boolean paymentRoutingEnabled;
+
+	@Field("payment_route_list")
+	private List<PaymentRoute> paymentRouteList;
 
 	@Getter
 	@Setter

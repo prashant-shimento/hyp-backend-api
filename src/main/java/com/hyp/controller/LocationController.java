@@ -82,7 +82,7 @@ public class LocationController {
 				addressPlaceData = MapDataTranslation.getPlaceDataToAddress(rawPlaceData);
 			} else if (locationRequest.getLatitude() != null && locationRequest.getLongitude() != null) {
 				GeocodingResult[] geocodingResults = locationService
-						.getPlaceByGeocodebyClient(locationRequest.getLatitude(), locationRequest.getLongitude());
+						.getPlaceByGeocodeByClient(locationRequest.getLatitude(), locationRequest.getLongitude());
 				if (geocodingResults == null) {
 					response = new Response(null, true, "Place not found for given co-ordinates");
 					return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -94,14 +94,14 @@ public class LocationController {
 			}
 			List<String> restaurantList;
 			if (restaurant != null) {
-				restaurantList = locationService.getServicableRestaurants(addressPlaceData,
+				restaurantList = locationService.getServiceableRestaurants(addressPlaceData,
 						Collections.singletonList(restaurant));
 			} else {
-				restaurantList = locationService.getServicableRestaurants(addressPlaceData,
+				restaurantList = locationService.getServiceableRestaurants(addressPlaceData,
 						partner.getRestaurantDetails());
 			}
 
-			if (restaurantList.size() == 0) {
+			if (restaurantList.isEmpty()) {
 				response = new Response(null, true, ErrorConstants.LOCATION_NOT_DELIVERBLE);
 				return ResponseEntity.badRequest().body(response);
 			}

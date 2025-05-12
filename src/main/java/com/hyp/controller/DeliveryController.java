@@ -62,17 +62,11 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	AddressService addressService;
 
 	@Autowired
-	PosService posService;
-
-	@Autowired
 	OrderService orderService;
 
 	@Autowired
 	LocationService locationService;
 
-	@Autowired
-	CustomerService customerService;
-	
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
 
@@ -92,8 +86,16 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 		Restaurant restaurant = Optional.ofNullable(restaurantService.findById(restaurantId))
 				.orElseThrow(() -> new EntityNotFoundException(Restaurant.class.getSimpleName(), restaurantId));
 
+		if (restaurant.getPincode() == null || !restaurant.getPincode().matches("\\d{6}")) {
+			throw new BadRequestException("Pin code", "Invalid pin code " + restaurant.getPincode());
+		}
+
 		Address address = Optional.ofNullable(addressService.findById(addressId))
 				.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(), addressId));
+
+		if (address.getPincode() == null || !address.getPincode().matches("\\d{6}")) {
+			throw new BadRequestException("Pin code", "Invalid pin code " + address.getPincode());
+		}
 
 		if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
 				address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),

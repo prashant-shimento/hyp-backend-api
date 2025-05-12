@@ -27,8 +27,10 @@ public interface BaseService<T, ID> {
 	void softDeleteById(ID id);
 	
 	void softDeleteByRestaurant(Class<T> entityClass, ID id);
-	
-	void softDeleteAll(List<T> entities);
+
+    void deleteAll(Class<T> entityClass);
+
+    void softDeleteAll(List<T> entities);
 	
 	public boolean isExistsById(ID id);
 	

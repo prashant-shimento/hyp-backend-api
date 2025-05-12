@@ -147,7 +147,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
-						OrderStatusType.getOrderStatusByDelvieryStatus(DeliveryFulfillStatusType.CANCELLED));
+						OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
 				orderEventPublisher.publishDeliveryEvent(delivery);
 				return;
 			}
@@ -183,11 +183,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 		if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
 			delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
-			order.setDeliveryTrackingLink("https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode());
 		}
 
 		orderService.save(order);
-		orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDelvieryStatus(fullFillStatus));
+		orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus));
 
 		if (posService.isPosUpdateRequired(fullFillStatus)) {
 			posService.updatePosRiderStatus(delivery, order);

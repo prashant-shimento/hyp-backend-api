@@ -1,16 +1,15 @@
 package com.hyp.controller;
 
+import java.net.URI;
 import java.util.Collections;
+import java.util.Optional;
 
+import com.hyp.enums.*;
+import com.hyp.exception.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
@@ -18,16 +17,10 @@ import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.DeliveryOrderStatusType;
-import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.PosPartner;
-import com.hyp.enums.RiderStatusType;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.response.Response;
-import com.hyp.service.AddressService;
-import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
@@ -56,13 +49,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 	RestaurantService restaurantService;
 
 	@Autowired
-	CustomerService customerService;
-
-	@Autowired
 	PosService posService;
-
-	@Autowired
-	AddressService addressService;
 
 	@Autowired
 	DeliveryService deliveryService;
@@ -85,7 +72,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			log.error("Exception occurred in create " + e.getMessage());
+			log.error("Exception occurred in create {}",e.getMessage());
 			response = new Response(null, true, e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
@@ -124,8 +111,10 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 					PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
 							.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
 					posService.updatePosOrder(posOrderUpdateRequest);
-					Delivery delivery = deliveryService.findByOrderId(orderId);
-					deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+					if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
+						Delivery delivery = deliveryService.findByOrderId(orderId);
+						deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+					}
 					paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
 				}
 				orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
@@ -135,7 +124,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			log.error("Exception occurred in update " + e.getMessage());
+			log.error("Exception occurred in update {}", e.getMessage());
 			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
@@ -154,9 +143,26 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			log.error("Exception occurred in orderRiderUpdate " + e.getMessage());
+			log.error("Exception occurred in orderRiderUpdate {}", e.getMessage());
 			response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
+	}
+
+	@GetMapping("/track/{orderId}")
+	public ResponseEntity<Void> orderTracking(@PathVariable String orderId) throws EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
+				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
+
+		String trackingUrl = "https://t.pidge.in?t="+delivery.getFulfillment().getTrackCode();
+		if (trackingUrl.isBlank()) {
+			throw new EntityNotFoundException("Order Tracking Link", orderId);
+		}
+		return ResponseEntity.status(HttpStatus.FOUND)
+				.location(URI.create(trackingUrl))
+				.build();
 	}
 }

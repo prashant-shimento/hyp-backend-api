@@ -49,7 +49,7 @@ class LocationServiceTest {
 		rest3.setDeliveryRadius(1.0);
 		restaurants.add(rest3);
 
-		List<String> serviceableRestaurants = locationService.getServicableRestaurants(addressPlaceData, restaurants);
+		List<String> serviceableRestaurants = locationService.getServiceableRestaurants(addressPlaceData, restaurants);
 
 		assertNotNull(serviceableRestaurants, "Serviceable restaurants list should not be null.");
 		assertEquals(2, serviceableRestaurants.size(), "Mismatch in expected deliverable restaurant count.");
@@ -83,7 +83,7 @@ class LocationServiceTest {
 		rest3.setDeliveryRadius(0.0);
 		restaurants.add(rest3);
 
-		List<String> serviceableRestaurants = locationService.getServicableRestaurants(addressPlaceData, restaurants);
+		List<String> serviceableRestaurants = locationService.getServiceableRestaurants(addressPlaceData, restaurants);
 
 		assertNotNull(serviceableRestaurants, "Serviceable restaurants list should not be null.");
 		assertEquals(0, serviceableRestaurants.size(), "Expected no restaurants to be deliverable.");

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import com.hyp.enums.OrderType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -79,7 +80,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	LocationService locationService;
 
 	@Autowired
-	PartnerService partnerService;
+	OrderTypeService orderTypeService;
 
 	@Autowired
 	NotificationService notificationService;
@@ -99,21 +100,26 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				() -> new EntityNotFoundException(Customer.class.getSimpleName(), orderDto.getCustomerId()));
 
 		Address address = null;
-		if (orderDto.getDeliveryDetails() != null) {
-			address = Optional.ofNullable(addressService.findById(orderDto.getDeliveryDetails().getAddressId()))
-					.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(),
-							orderDto.getDeliveryDetails().getAddressId()));
 
-			if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
-					address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
-					restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
-				throw new Exception("Location Not Deliverable");
-			}
-		} else {
-			if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
-				throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
+		//TODO: Need to validate orderType from DB once front end accommodate the changes
+		if(OrderType.fromCode(orderDto.getOrderType()) == OrderType.H) {
+			if (orderDto.getDeliveryDetails() != null) {
+				address = Optional.ofNullable(addressService.findById(orderDto.getDeliveryDetails().getAddressId()))
+						.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(),
+								orderDto.getDeliveryDetails().getAddressId()));
+
+				if (!locationService.isLocationDeliverable(address.getLocation().getLatitude(),
+						address.getLocation().getLongitude(), restaurant.getLocation().getLatitude(),
+						restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
+					throw new Exception("Location Not Deliverable");
+				}
+			} else { //TODO: this has to be moved to orderType Dine and needs front end changes in mocoda
+				if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
+					throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
+				}
 			}
 		}
+
 
 		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
 			throw new Exception("Order cannot be processed: Outside delivery hours.");
@@ -160,6 +166,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setOrderTime(LocalDateTime.now());
 		order.setCreatedAt(LocalDateTime.now());
 		order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
+		order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
 		order = this.save(order);
 
 		if (order.getPaymentType() == PaymentType.COD) {
@@ -219,7 +226,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					log.info("Processing standard fulfillment for order {}", order.getId());
 					deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
 				}
-
+				order.setDeliveryTrackingLink("https://api.hyperapps.in/order/track/"+order.getId());
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
 				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
 				Delivery delivery = deliveryService.findByOrderId(order.getId());

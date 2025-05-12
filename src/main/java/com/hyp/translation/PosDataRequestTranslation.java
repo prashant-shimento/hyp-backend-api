@@ -46,19 +46,18 @@ import io.micrometer.common.util.StringUtils;
 public class PosDataRequestTranslation {
 
 	public static PosData getPosData(PosDataRequest posDataRequest) {
-		PosData posData = PosData.builder()
-				.orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
-				.attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
-				.discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
-				.categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
-				.taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
-				.addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
-				.addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
-						posDataRequest.getItems()))
-				.variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
-						posDataRequest.getItems()))
-				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems())).build();
-		return posData;
+        return PosData.builder()
+                .orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
+                .attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
+                .discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
+                .categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
+                .taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
+                .addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
+                .addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
+                        posDataRequest.getItems()))
+                .variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
+                        posDataRequest.getItems()))
+                .items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems())).build();
 	}
 
 	public static Attribute translateToAttribute(AttributeRequest attributeRequest) {
@@ -83,7 +82,8 @@ public class PosDataRequestTranslation {
 			return null;
 		}
 		OrderType orderType = new OrderType();
-		orderType.setId(String.valueOf(orderTypeRequest.getOrdertypeid()));
+		orderType.setId(CommonUtils.genId());
+		orderType.setOrderTypeId(orderTypeRequest.getOrdertypeid());
 		orderType.setOrderType(orderTypeRequest.getOrdertype());
 		return orderType;
 	}
@@ -210,7 +210,7 @@ public class PosDataRequestTranslation {
 		}
 		Restaurant restaurant = existingRestaurant != null ? existingRestaurant : new Restaurant();
 		restaurant.setId(restaurantRequest.getRestaurantid());
-		restaurant.setActive(restaurantRequest.getActive().equalsIgnoreCase("1") ? true : false);
+		restaurant.setActive(restaurantRequest.getActive().equalsIgnoreCase("1"));
 		restaurant.setCurrencyHtml(restaurantRequest.getDetails().getCurrency_html());
 		restaurant.setCountry(restaurantRequest.getDetails().getCountry());
 		restaurant.setMinimumOrderAmount(restaurantRequest.getDetails().getMinimumorderamount());
@@ -394,8 +394,8 @@ public class PosDataRequestTranslation {
 
 	public static List<AddonGroup> getUniqueAddonGroupList(List<AddonGroupRequest> addonGroupRequestList) {
 		return addonGroupRequestList == null ? Collections.emptyList()
-				: addonGroupRequestList.stream().map(PosDataRequestTranslation::translateToAddonGroup)
-						.collect(Collectors.toSet()).stream().collect(Collectors.toList());
+				: new ArrayList<>(addonGroupRequestList.stream().map(PosDataRequestTranslation::translateToAddonGroup)
+                .collect(Collectors.toSet()));
 	}
 
 	public static AddonItem translateToAddonItem(AddonItemRequest addonItemRequest) {
@@ -448,7 +448,7 @@ public class PosDataRequestTranslation {
 		item.setItemAllowAddon(itemRequest.getItemallowaddon());
 		item.setVariationGroupName(itemRequest.getVariation_groupname());
 		item.setItemFavorite(itemRequest.getItem_favorite());
-		item.setInStock(itemRequest.getIn_stock().equalsIgnoreCase("1") ? true : false);
+		item.setInStock(itemRequest.getIn_stock().equalsIgnoreCase("1"));
 		item.setItemAllowVariation(itemRequest.getItemallowvariation());
 
 		item.setVariation(getVariationIdList(itemRequest.getVariation()));
@@ -489,7 +489,7 @@ public class PosDataRequestTranslation {
 	}
 
 	public static List<Item> translateToItemList(List<ItemRequest> itemRequestList) {
-		return itemRequestList.stream().map(itemRequest -> translateToItem(itemRequest)).collect(Collectors.toList());
+		return itemRequestList.stream().map(PosDataRequestTranslation::translateToItem).collect(Collectors.toList());
 	}
 
 	private static String getPrice(ItemRequest itemRequest) {

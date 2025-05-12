@@ -4,21 +4,13 @@ public enum DeliveryOrderStatusType {
 	CREATED, CANCELLED, PENDING, PROCESSING, FULFILLED, COMPLETED;
 	
 	public static DeliveryOrderStatusType getDeliveryOrderStatus(String value) {
-		switch (value) {
-		case "created":
-			return CREATED;
-		case "cancelled":
-			return CANCELLED;
-		case "pending":
-			return PENDING;
-		case "processing":
-			return PROCESSING;
-		case "fulfilled":
-			return FULFILLED;
-		case "completed":
-			return COMPLETED;
-		default:
-			return CREATED;
-		}
+        return switch (value) {
+            case "cancelled" -> CANCELLED;
+            case "pending" -> PENDING;
+            case "processing" -> PROCESSING;
+            case "fulfilled" -> FULFILLED;
+            case "completed" -> COMPLETED;
+            default -> CREATED;
+        };
 	}
 }

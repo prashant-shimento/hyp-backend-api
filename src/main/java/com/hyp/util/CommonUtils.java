@@ -41,6 +41,10 @@ public class CommonUtils {
 		return orderString;
 	}
 
+	public static double parseISOAmount(int isoAmount) {
+		return isoAmount / 100.0;
+	}
+
 	public static int emptyIntToZero(String s) {
 		if (s.length() == 0) {
 			return 0;

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hyp.enums.CaseStatusType;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -120,7 +121,7 @@ public class Order {
 	
 	@Field("delivery_tracking_link")
 	private String deliveryTrackingLink;
-	
+
 	@Field("screen")
 	private String screen;
 	
@@ -129,7 +130,15 @@ public class Order {
 	
 	@Field("order_logs")
     private List<OrderLog> orderLogs = new ArrayList<>();
-	
+
+	@Field("follow_up_by")
+	private String followUpBy;
+
+	@Field("case")
+	private OrderCase orderCase;
+
+	@Field("platform_fee")
+	private Double platformFee;
 
 	@Data
 	@NoArgsConstructor
@@ -253,6 +262,38 @@ public class Order {
             this.loggedAt = LocalDateTime.now();
         }
     }
+
+	@Data
+	@NoArgsConstructor
+	public static class OrderCase {
+
+		@Field("is_case")
+		private boolean isCase;
+
+		@Field("details")
+		private String details;
+
+		@Field("created_by")
+		private String createdBy;
+
+		@Field("updated_by")
+		private String updatedBy;
+
+		@Field("created_at")
+		@CreatedDate
+		private LocalDateTime createdAt = LocalDateTime.now();
+
+		@Field("updated_at")
+		@LastModifiedDate
+		private LocalDateTime updatedAt;
+
+		@Field("resolution")
+		private String resolution;
+
+		@Field("status")
+		private CaseStatusType status;
+
+	}
 	
 	
 

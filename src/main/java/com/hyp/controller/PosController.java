@@ -131,7 +131,7 @@ public class PosController {
 			log.error("Exception occurred on orderCallBack {}", e.getMessage());
 			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occurred")
 					.error(e.getMessage()).build();
-			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+			return new ResponseEntity<>(response, HttpStatus.OK);
 		}
 	}
 	
@@ -143,10 +143,10 @@ public class PosController {
 			orderEventPublisher.publishProcessOrderEvent(order);
 			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
 		} catch (Exception e) {
-			e.printStackTrace();
-			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occured")
+			log.error("Exception occurred on POS createOrder {}", e.getMessage());
+			response = PosResponse.builder().httpCode(HttpStatus.INTERNAL_SERVER_ERROR.value()).message("Error Occurred in createOrder")
 					.error(e.getMessage()).build();
-			return new ResponseEntity<PosResponse>(response, HttpStatus.OK);
+			return new ResponseEntity<>(response, HttpStatus.OK);
 		}
 	}
 }

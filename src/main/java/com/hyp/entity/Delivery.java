@@ -1,5 +1,6 @@
 package com.hyp.entity;
 
+import java.io.Serial;
 import java.time.LocalDateTime;
 
 import org.springframework.data.mongodb.core.mapping.Document;

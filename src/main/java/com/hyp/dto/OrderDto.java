@@ -74,10 +74,12 @@ public class OrderDto extends BaseDto {
 	private String seat;
 	private String paymentOrderId;
     private List<OrderLog> orderLogs = new ArrayList<>();
-
+	private OrderCase orderCase;
+	private Double platformFee;
 	
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class OrderItem {
 		@NotBlank(message = "OrderItem ID cannot be blank")
 		private String id;
@@ -103,6 +105,7 @@ public class OrderDto extends BaseDto {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class OrderAddonItem {
 		@NotBlank(message = "OrderAddonItem item ID cannot be blank")
 		private String addonItemId;
@@ -119,6 +122,7 @@ public class OrderDto extends BaseDto {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class OrderTax {
 
 		@NotNull(message = "OrderTax id title cannot be blank")
@@ -135,6 +139,7 @@ public class OrderDto extends BaseDto {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class OrderDiscount {
 		@NotBlank(message = "OrderDiscount id cannot be blank")
 		private String id;
@@ -147,6 +152,7 @@ public class OrderDto extends BaseDto {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class OrderItemTax {
 		@NotBlank(message = "OrderItemTax ID cannot be blank")
 		private String id;
@@ -158,6 +164,7 @@ public class OrderDto extends BaseDto {
 
 	@Data
 	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
 	public static class DeliveryDetails {
 		@NotBlank(message = "Address ID cannot be blank")
 		private String addressId;
@@ -172,4 +179,18 @@ public class OrderDto extends BaseDto {
         private String status;
         private LocalDateTime loggedAt;
     }
+
+	@Data
+	@NoArgsConstructor
+	@JsonInclude(Include.NON_NULL)
+	public static class OrderCase {
+		private boolean isCase;
+		private String details;
+		private String createdBy;
+		private String updatedBy;
+		private LocalDateTime createdAt;
+		private LocalDateTime updatedAt;
+		private String resolution;
+		private String status;
+	}
 }

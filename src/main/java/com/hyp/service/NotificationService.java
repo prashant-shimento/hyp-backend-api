@@ -144,7 +144,7 @@ public class NotificationService {
 	@Async
 	public void sendInternalGroupNotification(String templateName, List<String> parameters) {
 		String alertMobileNum = redisService.getAlertUsers();
-		List<String> mobileNumbers = Arrays.asList(alertMobileNum.split(","));
+		String[] mobileNumbers = alertMobileNum.split(",");
 		for (String mobile : mobileNumbers) {
 			sendNotification(mobile, templateName, parameters);
 		}

@@ -7,22 +7,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.hyp.entity.*;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hyp.entity.BaseEntity;
-import com.hyp.entity.Item;
-import com.hyp.entity.Partner;
-import com.hyp.entity.Restaurant;
-import com.hyp.entity.Tax;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.Filters;
@@ -109,13 +106,11 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 	}
 
 	public T populateReferences(T entity) {
-		if (entity instanceof Item) {
-			Item item = (Item) entity;
-			item.setTaxes(lookupByIds(Tax.class, item.getItemTax(), "taxes"));
+		if (entity instanceof Item item) {
+            item.setTaxes(lookupByIds(Tax.class, item.getItemTax(), "taxes"));
 		}
-		if (entity instanceof Partner) {
-			Partner partner = (Partner) entity;
-			partner.setRestaurantDetails(lookupByIds(Restaurant.class, partner.getRestaurants(), "restaurants"));
+		if (entity instanceof Partner partner) {
+            partner.setRestaurantDetails(lookupByIds(Restaurant.class, partner.getRestaurants(), "restaurants"));
 		}
 		return entity;
 	}
@@ -125,6 +120,11 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 			return Collections.emptyList();
 		}
 		Query query = Query.query(Criteria.where("_id").in(ids));
+		return mongoTemplate.find(query, entityClass, collectionName);
+	}
+
+	private <E> List<E> lookupByKey(Class<E> entityClass, String key, String value, String collectionName) {
+		Query query = Query.query(Criteria.where(key).is(value));
 		return mongoTemplate.find(query, entityClass, collectionName);
 	}
 
@@ -154,16 +154,16 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 	}
 
 	@Override
-	public void softDeleteByRestaurant(Class<T> entityClass, ID id) {
-		Query query = Query.query(Criteria.where("restaurant_id").is(id));
-		List<T> entities = mongoTemplate.find(query, entityClass);
+	public void softDeleteByRestaurant(Class<T> entityClass, ID restaurantId) {
+		Query query = Query.query(Criteria.where("restaurant_id").is(restaurantId));
+		Update update = new Update().set("is_deleted", true);
+		mongoTemplate.updateMulti(query, update, entityClass);
+	}
 
-		for (T entity : entities) {
-			if (entity instanceof BaseEntity) {
-				((BaseEntity) entity).setDeleted(true);
-			}
-		}
-		repository.saveAll(entities);
+	@Override
+	public void deleteAll(Class<T> entityClass) {
+		Query query = new Query();
+		mongoTemplate.remove(query, entityClass);
 	}
 
 	@Override
@@ -184,13 +184,13 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		List<WriteModel<Document>> writeModels = new ArrayList<>();
 
 		for (T entity : entities) {
-			writeModels.add(new InsertOneModel<Document>((Document) entity));
+			writeModels.add(new InsertOneModel<>((Document) entity));
 		}
 		return mongoTemplate.getCollection(getCollectionName(entityClass)).bulkWrite(writeModels,
 				new BulkWriteOptions().ordered(false));
 	}
 
-	public BulkWriteResult bulkUpdate(List<T> entities, Class<T> entityClass) {
+	public void bulkUpdate(List<T> entities, Class<T> entityClass) {
 		List<WriteModel<Document>> writeModels = new ArrayList<>();
 
 		for (T entity : entities) {
@@ -199,10 +199,10 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		    Map<String, Object> entityMap = objectMapper.convertValue(entity, new TypeReference<Map<String, Object>>() {});
 		    Document entityDoc = new Document(entityMap);
 			Bson update = new Document("$set", entityDoc);
-			writeModels.add(new UpdateOneModel<Document>(filter, update));
+			writeModels.add(new UpdateOneModel<>(filter, update));
 		}
 
-		return mongoTemplate.getCollection(getCollectionName(entityClass)).bulkWrite(writeModels,
+		mongoTemplate.getCollection(getCollectionName(entityClass)).bulkWrite(writeModels,
 				new BulkWriteOptions().ordered(false));
 	}
 

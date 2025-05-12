@@ -3,11 +3,15 @@ package com.hyp.dto;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hyp.entity.OrderType;
+import com.hyp.entity.Restaurant;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 
+import com.hyp.model.PaymentRoute;
+import com.hyp.model.PlatformFee;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -54,6 +58,11 @@ public class RestaurantDto extends BaseDto {
 	private String paymentPartner;
 	private String instantRefund;
 	private Integer fulfillmentDelay;
-
+	private Boolean isServiceable;
+	private String serviceableMessage;
+	private Double deliveryFee;
+	private List<PlatformFee> platformFee;
+	private boolean paymentRoutingEnabled;
+	private List<PaymentRoute> paymentRouteList;
 
 }

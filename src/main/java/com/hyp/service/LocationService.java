@@ -3,6 +3,7 @@ package com.hyp.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -18,6 +19,7 @@ import com.hyp.model.PlacePredictionData;
 import com.hyp.request.PredictionRequest;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Component
 public class LocationService {
 
@@ -61,7 +63,7 @@ public class LocationService {
 			});
 			return placePredictionResponse.block();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in getLocationPrediction {}", e.getMessage());
 			throw new RuntimeException("Error in getLocationPrediction: " + e.getMessage(), e);
 		}
 	}
@@ -82,43 +84,24 @@ public class LocationService {
 			});
 			return placeResponse.block();
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in getPlaceDetails {}", e.getMessage());
 			throw new RuntimeException("Error in getPlaceDetails: " + e.getMessage(), e);
 		}
 	}
 
-	public String getPlaceByGeocodeByRest(double latitude, double longitude) {
-		try {
-			String url = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + latitude + "," + longitude
-					+ "&key=" + googleApiKey;
-			WebClient webClient = WebClient.builder().baseUrl(url).build();
-			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
-			placeResponse.subscribe(response -> {
-				
-			}, error -> {
-				System.err.println("Error response: " + error.getMessage());
-				
-			});
-			return placeResponse.block();
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Error in getPlaceByGeocodeByRest: " + e.getMessage(), e);
-		}
-	}
-
-	public GeocodingResult[] getPlaceByGeocodebyClient(double latitude, double longitude) {
+	public GeocodingResult[] getPlaceByGeocodeByClient(double latitude, double longitude) {
 		try {
 			GeoApiContext context = new GeoApiContext.Builder().apiKey(googleApiKey).build();
 			LatLng latLng = new LatLng(latitude, longitude);
-			GeocodingResult[] results = GeocodingApi.reverseGeocode(context, latLng).await();
-			return results;
+			return GeocodingApi.reverseGeocode(context, latLng).await();
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Error in getPlaceByGeocodebyClient: " + e.getMessage(), e);
+			log.error("Error in getPlaceByGeocodeByClient {}", e.getMessage());
+
+			throw new RuntimeException("Error in getPlaceByGeocodeByClient: " + e.getMessage(), e);
 		}
 	}
 	
-	public List<String> getServicableRestaurants(AddressDto addressPlaceData, List<Restaurant> restaurants) {
+	public List<String> getServiceableRestaurants(AddressDto addressPlaceData, List<Restaurant> restaurants) {
 		List<String> serviceableRestaurants = new ArrayList<>();
 		try {
 			for (Restaurant restaurant : restaurants) {
@@ -130,8 +113,8 @@ public class LocationService {
 			}
 			return serviceableRestaurants;
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException("Error in getServicableRestaurants: " + e.getMessage(), e);
+			log.error("Error in getServiceableRestaurants {}", e.getMessage());
+			throw new RuntimeException("Error in getServiceableRestaurants: " + e.getMessage(), e);
 		}
 	}
 
