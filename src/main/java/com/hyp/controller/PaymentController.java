@@ -124,18 +124,17 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 	}
 
 	@PostMapping("/callback")
-	public ResponseEntity<Response> razorPayWebHook(@RequestBody RazorpayEventDto razorPayEventDto) {
+	public ResponseEntity<Response> paymentCallback(@RequestBody RazorpayEventDto razorPayEventDto) {
 		Response response;
+
+
 		try {
 			switch (razorPayEventDto.getEvent()) {
 			case "order.paid":
-				handleOrderPaidEvent(razorPayEventDto);
+				handleOrderEvent(razorPayEventDto);
 				break;
-			case "payment.captured":
-				handlePaymentEvent(razorPayEventDto, OrderStatusType.PROCESSING);
-				break;
-			case "payment.failed":
-				handlePaymentEvent(razorPayEventDto, OrderStatusType.PAYMENT_FAILED);
+                case "payment.failed" , "payment.captured":
+				handlePaymentEvent(razorPayEventDto);
 				break;
 			case "refund.processed":
 				handleRefundEvent(razorPayEventDto, OrderStatusType.REFUND_COMPLETED);
@@ -154,7 +153,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 		}
 	}
 
-	private void handleOrderPaidEvent(RazorpayEventDto razorPayEventDto) {
+	private void handleOrderEvent(RazorpayEventDto razorPayEventDto) {
 		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
 		Order order = orderService.findById(payment.getOrderId());
@@ -169,7 +168,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 
 	}
 
-	private void handlePaymentEvent(RazorpayEventDto razorPayEventDto, OrderStatusType orderStatus) {
+	private void handlePaymentEvent(RazorpayEventDto razorPayEventDto) {
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);

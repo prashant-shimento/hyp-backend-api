@@ -1,5 +1,6 @@
 package com.hyp.model;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -62,6 +63,9 @@ public class DeliveryOrderStatus {
         @JsonProperty("parent_id")
         private int parentId;
 
+        @JsonProperty("fulfillment_histories")
+        private List<FulfillmentHistory> fulfillmentHistory;
+
     }
 
     @Data
@@ -88,6 +92,33 @@ public class DeliveryOrderStatus {
     }
 
     @Data
+    public static class CancellationInfo {
+        @JsonProperty("timestamp")
+        private String timestamp;
+
+        @JsonProperty("reason")
+        private String reason;
+
+        @JsonProperty("cancelled_by")
+        private int cancelledBy;
+
+        @JsonProperty("type")
+        private int type;
+
+        private Actor actor;
+
+        @JsonProperty("smart_allocation_id")
+        private int smartAllocationId;
+
+    }
+
+    @Data
+    public static class Actor {
+        private int id;
+        private int type;
+    }
+
+    @Data
     public static class DeliveryFulfillment {
         private Channel channel;
         private List<Log> logs;
@@ -100,6 +131,24 @@ public class DeliveryOrderStatus {
         private String trackCode;
         @JsonProperty("delivery_charge")
         private double deliveryCharge;
+
+    }
+
+    @Data
+    public static class FulfillmentHistory {
+        private Channel channel;
+        private List<Log> logs;
+        private DeliveryFulfillStatusType status;
+        private LogisticsInfo pickup;
+        private Rider rider;
+        private LogisticsInfo drop;
+        private Mtg mtg;
+        @JsonProperty("track_code")
+        private String trackCode;
+        @JsonProperty("delivery_charge")
+        private double deliveryCharge;
+        @JsonProperty("cancellation_info")
+        private CancellationInfo cancellationInfo;
 
     }
 

@@ -190,8 +190,10 @@ public class DeliveryListener implements MessageListener {
 
                 }
 
-                String locationKey = "rider_location:" + orderId + ":" + currentStatus;
-                redisService.setRedisData(locationKey, currentStatus, expiryDuration.toSeconds());
+                if(currentStatus != DeliveryFulfillStatusType.DELIVERED){
+                    String locationKey = "rider_location:" + orderId + ":" + currentStatus;
+                    redisService.setRedisData(locationKey, currentStatus, expiryDuration.toSeconds());
+                }
 
             } catch (DeliveryException e) {
                 log.error("Error processing rider location expiry: {}", e.getMessage(), e);

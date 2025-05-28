@@ -47,7 +47,7 @@ public class RedisService {
 	public void removeRedisData(String key) {
 		try {
 			Boolean isDeleted = redisObjectTemplate.delete(key);
-			if (Boolean.TRUE.equals(isDeleted)) {
+			if (isDeleted) {
 				log.info("Successfully removed key: {}", key);
 			} else {
 				log.warn("Key not found or not removed: {}", key);

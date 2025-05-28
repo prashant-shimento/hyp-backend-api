@@ -167,7 +167,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.setCreatedAt(LocalDateTime.now());
 		order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
 		order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
-		order = this.save(order);
+		order = save(order);
 
 		if (order.getPaymentType() == PaymentType.COD) {
 			orderEventPublisher.publishPosOrderEvent(order);
@@ -226,7 +226,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					log.info("Processing standard fulfillment for order {}", order.getId());
 					deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
 				}
-				order.setDeliveryTrackingLink("https://api.hyperapps.in/order/track/"+order.getId());
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
 				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -237,10 +236,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 			updateOrderStatus(order.getId(), newOrderStatus);
 		} catch (DeliveryException e) {
-			throw new RuntimeException("Exception Occured while createOrder in Delivery Service " + e.getMessage());
+			throw new RuntimeException("Exception Occurred while createOrder in Delivery Service " + e.getMessage());
 		} catch (Exception e) {
 			this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
-			throw new RuntimeException("Exception Occured while processCallback Order " + e.getMessage());
+			throw new RuntimeException("Exception Occurred while processCallback Order " + e.getMessage());
 		}
 	}
 
