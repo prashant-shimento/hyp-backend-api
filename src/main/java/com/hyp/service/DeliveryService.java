@@ -322,4 +322,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public RiderLocation getRiderLocation(String deliveryOrderId) throws DeliveryException {
 		return pidgeClient.getRiderLocation(deliveryOrderId);
 	}
+
+	public RiderLocation getPorterRiderLocation(String deliveryOrderId) throws DeliveryException {
+		Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
+		String porterId = delivery.getFulfillment().getChannel().getOrderId();
+		return pidgeClient.getPorterRiderLocation(porterId);
+	}
 }

@@ -51,7 +51,7 @@ public class MetaService {
 			log.info("sendMessage Response {}", objectMapper.writeValueAsString(facebookMessageResponse));
 			return facebookMessageResponse;
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Error in sendMessage {}", e.getMessage());
 			throw new NotificationException("Error in sendMessage: " + e.getMessage());
 		}
 	}

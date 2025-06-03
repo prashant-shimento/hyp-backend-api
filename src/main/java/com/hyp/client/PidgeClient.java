@@ -3,6 +3,7 @@ package com.hyp.client;
 import java.time.Duration;
 import java.util.List;
 
+import com.hyp.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -19,10 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import com.hyp.constants.Constants;
 import com.hyp.exception.DeliveryException;
-import com.hyp.model.DeliveryOrderStatus;
-import com.hyp.model.DeliveryQuote;
-import com.hyp.model.DeliveryRiderLocation;
-import com.hyp.model.RiderLocation;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryFulfillResponse;
 import com.hyp.request.DeliveryOrderRequest;
@@ -390,6 +387,51 @@ public class PidgeClient {
 		}catch (Exception e) {
 			log.error("Error in getRiderLocation: {}", e.getMessage(), e);
 			throw new DeliveryException("Error in getRiderLocation: " + e.getMessage());
+		}
+	}
+
+	@Retryable(retryFor = { WebClientResponseException.Unauthorized.class })
+	public RiderLocation getPorterRiderLocation(String orderId) throws DeliveryException {
+		String customerUuid = "c64094ca-5f13-4aeb-9a81-f9f0af5e43c1";
+		String endpoint = String.format(
+				"https://porter.in/api/public/orders/order_details?order_id=%s&customer_uuid=%s",
+				orderId, customerUuid
+		);
+
+		try {
+			LoggingUtils.logRequest("getPorterRiderLocation", endpoint);
+
+			JsonNode root = getClient()
+					.get()
+					.uri(endpoint)
+					.retrieve()
+					.bodyToMono(JsonNode.class)
+					.doOnNext(res -> LoggingUtils.logResponse("getPorterRiderLocation", res))
+					.block();
+
+			if (root == null || root.isMissingNode()) {
+				log.warn("Null or missing response for orderId: {}", orderId);
+				return null;
+			}
+
+			JsonNode partnerLocation = root.path("order_details").path("partner_location");
+			if (partnerLocation.isMissingNode()) {
+				log.warn("No partner location found in response for orderId: {}", orderId);
+				return null;
+			}
+
+			double lat = partnerLocation.path("lat").asDouble();
+			double lng = partnerLocation.path("long").asDouble();
+			return RiderLocation.builder()
+					.data(Location.builder().latitude(lat).longitude(lng).build())
+					.build();
+
+		} catch (WebClientResponseException.Unauthorized ex) {
+			log.error("Unauthorized access while fetching rider location for orderId: {}", orderId, ex);
+			throw new DeliveryException("Unauthorized access to Porter API");
+		} catch (Exception ex) {
+			log.error("Error in getPorterRiderLocation for orderId: {}", orderId, ex);
+			throw new DeliveryException("Failed to fetch rider location: " + ex.getMessage());
 		}
 	}
 

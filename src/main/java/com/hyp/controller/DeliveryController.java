@@ -140,13 +140,19 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	@GetMapping("/rider-location/{orderId}")
 	public ResponseEntity<Response> getRiderLocation(@PathVariable String orderId)
 			throws EntityNotFoundException, DeliveryException {
+		RiderLocation riderLocation = null;
 		Order order = Optional.ofNullable(orderService.findById(orderId))
 				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
 		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
 				.orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
-		RiderLocation riderLocation = deliveryService
-				.getRiderLocation(delivery.getDeliveryOrderId());
-
+		if(delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
+				|| delivery.getService().equalsIgnoreCase("porter")){
+			log.info("Getting Porter Rider location of the order {}", orderId);
+			riderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+		} else {
+			log.info("Getting Rider location of the order {}", orderId);
+			riderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
+		}
 		Response response = new Response(Collections.singletonList(riderLocation), false,
 				"Rider Location Fetched");
 		return ResponseEntity.ok(response);
@@ -243,5 +249,6 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 				"Delivery Order Status Fetched");
 		return ResponseEntity.ok(response);
 	}
+
 
 }

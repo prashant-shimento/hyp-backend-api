@@ -145,7 +145,15 @@ public class DeliveryListener implements MessageListener {
                         .filter(Objects::nonNull).findFirst();
 
                 // Fetch current rider location from live tracking API
-                RiderLocation currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
+                RiderLocation currentRiderLocation = null;
+                if(delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
+                || delivery.getService().equalsIgnoreCase("porter")){
+                    log.info("Getting Porter Rider location of the order {}", orderId);
+                    currentRiderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+                } else {
+                    log.info("Getting Rider location of the order {}", orderId);
+                    currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
+                }
                 log.info("Current Rider location of the order {}, status {},Location: {}", orderId, lastStatus, currentRiderLocation.toString());
 
                 boolean isLocationMissing = currentRiderLocation.getData() == null || currentRiderLocation.getData().getLatitude() == null && currentRiderLocation.getData().getLongitude() == null;
