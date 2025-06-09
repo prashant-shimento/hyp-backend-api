@@ -104,7 +104,7 @@ public class DeliveryListener implements MessageListener {
                             parameters);
                     log.info("Sent delivery delay alert for Order ID: {}", orderId);
 
-                    String triggerFulfillOnRiderDelay = redisService.getRedisData("triggerFulfillOnRiderDelay").orElse("false");
+                    String triggerFulfillOnRiderDelay = redisService.getRedisData(Constants.REDIS_KEY_TRIGGER_FULFILL_ON_RIDER_DELAY).orElse("false");
                     log.info("triggerSmartFulfill on delay enabled status {}", triggerFulfillOnRiderDelay);
                     if (triggerFulfillOnRiderDelay.equalsIgnoreCase("true")) {
                         log.info("Smart fulfilling the order again due to delay in assigning rider for order, {}",
@@ -185,11 +185,11 @@ public class DeliveryListener implements MessageListener {
 
                     if (List.of(DeliveryFulfillStatusType.OUT_FOR_PICKUP, DeliveryFulfillStatusType.REACHED_PICKUP,
                             DeliveryFulfillStatusType.PICKED_UP).contains(currentStatus)) {
-                        String riderLocationPickupStage = redisService.getRedisData("riderLocationPickupStage").orElse("5");
+                        String riderLocationPickupStage = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE).orElse("5");
                         expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationPickupStage));
                     } else if (List.of(DeliveryFulfillStatusType.OUT_FOR_DELIVERY, DeliveryFulfillStatusType.REACHED_DELIVERY)
                             .contains(currentStatus)) {
-                        String riderLocationOfdStage = redisService.getRedisData("riderLocationOfdStage").orElse("10");
+                        String riderLocationOfdStage = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_OFD_STAGE).orElse("10");
                         expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationOfdStage));
                     } else {
                         log.info("Order ID: {} has reached final status: {}, stopping tracking.", orderId, currentStatus);

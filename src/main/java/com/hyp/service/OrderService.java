@@ -218,7 +218,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					deliveryService.setFulfillExpiry(order.getId(), delayMinutes);
 					return;
 				}
-				String fulfillmentMode = redisService.getRedisData("fulfill").orElse("smart");
+				String fulfillmentMode = redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
 					log.warn("No PENDING delivery found for order {}. Skipping fulfillment.", order.getId());

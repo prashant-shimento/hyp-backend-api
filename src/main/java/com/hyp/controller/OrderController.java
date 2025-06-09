@@ -92,7 +92,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			if(OrderStatusType.ACCEPTED.name().equalsIgnoreCase(orderDto.getStatus())
 					&& restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
-				String fulFill = redisService.getRedisData("fulfill").orElse("smart");
+				String fulFill = redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
 					if (fulFill.equalsIgnoreCase("smart")) {

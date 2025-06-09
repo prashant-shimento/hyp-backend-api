@@ -78,7 +78,7 @@ public class OrderEventListener {
 		if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
 			orderEventPublisher.publishDeliveryOrderEvent(order);
 		}
-		String delayAlertTime = redisService.getRedisData("delayAlertTime").orElse("45");
+		String delayAlertTime = redisService.getRedisData(Constants.REDIS_KEY_DELAY_ALERT_TIME).orElse("45");
 		String redisDelayKey = "order:" + order.getId() + ":delay";
 		long delayTtl = Duration.ofMinutes(Integer.parseInt(delayAlertTime)).toSeconds();
 		redisService.setRedisData(redisDelayKey, OrderStatusType.PAID, delayTtl);

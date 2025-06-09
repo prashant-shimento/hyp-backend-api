@@ -74,7 +74,7 @@ public class PidgeClient {
 	private Environment env;
 
 	private String getToken() throws DeliveryException {
-		return redisService.getRedisData("pidgeToken").orElseThrow(() -> {
+		return redisService.getRedisData(Constants.REDIS_KEY_PIDGE_TOKEN).orElseThrow(() -> {
 			log.error("Token not found in Redis for key: pidgeToken");
 			return new DeliveryException("Token not found in Redis");
 		});
@@ -339,7 +339,7 @@ public class PidgeClient {
 			if (newToken == null || newToken.isEmpty()) {
 				throw new DeliveryException("Failed to refresh token: Received empty token");
 			}
-			redisService.setRedisData("pidgeToken", newToken, 0);
+			redisService.setRedisData(Constants.REDIS_KEY_PIDGE_TOKEN, newToken, 0);
 			log.info("Token refreshed successfully");
 		} catch (Exception e) {
 			log.error("Error refreshing token: {}", e.getMessage(), e);

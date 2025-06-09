@@ -72,7 +72,12 @@ public interface Constants {
 	
 	String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "95098113-03a2-4cf2-8454-3c4323da9f69";
 
-
+	String REDIS_KEY_PIDGE_TOKEN = "pidgeToken";
+	String REDIS_KEY_FULFILL = "fulfill";
+	String REDIS_KEY_TRIGGER_FULFILL_ON_RIDER_DELAY = "triggerFulfillOnRiderDelay";
+	String REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE = "riderLocationPickupStage";
+	String REDIS_KEY_RIDER_LOCATION_OFD_STAGE = "riderLocationOfdStage";
+	String REDIS_KEY_DELAY_ALERT_TIME = "delayAlertTime";
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
 
 	public static final String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS";
