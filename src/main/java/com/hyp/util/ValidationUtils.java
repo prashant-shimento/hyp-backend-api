@@ -24,15 +24,19 @@ public class ValidationUtils {
 	}
 
 	public static boolean isWithinDeliveryHours(List<DeliveryHours> deliveryHours) {
-        ZonedDateTime nowUTC = ZonedDateTime.now(ZoneId.of("UTC"));
-        ZonedDateTime nowIST = nowUTC.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
+		ZonedDateTime nowUTC = ZonedDateTime.now(ZoneId.of("UTC"));
+		ZonedDateTime nowIST = nowUTC.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
 		LocalTime now = nowIST.toLocalTime();
 
 		for (DeliveryHours deliveryHour : deliveryHours) {
 			LocalTime from = LocalTime.parse(deliveryHour.getFrom());
 			LocalTime to = LocalTime.parse(deliveryHour.getTo());
 
-			if (now.isAfter(from) && now.isBefore(to)) {
+			if (from.equals(to)) {
+				return true;
+			}
+
+			if (!now.isBefore(from) && !now.isAfter(to)) {
 				return true;
 			}
 		}

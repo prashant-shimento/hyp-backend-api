@@ -115,7 +115,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 						Delivery delivery = deliveryService.findByOrderId(orderId);
 						deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
 					}
-					paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
+					paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(), "Cancellation");
 				}
 				orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
 			}

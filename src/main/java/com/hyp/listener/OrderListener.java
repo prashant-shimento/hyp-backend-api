@@ -84,6 +84,22 @@ public class OrderListener implements MessageListener {
 					}
 				}
 			}
+			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delay")) {
+				String orderId = expiredKey.split(":")[1];
+				log.info("Received Order Delay Expiry from Redis for {}", orderId);
+				Order order = orderService.findById(orderId);
+				if (order != null) {
+					if (!OrderStatusType.DELIVERED.name().equalsIgnoreCase(order.getStatus().name())) {
+						Customer customer = customerService.findById(order.getCustomerId());
+						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+						List<String> parameters = CommonUtils.buildStringList(customer.getName(), orderId, restaurant.getRestaurantName(),
+								restaurant.getSupportContact(), restaurant.getRestaurantName());
+						notificationService.sendInternalGroupNotification(Constants.META_ORDER_DELAY_ALERT_TEMPLATE,
+								parameters);
+						log.info("Sent Order delay alert for {}", orderId);
+					}
+				}
+			}
 			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":payment")) {
 				String orderId = expiredKey.split(":")[1];
 				log.info("Received Payment Paid Order Expiry from Redis for {}", orderId);

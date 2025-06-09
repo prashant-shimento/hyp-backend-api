@@ -66,6 +66,9 @@ public interface Constants {
 	String META_MENU_PUSH_ALERT_TEMPLATE = "menu_push_alert";
 	String META_STOCK_UPDATE_ALERT_TEMPLATE = "stock_update_alert";
 	String META_RIDER_DELAY_ALERT_TEMPLATE = "rider_not_moving";
+	String META_ORDER_DELAY_ALERT_TEMPLATE = "order_delay_customer_alert";
+	String META_REFUND_TEMPLATE = "order_refund_alert";
+	String REFUND_REASON = "Token of Apology";
 	
 	String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "95098113-03a2-4cf2-8454-3c4323da9f69";
 

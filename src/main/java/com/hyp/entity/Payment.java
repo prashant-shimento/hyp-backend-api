@@ -65,6 +65,9 @@ public class Payment extends BaseEntity {
 		@Field("created_at")
 		private Date createdAt;
 
+		@Field("reason")
+		private String reason;
+
 	}
 
 }

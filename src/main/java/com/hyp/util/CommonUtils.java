@@ -46,7 +46,7 @@ public class CommonUtils {
 	}
 
 	public static int emptyIntToZero(String s) {
-		if (s.length() == 0) {
+		if (s.isEmpty()) {
 			return 0;
 		} else {
 			return Integer.parseInt(s);

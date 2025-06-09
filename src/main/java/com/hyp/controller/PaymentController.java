@@ -102,8 +102,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 			throw new PaymentException("Refund Already " + order.getStatus());
 		}
 		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), restaurant.isInstantRefund());
-		paymentService.save(payment);
+		payment = paymentService.createRefund(refundDto.getOrderId(), refundDto.getAmount(), restaurant.isInstantRefund(), refundDto.getReason());
 		return ResponseEntity.ok(Response.builder().data(Collections.singletonList(payment)).error(false).message("Refund Initiated").build());
 	}
 

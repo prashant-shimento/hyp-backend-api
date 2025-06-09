@@ -31,15 +31,11 @@ public enum OrderStatusType {
 	}
 
 	public static OrderStatusType getOrderStatusByRefundStatus(String value) {
-		switch (value) {
-		case "pending":
-			return REFUND_INITIATED;
-		case "processed":
-			return REFUND_COMPLETED;
-		case "failed":
-			return REFUND_FAILED;
-		default:
-			return REFUND_PENDING;
-		}
+        return switch (value) {
+            case "pending" -> REFUND_INITIATED;
+            case "processed" -> REFUND_COMPLETED;
+            case "failed" -> REFUND_FAILED;
+            default -> REFUND_PENDING;
+        };
 	}
 }

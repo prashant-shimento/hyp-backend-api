@@ -96,6 +96,16 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Restaurant restaurant = Optional.ofNullable(restaurantService.findById(orderDto.getRestaurantId())).orElseThrow(
 				() -> new EntityNotFoundException(Restaurant.class.getSimpleName(), orderDto.getRestaurantId()));
 
+		if(!restaurant.isServiceable()){
+			throw new Exception("Restaurant is not serviceable");
+		}
+		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
+			throw new Exception("Order cannot be processed: Outside delivery hours.");
+		}
+		if(!restaurant.isActive()){
+			throw new Exception("Restaurant is not active");
+		}
+
 		Customer customer = Optional.ofNullable(customerService.findById(orderDto.getCustomerId())).orElseThrow(
 				() -> new EntityNotFoundException(Customer.class.getSimpleName(), orderDto.getCustomerId()));
 
@@ -118,11 +128,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
 				}
 			}
-		}
-
-
-		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
-			throw new Exception("Order cannot be processed: Outside delivery hours.");
 		}
 
 		if (orderDto.getOrderDiscount() != null) {
@@ -227,7 +232,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
 				}
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
-				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund());
+				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(),"Cancelled by Restaurant");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
 						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {

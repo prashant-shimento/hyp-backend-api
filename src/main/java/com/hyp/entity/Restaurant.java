@@ -147,8 +147,8 @@ public class Restaurant {
 	@Field("fulfillment_delay")
 	private Integer fulfillmentDelay;
 
-	@Field("is_serviceable")
-	private Boolean isServiceable;
+	@Field("serviceable")
+	private boolean serviceable;
 
 	@Field("serviceable_message")
 	private String serviceableMessage;

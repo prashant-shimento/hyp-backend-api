@@ -246,7 +246,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		return paymentRepository.findByPaymentId(paymentId);
 	}
 
-	public Payment createRefund(String orderId, double amount, boolean instantRefund) throws PaymentException {
+	public Payment createRefund(String orderId, double amount, boolean instantRefund, String reason) throws PaymentException {
 		try {
 			Payment payment = paymentRepository.findByOrderId(orderId);
 
@@ -266,9 +266,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			paymentRefund.setSpeedProcessed(refund.get("speed_processed"));
 			paymentRefund.setSpeedRequested(refund.get("speed_requested"));
 			paymentRefund.setCreatedAt((Date) refund.get("created_at"));
+			paymentRefund.setReason(Optional.ofNullable(reason).orElse(Constants.REFUND_REASON));
 			payment.setRefund(paymentRefund);
 
-			this.save(payment);
+			save(payment);
 			orderService.updateOrderStatus(orderId,
 					OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
 			return payment;

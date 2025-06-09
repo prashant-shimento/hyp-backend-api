@@ -138,12 +138,20 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	public void processDeliveryCallback(Delivery delivery, DeliveryOrderData deliveryOrderData)
 			throws DeliveryException {
 		try {
-
 			DeliveryOrderStatusType status = DeliveryOrderStatusType
 					.getDeliveryOrderStatus(deliveryOrderData.getStatus());
 			delivery.setStatus(status);
 
 			Order order = orderService.findById(delivery.getOrderId());
+
+			DeliveryFulfillStatusType fullFillStatus = delivery.getFulfillment().getStatus();
+			log.info("Current order status: {}, delivery status: {}, fulfillment status: {}",
+					order.getStatus(),status, fullFillStatus);
+
+			if(OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus).equals(order.getStatus())){
+				log.info("Duplicate delivery status received. Skipping further processing for orderId: {}", order.getId());
+				return;
+			}
 
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
