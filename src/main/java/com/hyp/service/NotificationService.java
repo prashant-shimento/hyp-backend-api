@@ -2,7 +2,7 @@ package com.hyp.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +57,7 @@ public class NotificationService {
 		for (Partner partner : partners) {
 			List<Feedback> feedbacks = feedbackService.findByHasBeenNotifiedAndBusiness(false,
 					partner.getConfigs().getOrDefault("Business", null));
-			log.debug("Found feedbacks: " + feedbacks.size());
+			log.debug("Found feedbacks: {}", feedbacks.size());
 			for (Feedback feedback : feedbacks) {
 				sendFeedbackMessage(feedback.getMobileNumber(), partner);
 				feedback.setHasBeenNotified(true);
@@ -116,7 +116,7 @@ public class NotificationService {
 			components.add(bodyComponent);
 			if (buttonParam != null) {
 				Component buttonComponent = Component.builder().type("button").subType("url").index("0")
-						.parameters(Arrays.asList(Parameter.builder().type("text").text(buttonParam).build())).build();
+						.parameters(Collections.singletonList(Parameter.builder().type("text").text(buttonParam).build())).build();
 				components.add(buttonComponent);
 			}
 
@@ -131,8 +131,7 @@ public class NotificationService {
 			}
 			metaService.sendMessage(messageRequest);
 		} catch (NotificationException e) {
-			log.error("Error occured in sendOrderNotification " + e.getMessage());
-			e.printStackTrace();
+			log.error("Error occurred in sendOrderNotification {}", e.getMessage());
 		}
 	}
 
@@ -169,13 +168,12 @@ public class NotificationService {
 					.build();
 
 			if (!redisService.isNotificationServiceEnabled()) {
-				log.info("Notification service is disabled.");
+				log.info("Notification service is disabled for sendNotification.");
 				return;
 			}
 			metaService.sendMessage(messageRequest);
 		} catch (NotificationException e) {
-			log.error("Error occured in sendOrderNotification " + e.getMessage());
-			e.printStackTrace();
+			log.error("Error occurred in sendNotification {}", e.getMessage());
 		}
 	}
 	

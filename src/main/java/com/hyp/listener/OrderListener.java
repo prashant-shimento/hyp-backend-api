@@ -94,7 +94,7 @@ public class OrderListener implements MessageListener {
 						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 						List<String> parameters = CommonUtils.buildStringList(customer.getName(), orderId, restaurant.getRestaurantName(),
 								restaurant.getSupportContact(), restaurant.getRestaurantName());
-						notificationService.sendInternalGroupNotification(Constants.META_ORDER_DELAY_ALERT_TEMPLATE,
+						notificationService.sendNotification(customer.getMobile(),Constants.META_ORDER_DELAY_ALERT_TEMPLATE,
 								parameters);
 						log.info("Sent Order delay alert for {}", orderId);
 					}
