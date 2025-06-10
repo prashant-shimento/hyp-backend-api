@@ -144,15 +144,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 			Order order = orderService.findById(delivery.getOrderId());
 
-			DeliveryFulfillStatusType fullFillStatus = delivery.getFulfillment().getStatus();
-			log.info("Current order status: {}, delivery status: {}, fulfillment status: {}",
-					order.getStatus(),status, fullFillStatus);
-
-			if(OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus).equals(order.getStatus())){
-				log.info("Duplicate delivery status received. Skipping further processing for orderId: {}", order.getId());
-				return;
-			}
-
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
 				orderService.updateOrderStatus(order.getId(),
 						OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
@@ -172,6 +163,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	private void handleFulfillmentStatus(Delivery delivery, DeliveryOrderData deliveryOrderData, Order order) {
 		DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
 		DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
+
+		log.info("Current order status: {}, delivery status: {}, fulfillment status: {}",
+				order.getStatus(),delivery.getStatus(), fullFillStatus);
+
+		if(OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus).equals(order.getStatus())){
+			log.info("Duplicate delivery status received. Skipping further processing for orderId: {}", order.getId());
+			return;
+		}
 
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
 				|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
