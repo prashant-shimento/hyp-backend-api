@@ -193,7 +193,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 		//TODO:Need to Move this saveOrder some where - unwanted save operation
 		if(order.getDeliveryTrackingLink() == null) {
-			order.setDeliveryTrackingLink("https://api.hyperapps.in/order/track/"+order.getId());
+			order.setDeliveryTrackingLink("https://api.hyperapps.in/api/v2/order/track/"+order.getId());
 		}
 		orderService.save(order);
 		orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus));
