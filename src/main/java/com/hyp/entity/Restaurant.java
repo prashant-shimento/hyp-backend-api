@@ -3,11 +3,6 @@ package com.hyp.entity;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.hyp.enums.FeeType;
-import com.hyp.enums.PartnerType;
-import com.hyp.model.PaymentRoute;
-import com.hyp.model.PlatformFee;
-import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -16,6 +11,14 @@ import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
+import com.hyp.model.PaymentRoute;
+import com.hyp.model.PlatformFee;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
@@ -59,8 +62,14 @@ public class Restaurant {
 	@Field("packaging_charge_type")
 	private String packagingChargeType;
 
-	@Field("delivery_share_percentage")
-	private Double deliverySharePercentage;
+	@Field("total_share_percentage")
+	private Double totalDeliverySharePercentage;
+
+	@Field("restaurant_share_percentage")
+	private Double restaurantDeliverySharePercentage;
+
+	@Field("hyperapps_share_percentage")
+	private Double hyperAppsDeliverySharePercentage;
 
 	@Field("discount_percentage")
 	private Double discountPercentage;

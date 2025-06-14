@@ -3,15 +3,13 @@ package com.hyp.dto;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.hyp.entity.OrderType;
-import com.hyp.entity.Restaurant;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
-
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -45,7 +43,9 @@ public class RestaurantDto extends BaseDto {
 	private String packagingApplicableOn;
 	private String packagingCharge;
 	private String packagingChargeType;
-	private Double deliverySharePercentage;
+	private Double totalDeliverySharePercentage;
+	private Double restaurantDeliverySharePercentage;
+	private Double hyperAppsDeliverySharePercentage;
 	private Double discountPercentage;
 	private String supportContact;
 	private Location location;
