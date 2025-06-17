@@ -46,6 +46,9 @@ public class RestaurantDto extends BaseDto {
 	private Double totalDeliverySharePercentage;
 	private Double restaurantDeliverySharePercentage;
 	private Double hyperAppsDeliverySharePercentage;
+	private String status;
+	private String remarks;
+	private String nextAction;
 	private Double discountPercentage;
 	private String supportContact;
 	private Location location;

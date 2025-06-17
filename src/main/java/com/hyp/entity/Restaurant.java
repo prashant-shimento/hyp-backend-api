@@ -74,6 +74,13 @@ public class Restaurant {
 	@Field("discount_percentage")
 	private Double discountPercentage;
 
+	private String status;
+
+	private String remarks;
+
+	@Field("next_action")
+	private String nextAction;
+
 	private String contact;
 
 	private String state;
