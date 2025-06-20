@@ -203,7 +203,7 @@ public class OrderEventListener {
 						customer.getMobile(),
 						Constants.META_ORDER_PICKEDUP_TEMPLATE,
 						templateParameters,
-						order.getDeliveryTrackingLink()
+						order.getId()
 				);
 				break;
 

@@ -404,6 +404,10 @@ public class PidgeClient {
 			JsonNode root = getClient()
 					.get()
 					.uri(endpoint)
+					.headers(headers -> {
+						headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+						headers.set("Accept", "application/json, text/plain, */*");
+					})
 					.retrieve()
 					.bodyToMono(JsonNode.class)
 					.doOnNext(res -> LoggingUtils.logResponse("getPorterRiderLocation", res))

@@ -31,13 +31,13 @@ public class DeliveryOrderEventListener {
 	
 	@Async
 	@EventListener
-	public void handleFullfillDeliveryEvent(DeliveryEvent event) {
-		log.info("Delivery Order Event listener handleFullfillDeliveryEvent");
+	public void handleDeliveryEvent(DeliveryEvent event) {
+		log.info("Delivery Order Event listener handleDeliveryEvent for fulfilling");
 		Delivery delivery = event.getDelivery();
 		try {
 			deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
 		} catch (DeliveryException e) {
-			log.error("Exception occured on unallocate Delivery Order for {}", delivery.getDeliveryOrderId());
+			log.error("Exception occurred on handleDeliveryEvent for {}", delivery.getDeliveryOrderId());
 		}
 		
 	}

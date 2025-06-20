@@ -144,10 +144,22 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 			Order order = orderService.findById(delivery.getOrderId());
 
+			if (delivery.getStatus() == DeliveryOrderStatusType.PENDING) {
+				DeliveryFulfillment fulfillment = deliveryOrderData.getFulfillment();
+				DeliveryFulfillStatusType fulfillmentStatus = fulfillment.getStatus();
+
+				log.info("Delivery status: PENDING, Order status: {}, Fulfillment status: {}",
+						order.getStatus(), fulfillmentStatus);
+
+				if (fulfillmentStatus == DeliveryFulfillStatusType.CANCELLED) {
+					log.info("Rider cancelled delivery for Order ID: {}", order.getId());
+					orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
+					orderEventPublisher.publishDeliveryEvent(delivery);
+					return;
+				}
+			}
 			if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
-				orderService.updateOrderStatus(order.getId(),
-						OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
-				orderEventPublisher.publishDeliveryEvent(delivery);
+				orderService.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_CANCELLED);
 				return;
 			}
 			if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED

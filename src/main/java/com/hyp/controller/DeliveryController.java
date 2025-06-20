@@ -32,11 +32,9 @@ import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.model.RiderLocation;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
-import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.LocationService;
 import com.hyp.service.OrderService;
-import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.translation.DeliveryTranslation;
@@ -73,7 +71,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 	@PostMapping("/callback")
 	public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
 			throws EntityNotFoundException, DeliveryException {
-		Delivery delivery = Optional.ofNullable(deliveryService.findByDeliveryOrderId(deliveryOrderData.getId()))
+		Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(deliveryOrderData.getReferenceId()))
 				.orElseThrow(() -> new EntityNotFoundException("Delivery", deliveryOrderData.getId()));
 		deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
 		return ResponseEntity.ok(new Response(null, false, "Success"));
