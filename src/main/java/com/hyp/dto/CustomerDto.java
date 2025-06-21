@@ -1,7 +1,10 @@
 package com.hyp.dto;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -20,5 +23,6 @@ public class CustomerDto extends BaseDto {
 	private String mobile;
 	@Email(message = "Invalid Email Address format. Please enter a valid email address.")
 	private String email;
-	
+	private List<String> restaurants;
+
 }
