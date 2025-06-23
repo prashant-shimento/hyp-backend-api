@@ -61,7 +61,7 @@ public class RestaurantDto extends BaseDto {
 	private String paymentPartner;
 	private String instantRefund;
 	private Integer fulfillmentDelay;
-	private Boolean isServiceable;
+	private boolean serviceable;
 	private String serviceableMessage;
 	private Double deliveryFee;
 	private List<PlatformFee> platformFee;
