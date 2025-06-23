@@ -88,21 +88,7 @@ public class PlaygroundController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
-	@GetMapping("/redis-order/{orderId}")
-	public ResponseEntity<Response> redisOrderTest(@PathVariable String orderId) {
-		Response response;
-		try {
-			String redisKey = "order:" + orderId + ":state";
-	        redisTemplate.opsForValue().set(redisKey, OrderStatusType.PAYMENT_PENDING.name(), Duration.ofMinutes(1));
-			response = new Response(null, false, "Redis Key Set Successfully !");
-			return ResponseEntity.ok(response);
-		} catch (Exception e) {
-			response = new Response(null, true, e.getMessage());
-			e.printStackTrace();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-		}
-	}
+
 	
 	@PostMapping("/one-signal/notification")
 	public ResponseEntity<Response> sendNotification(@RequestBody OneSignalNotificationRequest oneSignalNotificationRequest) {

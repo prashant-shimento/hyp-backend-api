@@ -9,8 +9,10 @@ import java.util.Optional;
 
 import com.hyp.dto.RefundDto;
 import com.hyp.enums.FeeType;
+import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.PaymentException;
 import com.hyp.model.PaymentRoute;
+import com.hyp.temporal.service.OrderWorkflowService;
 import com.razorpay.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -58,6 +60,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 	@Autowired
 	RedisService redisService;
 
+	@Autowired
+	OrderWorkflowService orderWorkflowService;
+
+	@Autowired
+	private OrderEventPublisher orderEventPublisher;
 
 	public Payment createPaymentOrder(String orderId, double amount) throws PaymentException {
 		try {
@@ -80,9 +87,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			} else {
 				payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
 			}
-
-
-			updateOrderStatusInRedis(orderId);
+			setPaymentCheck(orderId);
 			return save(payment);
 		} catch (Exception e) {
 			log.error("Error creating payment order {}", e.getMessage());
@@ -170,6 +175,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		return payment;
 	}
 
+	public void startOrderPaymentWorkflow(String orderId) {
+		orderWorkflowService.startOrderPaymentWorkflow(orderId);
+	}
+
 	private void updateOrderStatusInRedis(String orderId) {
 		String redisStateKey = "order:" + orderId + ":state";
 		String redisPaymentKey = "order:" + orderId + ":payment";
@@ -178,6 +187,18 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 		redisService.setRedisData(redisStateKey, OrderStatusType.PAYMENT_PENDING, stateTtl);
 		redisService.setRedisData(redisPaymentKey, OrderStatusType.PAYMENT_PENDING, paymentTtl);
+	}
+
+	private void setPaymentCheck(String orderId) {
+		boolean isWorkflowEnabled = redisService.getRedisData(Constants.PAYMENT_WORKFLOW_ENABLED)
+				.map(Boolean::parseBoolean)
+				.orElse(false);
+
+		if (isWorkflowEnabled) {
+			startOrderPaymentWorkflow(orderId);
+		} else {
+			updateOrderStatusInRedis(orderId);
+		}
 	}
 
 	private double calculateRoutingAmount(double orderAmount, Restaurant restaurant) {
@@ -222,7 +243,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
-	public String fetchOrderStatus(String orderId) throws PaymentException {
+	public String fetchPaymentOrderStatus(String orderId) throws PaymentException {
 		try {
 			RazorpayClient razorpayClient = getRazorpayClient(orderId);
 			Payment payment = findByOrderId(orderId);
@@ -337,5 +358,25 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 	private PaymentConfig getRazorpayPaymentConfig(String orderId) {
 		Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
 		return getPaymentConfig(restaurant);
+	}
+
+	public void verifyPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) throws PaymentException {
+		if ("paid".equalsIgnoreCase(paymentStatus)) {
+			processSuccessPayment(order, payment, paymentStatus);
+		}
+	}
+
+	public void processSuccessPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
+		OrderStatusType status = order.getStatus();
+		if (status == OrderStatusType.PAYMENT_PENDING ||
+				status == OrderStatusType.PAYMENT_FAILED ||
+				status == OrderStatusType.ERROR ||
+				status == OrderStatusType.PROCESSING) {
+			log.info("Updating order {} to PAID", order.getId());
+			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+			payment.setStatus(paymentStatus);
+			save(payment);
+			orderEventPublisher.publishProcessOrderEvent(order);
+		}
 	}
 }

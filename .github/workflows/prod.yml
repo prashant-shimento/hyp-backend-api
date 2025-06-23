@@ -51,6 +51,8 @@ jobs:
         REDIS_PORT: ${{ secrets.PRODUCTION_REDIS_PORT }}
         REDIS_PASSWORD: ${{ secrets.PRODUCTION_REDIS_PASSWORD }}
         ONE_SIGNAL_KEY: ${{ secrets.ONE_SIGNAL_KEY }}
+        TEMPORAL_HOST: ${{ secrets.PRODUCTION_TEMPORAL_HOST }}
+        TEMPORAL_PORT: ${{ secrets.PRODUCTION_TEMPORAL_PORT }}
 
     - name: Create .env file
       run: |
@@ -83,6 +85,8 @@ jobs:
         echo "REDIS_PORT=${{ secrets.PRODUCTION_REDIS_PORT }}" >> .env
         echo "REDIS_PASSWORD=${{ secrets.PRODUCTION_REDIS_PASSWORD }}" >> .env
         echo "ONE_SIGNAL_KEY=${{ secrets.ONE_SIGNAL_KEY }}" >> .env
+        echo "TEMPORAL_HOST=${{ secrets.PRODUCTION_TEMPORAL_HOST }}" >> .env
+        echo "TEMPORAL_PORT=${{ secrets.PRODUCTION_TEMPORAL_PORT }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1

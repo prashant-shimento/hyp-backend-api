@@ -78,10 +78,19 @@ public interface Constants {
 	String REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE = "riderLocationPickupStage";
 	String REDIS_KEY_RIDER_LOCATION_OFD_STAGE = "riderLocationOfdStage";
 	String REDIS_KEY_DELAY_ALERT_TIME = "delayAlertTime";
+	String REDIS_KEY_DELIVERY_DELAY = "deliveryDelay";
+	String REDIS_KEY_RIDER_LOCATION_DELAY = "riderDelay";
+
 	String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
 
 	public static final String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
 	String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
 	String FACEBOOK_MESSAGE = "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";
+
+	String KEY_FULFILL = "fulfill";
+	String KEY_SMART = "smart";
+	String PAYMENT_WORKFLOW_ENABLED = "payment_workflow_enabled";
+	String FULFILLMENT_WORKFLOW_ENABLED = "fulfillment_workflow_enabled";
+
 }

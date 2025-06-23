@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.hyp.enums.OrderType;
+import com.hyp.temporal.service.OrderWorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -89,6 +90,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 	RedisService redisService;
 
 	@Autowired
+	OrderWorkflowService orderWorkflowService;
+
+	@Autowired
 	private OrderEventPublisher orderEventPublisher;
 
 	public Order create(OrderDto orderDto) throws Exception {
@@ -128,6 +132,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 					throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
 				}
 			}
+		}
+
+
+		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
+			throw new Exception("Order cannot be processed: Outside delivery hours.");
 		}
 
 		if (orderDto.getOrderDiscount() != null) {
@@ -211,26 +220,29 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 				order = update(order);
 
-				int delayMinutes = Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(0);
+				int fulfillmentDelay = Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(0);
 
-				if (delayMinutes > 0) {
-					log.info("Scheduling fulfillment for order {} after {} minutes", order.getId(), delayMinutes);
-					deliveryService.setFulfillExpiry(order.getId(), delayMinutes);
+				if (fulfillmentDelay > 0) {
+					log.info("Scheduling fulfillment for order {} after {} minutes", order.getId(), fulfillmentDelay);
+					boolean isWorkflowEnabled = redisService.getRedisData(Constants.FULFILLMENT_WORKFLOW_ENABLED)
+							.map(Boolean::parseBoolean)
+							.orElse(false);
+
+					if (isWorkflowEnabled) {
+						startOrderFulfillmentWorkflow(order.getId(), fulfillmentDelay);
+					} else {
+						deliveryService.setFulfillExpiry(order.getId(), fulfillmentDelay);
+					}
 					return;
 				}
-				String fulfillmentMode = redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
+				String fulfillmentMode = redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
+
 				if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
 					log.warn("No PENDING delivery found for order {}. Skipping fulfillment.", order.getId());
 					return;
 				}
-				if ("smart".equalsIgnoreCase(fulfillmentMode)) {
-					log.info("Processing smart fulfillment for order {}", order.getId());
-					deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
-				} else {
-					log.info("Processing standard fulfillment for order {}", order.getId());
-					deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
-				}
+				deliveryService.processDeliveryOrderFulfill(delivery, Constants.PET_POOJA, fulfillmentMode);
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
 				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(),"Cancelled by Restaurant");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
@@ -254,5 +266,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		order.getOrderLogs().add(new Order.OrderLog(orderStatus.name()));
 		save(order);
 		orderEventPublisher.publishOrderStatusChangeEvent(order);
+	}
+
+	public void startOrderFulfillmentWorkflow(String orderId, int fulfillmentDelay) {
+		orderWorkflowService.startOrderFulfillmentWorkflow(orderId, fulfillmentDelay);
 	}
 }

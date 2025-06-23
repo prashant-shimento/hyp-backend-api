@@ -72,7 +72,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			response = new Response(Collections.singletonList(createdOrderDto), false, "Order Created");
 			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			log.error("Exception occurred in create {}",e.getMessage());
+			log.error("Exception occurred in create order {}",e.getMessage());
 			response = new Response(null, true, e.getMessage());
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}

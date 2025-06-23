@@ -3,7 +3,6 @@ package com.hyp.listener;
 import java.util.List;
 
 import com.hyp.exception.PaymentException;
-import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -74,7 +73,7 @@ public class OrderListener implements MessageListener {
 					if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(order.getStatus().name())) {
 						Payment payment = paymentService.findByOrderId(orderId);
 						String paymentStatus = null;
-						paymentStatus = paymentService.fetchOrderStatus(orderId);
+						paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
 						payment.setStatus(paymentStatus);
 						paymentService.save(payment);
 						log.info("Order status updated as dropped_off for {}", orderId);
@@ -107,7 +106,7 @@ public class OrderListener implements MessageListener {
 				if (order != null) {
 					if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
 						Payment payment = paymentService.findByOrderId(orderId);
-						String paymentStatus = paymentService.fetchOrderStatus(orderId);
+						String paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
 						if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
 							orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
 							payment.setStatus(paymentStatus);

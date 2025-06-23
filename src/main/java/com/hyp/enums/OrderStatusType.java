@@ -17,6 +17,14 @@ public enum OrderStatusType {
         };
 	}
 
+	public static OrderStatusType getOrderStatusByPaymentStatus(String value) {
+		return switch (value) {
+			case "captured", "authorized" -> PAID;
+            case "failed" -> PAYMENT_FAILED;
+			default -> PROCESSING;
+		};
+	}
+
 	public static OrderStatusType getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType value) {
         return switch (value) {
             case OUT_FOR_PICKUP -> OUT_FOR_PICKUP;

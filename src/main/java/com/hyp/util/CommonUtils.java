@@ -120,7 +120,7 @@ public class CommonUtils {
 	}
 	
 	public static String generateMockDeliveryOrderId() {
-		String digits = String.valueOf(System.currentTimeMillis()).substring(2, 17); 
+		String digits = String.valueOf(System.currentTimeMillis()).substring(2, 10);
 		String suffix = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5).toUpperCase(); 
 		return digits + suffix;
 	}

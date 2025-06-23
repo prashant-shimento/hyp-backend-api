@@ -1,11 +1,10 @@
 package com.hyp.controller;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Optional;
 
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.PaymentException;
-import com.razorpay.Refund;
-import lombok.Getter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,31 +59,30 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 	}
 
 	@PostMapping("/consume/{orderId}")
-	public ResponseEntity<Response> consumePayment(@PathVariable String orderId) throws PaymentException {
-		Payment payment = paymentService.findByOrderId(orderId);
-		if (payment == null) {
-			throw new PaymentException("Payment not found " + orderId);
-		}
-		Order order = orderService.findById(orderId);
-		processPaymentStatus(order, payment);
+	public ResponseEntity<Response> consumePayment(@PathVariable String orderId) throws PaymentException, EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
+		log.info("Payment Verification via Consume API");
+		paymentService.verifyPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
 		return ResponseEntity.ok(Response.builder().data(Collections.singletonList(order)).error(false).message("Order Payment Consumed Successfully").build());
 	}
 
 	@PostMapping("/verify/{orderId}")
 	public ResponseEntity<Response> verifyPayment(@PathVariable String orderId,
-			@RequestBody RazorpayVerifyDto razorPayDto) throws PaymentException {
-		Payment payment = paymentService.findByOrderId(orderId);
-		if (payment == null) {
-			throw new PaymentException("Payment not found " + orderId);
-		}
-		Order order = orderService.findById(orderId);
+			@RequestBody RazorpayVerifyDto razorPayDto) throws PaymentException, EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
 		if (paymentService.verifySignature(razorPayDto, orderId)) {
 			payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
 			payment.setSignature(razorPayDto.getRazorpaySignature());
-			processPaymentStatus(order, payment);
+			log.info("Payment Verification via Verify API");
+			paymentService.verifyPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
 		}
 		return ResponseEntity.ok(Response.builder().data(Collections.singletonList(order)).error(false).message("Payment Verified Successfully").build());
-
 	}
 
 	@PostMapping("/refund")
@@ -125,16 +123,15 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 	@PostMapping("/callback")
 	public ResponseEntity<Response> paymentCallback(@RequestBody RazorpayEventDto razorPayEventDto) {
 		Response response;
-
-
 		try {
 			switch (razorPayEventDto.getEvent()) {
-			case "order.paid":
-				handleOrderEvent(razorPayEventDto);
-				break;
-                case "payment.failed" , "payment.captured":
-				handlePaymentEvent(razorPayEventDto);
-				break;
+				case "order.paid":
+				case "payment.captured":
+					handlePaymentSuccessEvent(razorPayEventDto);
+					break;
+				case "payment.failed":
+					handlePaymentFailureEvent(razorPayEventDto);
+					break;
 			case "refund.processed":
 				handleRefundEvent(razorPayEventDto, OrderStatusType.REFUND_COMPLETED);
 				break;
@@ -152,26 +149,49 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 		}
 	}
 
-	private void handleOrderEvent(RazorpayEventDto razorPayEventDto) {
-		String paymentOrderId = razorPayEventDto.getPayload().getOrder().getEntity().getId();
-		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
-		Order order = orderService.findById(payment.getOrderId());
-		log.info("payment paid event processing for order {}",order.getId());
-		if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
-				|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
-			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-			payment.setStatus("paid");
-			paymentService.save(payment);
-			orderEventPublisher.publishProcessOrderEvent(order);
+	private void handlePaymentSuccessEvent(RazorpayEventDto razorPayEventDto) throws PaymentException {
+		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
+
+		if (paymentOrderId == null) {
+			log.warn("Payment order ID is missing in webhook: {}", razorPayEventDto);
+			return;
 		}
 
+		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
+		if (payment == null) {
+			log.warn("No payment found for paymentOrderId={}", paymentOrderId);
+			return;
+		}
+
+		Order order = orderService.findById(payment.getOrderId());
+		if (order == null) {
+			log.warn("No order found for ID={}", payment.getOrderId());
+			return;
+		}
+
+		// Idempotency: If order already marked as PAID, skip
+		if (OrderStatusType.PAID.equals(order.getStatus())) {
+			log.info("Order {} already PAID, skipping processing", order.getId());
+			return;
+		}
+
+		if (razorPayEventDto.getPayload().getPayment() != null) {
+			String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
+			String status = razorPayEventDto.getPayload().getPayment().getEntity().getStatus();
+			payment.setPaymentId(paymentId);
+			payment.setStatus(status);
+			paymentService.save(payment);
+		}
+
+		log.info("Verifying payment via webhook for order {}", order.getId());
+		paymentService.verifyPayment(order, payment, "paid");
 	}
 
-	private void handlePaymentEvent(RazorpayEventDto razorPayEventDto) {
+	private void handlePaymentFailureEvent(RazorpayEventDto razorPayEventDto) {
 		String paymentOrderId = razorPayEventDto.getPayload().getPayment().getEntity().getOrder_id();
 		String paymentId = razorPayEventDto.getPayload().getPayment().getEntity().getId();
 		Payment payment = paymentService.findByPaymentOrderId(paymentOrderId);
-		log.info("payment capture event processing for order {}",payment.getOrderId());
+		log.info("payment failed for order {}",payment.getOrderId());
 		payment.setStatus(razorPayEventDto.getPayload().getPayment().getEntity().getStatus());
 		payment.setPaymentId(paymentId);
 		paymentService.save(payment);
@@ -184,21 +204,6 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 		orderService.updateOrderStatus(payment.getOrderId(), orderStatus);
 		payment.getRefund().setStatus(razorPayEventDto.getPayload().getRefund().getEntity().getStatus());
 		paymentService.save(payment);
-	}
-
-	private void processPaymentStatus(Order order, Payment payment) throws PaymentException {
-		String paymentStatus = paymentService.fetchOrderStatus(order.getId());
-		if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
-			if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)
-					|| order.getStatus().equals(OrderStatusType.PAYMENT_FAILED)
-					|| order.getStatus().equals(OrderStatusType.ERROR)
-					|| order.getStatus().equals(OrderStatusType.PROCESSING)) {
-				orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-				payment.setStatus(paymentStatus);
-				paymentService.save(payment);
-				orderEventPublisher.publishProcessOrderEvent(order);
-			}
-		}
 	}
 
 }

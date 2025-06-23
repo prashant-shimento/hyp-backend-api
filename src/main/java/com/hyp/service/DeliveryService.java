@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.hyp.constants.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
@@ -187,12 +188,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)
 				|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
 			String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
-			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(12).toSeconds());
+			String deliveryDelay = redisService.getRedisData(Constants.REDIS_KEY_DELIVERY_DELAY).orElse("12");
+			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(Long.parseLong(deliveryDelay)).toSeconds());
 		}
 		
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)) {
 			 String locationKey = "rider_location:" + delivery.getOrderId() + ":" + fullFillStatus;
-	         redisService.setRedisData(locationKey, fullFillStatus, Duration.ofMinutes(5).toSeconds());
+			String riderDelay = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_DELAY).orElse("5");
+			redisService.setRedisData(locationKey, fullFillStatus, Duration.ofMinutes(Long.parseLong(riderDelay)).toSeconds());
 	    }
 
 		delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
@@ -228,8 +231,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				return;
 			}
 			if ("smart".equalsIgnoreCase(fulfillType)) {
+				log.info("Processing smart fulfillment for order {}", delivery.getOrderId());
 				processDeliverySmartFulfill(delivery, fulfilledBy);
 			} else {
+				log.info("Processing standard fulfillment for order {}", delivery.getOrderId());
 				processDeliveryStandardFulfill(delivery, fulfilledBy);
 			}
 		} catch (Exception e) {
@@ -239,7 +244,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	}
 
 	public void processDeliveryStandardFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
-		DeliveryNetworks selectedNetwork = getServicabilityToken(delivery);
+		DeliveryNetworks selectedNetwork = getServiceabilityToken(delivery);
 		if (selectedNetwork != null) {
 			String token = selectedNetwork.getToken();
 			delivery.setNetworkToken(token);
@@ -257,13 +262,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		}
 	}
 
-	public DeliveryNetworks getServicabilityToken(Delivery delivery) throws DeliveryException {
+	public DeliveryNetworks getServiceabilityToken(Delivery delivery) throws DeliveryException {
 		DeliveryNetworks selectedNetwork = null;
 		try {
 			DeliveryQuote deliveryQuote = this.getServiceability(delivery.getDeliveryOrderId());
 			List<DeliveryNetworks> deliveryNetworks = deliveryQuote.getData().getItems().stream()
-					.filter(items -> items.isPickupNow())
-					.filter(items -> !items.getService().equalsIgnoreCase("loadshare")).collect(Collectors.toList());
+					.filter(DeliveryNetworks::isPickupNow)
+					.filter(items -> !items.getService().equalsIgnoreCase("loadshare")).toList();
 
 			Optional<DeliveryNetworks> matchingNetworkOpt = deliveryNetworks.stream()
 					.filter(network -> network.getNetworkId() == delivery.getNetworkId()).findFirst();
