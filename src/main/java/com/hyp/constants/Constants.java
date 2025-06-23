@@ -20,7 +20,7 @@ public interface Constants {
 	String ON_CANCEL = "ON_CANCEL";
 	String SELF = "SELF";
 
-	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "createdAt");
+	List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "restaurants", "createdAt");
 	List<String> ORDER_API_PARAMS = Arrays.asList("id", "status", "customerId", "createdAt", "totalAmount", "orderType",
 			"orderTime", "restaurantId");
 	List<String> ITEM_API_PARAMS = Arrays.asList("id", "itemName", "inStock", "itemAllowVariation", "itemCategoryId",
@@ -69,7 +69,7 @@ public interface Constants {
 	String META_ORDER_DELAY_ALERT_TEMPLATE = "order_delay_customer_alert";
 	String META_REFUND_TEMPLATE = "order_refund_alert";
 	String REFUND_REASON = "Token of Apology";
-	
+
 	String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "95098113-03a2-4cf2-8454-3c4323da9f69";
 
 	String REDIS_KEY_PIDGE_TOKEN = "pidgeToken";
