@@ -53,7 +53,7 @@ public class QueryUtils {
 		}
 
 		Query query = new Query();
-		
+
 		if (sort != null) {
 			query.with(sort);
 		}
@@ -156,6 +156,9 @@ public class QueryUtils {
 				}
 			}
 			return CommonUtils.getISODate(value, Constants.SUPPORTED_DATE_FORMATS);
+		}
+		if (Constants.BOOLEAN_API_PARAMS.contains(fieldName)) {
+			return Boolean.parseBoolean(value);
 		}
 		switch (operator) {
 		case "eq":

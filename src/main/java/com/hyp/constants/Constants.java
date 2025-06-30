@@ -40,6 +40,7 @@ public interface Constants {
 			"status", "amount", "paymentId");
 	List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
 	List<String> FILE_EXTENSIONS = Arrays.asList(".jpg", ".png", ".jpeg");
+	List<String> BOOLEAN_API_PARAMS = Arrays.asList("active", "serviceable");
 
 	static Map<String, String> getContentTypes() {
 		Map<String, String> contentTypes = new HashMap<>();
