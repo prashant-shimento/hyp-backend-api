@@ -107,7 +107,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
 			if (OrderStatusType.CANCELLED.name().equalsIgnoreCase(orderDto.getStatus())) {
-				if (OrderStatusType.ACCEPTED.equals(orderStatus) || OrderStatusType.PAID.equals(orderStatus)) {
+				if (isCancelableStatus(orderStatus)) {
 					PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
 							.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
 					posService.updatePosOrder(posOrderUpdateRequest);
@@ -161,8 +161,13 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 		if (trackingUrl.isBlank()) {
 			throw new EntityNotFoundException("Order Tracking Link", orderId);
 		}
-		return ResponseEntity.status(HttpStatus.FOUND)
-				.location(URI.create(trackingUrl))
-				.build();
+		return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(trackingUrl)).build();
+	}
+	private boolean isCancelableStatus(OrderStatusType status) {
+		return status == OrderStatusType.ACCEPTED || status == OrderStatusType.READY_FOR_DELIVERY
+				|| status == OrderStatusType.PAID || status == OrderStatusType.OUT_FOR_PICKUP
+				|| status == OrderStatusType.REACHED_PICKUP || status == OrderStatusType.PICKED_UP
+				|| status == OrderStatusType.OUT_FOR_DELIVERY || status == OrderStatusType.REACHED_DELIVERY
+				|| status == OrderStatusType.DELIVERED;
 	}
 }
