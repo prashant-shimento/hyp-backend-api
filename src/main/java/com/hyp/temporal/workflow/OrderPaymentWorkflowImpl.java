@@ -34,7 +34,8 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow{
             Workflow.sleep(Duration.ofMinutes(1));
 
             String currentOrderStatus = activities.fetchOrderStatus(orderId);
-            if (OrderStatusType.PAID.name().equalsIgnoreCase(currentOrderStatus)) {
+            OrderStatusType currentStatus = OrderStatusType.valueOf(currentOrderStatus.toUpperCase());
+            if (currentStatus.ordinal() >= OrderStatusType.PAID.ordinal()) {
                 log.info("Order {} marked as PAID. Exiting workflow early {}th attempt", orderId, minute);
                 return;
             }

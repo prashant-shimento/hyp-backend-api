@@ -366,6 +366,19 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
+	public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
+		OrderStatusType status = order.getStatus();
+		if (status == OrderStatusType.PAYMENT_PENDING ||
+				status == OrderStatusType.PAYMENT_FAILED ||
+				status == OrderStatusType.ERROR ||
+				status == OrderStatusType.PROCESSING) {
+			log.info("Processing order {}", order.getId());
+			orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByPaymentStatus(paymentStatus));
+			payment.setStatus(paymentStatus);
+			save(payment);
+		}
+	}
+
 	public void processSuccessPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
 		OrderStatusType status = order.getStatus();
 		if (status == OrderStatusType.PAYMENT_PENDING ||
@@ -373,7 +386,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 				status == OrderStatusType.ERROR ||
 				status == OrderStatusType.PROCESSING) {
 			log.info("Updating order {} to PAID", order.getId());
-			orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+			boolean save = orderService.updateStatus(order.getId(), OrderStatusType.PAID);
+			if(!save){
+				log.error("Unable to update the status of order for ID {}", order.getId());
+			}
 			payment.setStatus(paymentStatus);
 			save(payment);
 			orderEventPublisher.publishProcessOrderEvent(order);

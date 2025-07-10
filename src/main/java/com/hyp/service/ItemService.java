@@ -1,10 +1,12 @@
 package com.hyp.service;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import com.hyp.request.PosStockRequest;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -30,6 +32,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ItemService extends BaseServiceImpl<Item, String> {
 	@Autowired
 	ItemRepository itemRepository;
+
+	@Autowired
+	VariationService variationService;
 
 	@Autowired
 	MongoTemplate mongoTemplate;
@@ -140,6 +145,25 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 
 			return variation;
 		}).collect(Collectors.toList());
+	}
+
+	public void updateItemStock(List<String> itemList, boolean inStock) {
+		long findByIdsStart = System.currentTimeMillis();
+		List<Item> items = findByIds(itemList);
+		log.info("Fetched items in {} ms", System.currentTimeMillis() - findByIdsStart);
+
+		if (items.isEmpty()) {
+			log.info("No items found. Checking variations...");
+			variationService.updateVariationStock(itemList, inStock);
+			return;
+		}
+
+		items.forEach(item -> {
+			item.setActive(inStock ? "1" : "0");
+		});
+		long bulkWriteStart = System.currentTimeMillis();
+		bulkUpdate(items, Item.class);
+		log.info("Bulk write items completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
 }

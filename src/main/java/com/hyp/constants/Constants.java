@@ -1,9 +1,8 @@
 package com.hyp.constants;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.hyp.enums.OrderStatusType;
+
+import java.util.*;
 
 public interface Constants {
 
@@ -94,5 +93,18 @@ public interface Constants {
 	String KEY_SMART = "smart";
 	String PAYMENT_WORKFLOW_ENABLED = "payment_workflow_enabled";
 	String FULFILLMENT_WORKFLOW_ENABLED = "fulfillment_workflow_enabled";
+	String STOCK_WORKFLOW_ENABLED = "stock_workflow_enabled";
+
+	Set<OrderStatusType> CANCELABLE_STATUSES = EnumSet.of(
+			OrderStatusType.ACCEPTED,
+			OrderStatusType.READY_FOR_DELIVERY,
+			OrderStatusType.PAID,
+			OrderStatusType.OUT_FOR_PICKUP,
+			OrderStatusType.REACHED_PICKUP,
+			OrderStatusType.PICKED_UP,
+			OrderStatusType.OUT_FOR_DELIVERY,
+			OrderStatusType.REACHED_DELIVERY,
+			OrderStatusType.DELIVERED
+	);
 
 }

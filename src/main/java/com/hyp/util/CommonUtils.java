@@ -1,12 +1,11 @@
 package com.hyp.util;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
@@ -18,13 +17,39 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class CommonUtils {
+
+	private static final DateTimeFormatter FORMATTER_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static final DateTimeFormatter FORMATTER_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
 
 	public static String genId() {
 		Random random = new Random();
 		char[] alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 		return NanoIdUtils.randomNanoId(random, alphabet, 10);
+	}
+
+	public static String generateWorkflowId(String input) {
+		String timestamp = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("ddMMyyyyHHmmssSSS"));
+		String combined = input + timestamp;
+		return "wf-" + shortHash(combined);
+	}
+
+	private static String shortHash(String input) {
+		try {
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < 4; i++) { // 4 bytes → 8 hex chars
+				sb.append(String.format("%02x", hash[i]));
+			}
+			return sb.toString();
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException("SHA-256 not supported", e);
+		}
 	}
 
 	public static String getISOAmount(double amount) {
@@ -67,8 +92,7 @@ public class CommonUtils {
 		String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("ddMMyyHHmmss"));
 		Random random = new Random();
 		int identifier = random.nextInt(1000000);
-		String referenceId = prefix + timestamp + String.format("%04d", identifier);
-		return referenceId;
+        return prefix + timestamp + String.format("%04d", identifier);
 	}
 
 	public static Date getISODate(String date, String formats) {
@@ -76,9 +100,8 @@ public class CommonUtils {
 			SimpleDateFormat dateFormat = new SimpleDateFormat(formats);
 			return dateFormat.parse(date);
 		} catch (ParseException e) {
-			e.printStackTrace();
+			log.error("Failed to parse date: {}", date, e);
 		}
-		System.err.println("Failed to parse date: " + date);
 		return null;
 	}
 
@@ -124,4 +147,25 @@ public class CommonUtils {
 		String suffix = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5).toUpperCase(); 
 		return digits + suffix;
 	}
+
+	public static LocalDateTime parseAutoTurnOnTime(String turnOnTime) {
+		if (turnOnTime == null || turnOnTime.isBlank()) {
+			log.error("Empty or null TurnOnTime provided.");
+			return LocalDateTime.now().plusHours(2);
+		}
+		try {
+			if (turnOnTime.length() == 19) {
+				return LocalDateTime.parse(turnOnTime, FORMATTER_WITH_SECONDS);
+			} else if (turnOnTime.length() == 16) {
+				return LocalDateTime.parse(turnOnTime, FORMATTER_WITHOUT_SECONDS);
+			} else {
+				log.error("Invalid TurnOnTime format: '{}'. Expected format 'yyyy-MM-dd HH:mm[:ss]'", turnOnTime);
+				return LocalDateTime.now().plusHours(2);
+			}
+		} catch (Exception e) {
+			log.error("Failed to parse TurnOnTime '{}': {}", turnOnTime, e.getMessage(), e);
+			return LocalDateTime.now().plusHours(2);
+		}
+	}
+
 }

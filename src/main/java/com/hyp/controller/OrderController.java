@@ -107,10 +107,12 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 				posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
 			}
 			if (OrderStatusType.CANCELLED.name().equalsIgnoreCase(orderDto.getStatus())) {
-				if (isCancelableStatus(orderStatus)) {
-					PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
-							.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
-					posService.updatePosOrder(posOrderUpdateRequest);
+				if (Constants.CANCELABLE_STATUSES.contains(orderStatus)) {
+					if(!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())){
+						PosOrderUpdateRequest posOrderUpdateRequest = posOrderRequestTranslation
+								.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
+						posService.updatePosOrder(posOrderUpdateRequest);
+					}
 					if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
 						Delivery delivery = deliveryService.findByOrderId(orderId);
 						deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
@@ -162,12 +164,5 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			throw new EntityNotFoundException("Order Tracking Link", orderId);
 		}
 		return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(trackingUrl)).build();
-	}
-	private boolean isCancelableStatus(OrderStatusType status) {
-		return status == OrderStatusType.ACCEPTED || status == OrderStatusType.READY_FOR_DELIVERY
-				|| status == OrderStatusType.PAID || status == OrderStatusType.OUT_FOR_PICKUP
-				|| status == OrderStatusType.REACHED_PICKUP || status == OrderStatusType.PICKED_UP
-				|| status == OrderStatusType.OUT_FOR_DELIVERY || status == OrderStatusType.REACHED_DELIVERY
-				|| status == OrderStatusType.DELIVERED;
 	}
 }

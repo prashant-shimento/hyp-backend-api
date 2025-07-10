@@ -10,34 +10,18 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderWorkflowService {
 
-    @Autowired
-    WorkflowClient workflowClient;
-
+    private final WorkflowClient workflowClient;
     public static final String ORDER_TASK_QUEUE = "order-task-queue";
-
-    @Autowired
-    public OrderWorkflowService(WorkerFactory factory,
-                                OrderPaymentActivitiesImpl paymentActivities,
-                                OrderFulfillmentActivitiesImpl orderFulfillmentActivities) {
-
-        Worker worker = factory.newWorker(ORDER_TASK_QUEUE);
-
-        // Register Workflows
-        worker.registerWorkflowImplementationTypes(OrderPaymentWorkflowImpl.class, OrderFulfillmentWorkflowImpl.class);
-        // Register Activities
-        worker.registerActivitiesImplementations(paymentActivities, orderFulfillmentActivities);
-
-
-        factory.start();
-    }
 
     public void startOrderPaymentWorkflow(String orderId) {
         OrderPaymentWorkflow workflow = workflowClient.newWorkflowStub(

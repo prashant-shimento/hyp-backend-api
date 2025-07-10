@@ -1,12 +1,19 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
 import com.hyp.enums.OrderType;
 import com.hyp.temporal.service.OrderWorkflowService;
+import com.mongodb.client.result.UpdateResult;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import com.hyp.constants.Constants;
@@ -40,6 +47,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	OrderRepository orderRepository;
+
+	@Autowired
+	private MongoTemplate mongoTemplate;
 
 	@Autowired
 	RestaurantService restaurantService;
@@ -270,5 +280,32 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	public void startOrderFulfillmentWorkflow(String orderId, int fulfillmentDelay) {
 		orderWorkflowService.startOrderFulfillmentWorkflow(orderId, fulfillmentDelay);
+	}
+
+	public boolean updateStatus(String orderId, OrderStatusType newStatus) {
+		List<OrderStatusType> allowedStatuses = Arrays.asList(
+				OrderStatusType.PAYMENT_PENDING,
+				OrderStatusType.PAYMENT_FAILED,
+				OrderStatusType.ERROR,
+				OrderStatusType.PROCESSING
+		);
+
+		Query query = new Query(Criteria.where("_id").is(new ObjectId(orderId))
+				.and("status").in(allowedStatuses));
+		Update update = new Update()
+				.set("status", newStatus)
+				.push("orderLogs", new Order.OrderLog(newStatus.name()));
+
+		UpdateResult result = mongoTemplate.updateFirst(query, update, Order.class);
+
+		if (result.getModifiedCount() > 0) {
+			log.info("Order {} status updated to {} atomically.", orderId, newStatus);
+			Order updatedOrder = this.findById(orderId);
+			orderEventPublisher.publishOrderStatusChangeEvent(updatedOrder);
+			return true;
+		} else {
+			log.info("Order {} not updated; already processed or in final state.", orderId);
+			return false;
+		}
 	}
 }

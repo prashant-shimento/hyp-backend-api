@@ -14,10 +14,11 @@ import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 import com.hyp.entity.*;
+import com.hyp.temporal.service.RestaurantWorkflowService;
+import com.hyp.temporal.service.StockWorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -74,6 +75,12 @@ public class PosServiceImpl implements PosService {
 	@Autowired
 	PartnerService partnerService;
 
+	@Autowired
+	StockWorkflowService stockWorkflowService;
+
+	@Autowired
+	RestaurantWorkflowService restaurantWorkflowService;
+
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
 	private final RestaurantService restaurantService;
@@ -88,8 +95,6 @@ public class PosServiceImpl implements PosService {
 	private final ItemService itemService;
 	private final BucketService bucketService;
 
-	private static final DateTimeFormatter FORMATTER_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-	private static final DateTimeFormatter FORMATTER_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
 	@Autowired
 	PosOrderRequestTranslation posOrderRequestTranslation;
@@ -306,18 +311,35 @@ public class PosServiceImpl implements PosService {
 	public boolean updateStock(PosStockRequest stockRequest) {
 		long startTime = System.currentTimeMillis();
 		try {
-			final LocalDateTime autoTurnOnTime = (!stockRequest.isInStock()) ? parseAutoTurnOnTime(stockRequest) : null;
+			LocalDateTime autoTurnOnTime = null;
+			if (!stockRequest.isInStock()) {
+				String turnOnTime = stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")
+						? stockRequest.getCustomTurnOnTime()
+						: stockRequest.getAutoTurnOnTime();
+				autoTurnOnTime = CommonUtils.parseAutoTurnOnTime(turnOnTime);
+			}
 			long ttl = autoTurnOnTime != null ? calculateTTLInSeconds(autoTurnOnTime) : 0;
 
-			if (stockRequest.getType().equalsIgnoreCase("item")) {
+			boolean isWorkflowEnabled = redisService.getRedisData(Constants.STOCK_WORKFLOW_ENABLED)
+					.map(Boolean::parseBoolean)
+					.orElse(false);
+			log.info("Stock workflow enabled status: {} and ttl {}", isWorkflowEnabled, ttl);
+			if (isWorkflowEnabled && ttl > 0) {
+				stockWorkflowService.startStockUpdateWorkflow(stockRequest, ttl);
+			}
+
+			String type = Optional.ofNullable(stockRequest.getType()).orElse("").toLowerCase();
+			if ("item".equals(type)) {
 				long updateItemStock = System.currentTimeMillis();
 				updateItemStock(stockRequest, autoTurnOnTime, ttl);
 				log.info("Total updateItemStock execution time: {} ms", System.currentTimeMillis() - updateItemStock);
-			} else {
+			} else if ("addon".equals(type)) {
 				long addonItemStockUpdate = System.currentTimeMillis();
 				updateAddonItemStock(stockRequest, autoTurnOnTime, ttl);
 				log.info("Total updateAddonItemStock execution time: {} ms",
 						System.currentTimeMillis() - addonItemStockUpdate);
+			} else {
+				log.warn("Unknown stockRequest type '{}'. Skipping stock update.", stockRequest.getType());
 			}
 			return true;
 		} catch (Exception e) {
@@ -411,26 +433,18 @@ public class PosServiceImpl implements PosService {
 		log.info("Bulk write addons completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
-	private LocalDateTime parseAutoTurnOnTime(PosStockRequest stockRequest) {
-		String turnOnTime = stockRequest.getAutoTurnOnTime().equalsIgnoreCase("custom")
-				? stockRequest.getCustomTurnOnTime()
-				: stockRequest.getAutoTurnOnTime();
-		if (turnOnTime.length() == 19) {
-			return LocalDateTime.parse(turnOnTime, FORMATTER_WITH_SECONDS);
-		} else if (turnOnTime.length() == 16) {
-			return LocalDateTime.parse(turnOnTime, FORMATTER_WITHOUT_SECONDS);
-		} else {
-			log.error("Invalid TurnOnTime passed {}" ,turnOnTime);
-			return LocalDateTime.now().plusHours(2);
-		}
-	}
+	private long calculateTTLInSeconds(LocalDateTime turnOnTimeIST) {
+		ZonedDateTime istZoned = turnOnTimeIST.atZone(ZoneId.of("Asia/Kolkata"));
+		ZonedDateTime utcZoned = istZoned.withZoneSameInstant(ZoneId.of("UTC"));
 
-	private long calculateTTLInSeconds(LocalDateTime turnOnTime) {
-		ZonedDateTime utcTurnOnTime = turnOnTime.atZone(ZoneId.of("Asia/Kolkata"))
-				.withZoneSameInstant(ZoneId.of("UTC"));
+		ZonedDateTime nowUtc = ZonedDateTime.now(ZoneId.of("UTC"));
 
-		ZonedDateTime currentUtcTime = ZonedDateTime.now(ZoneId.of("UTC"));
-		Duration duration = Duration.between(currentUtcTime, utcTurnOnTime);
+		Duration duration = Duration.between(nowUtc, utcZoned);
+		log.info("turnOnTime (LocalDateTime): {}", turnOnTimeIST);
+		log.info("turnOnTime in IST: {}", istZoned);
+		log.info("turnOnTime converted to UTC: {}", utcZoned);
+		log.info("Current UTC time: {}", nowUtc);
+		log.info("Calculated TTL (seconds): {}", Math.max(0, duration.getSeconds()));
 		return Math.max(0, duration.getSeconds());
 	}
 
@@ -461,21 +475,34 @@ public class PosServiceImpl implements PosService {
 	}
 
 	@Override
-	public boolean updateRestaurant(PosStatusRequest updateStatus) {
+	public void updateRestaurant(PosStatusRequest updateStatus) {
 		try {
 			Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
-			restaurant.setActive(updateStatus.getStoreStatus().equalsIgnoreCase("1"));
-			if (!restaurant.isActive() && updateStatus.getTurnOnTime() != null
-					&& !updateStatus.getTurnOnTime().isEmpty()) {
-				restaurant.setTurnOnTime(LocalDateTime.parse(updateStatus.getTurnOnTime(),
-						DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+			boolean status = "1".equalsIgnoreCase(updateStatus.getStoreStatus());
+			restaurant.setActive(status);
+
+			if (!status && updateStatus.getTurnOnTime() != null && !updateStatus.getTurnOnTime().isEmpty()) {
+				LocalDateTime turnOnTime = CommonUtils.parseAutoTurnOnTime(updateStatus.getTurnOnTime());
+				long ttl = turnOnTime != null ? calculateTTLInSeconds(turnOnTime) : 0;
+
+				log.info("Scheduling restaurant {} to auto-turn-on in {} seconds at {}",
+						restaurant.getId(), ttl, turnOnTime);
+				if(ttl > 0){
+					restaurantWorkflowService.startRestaurantStatusWorkflow(
+							restaurant.getId(),
+							ttl
+					);
+				}
+
 			}
 			restaurant.setStatusReason(updateStatus.getReason());
 			restaurantService.update(restaurant);
-			return true;
+
+			log.info("Updated restaurant {} active={}, reason={}",
+					restaurant.getId(), status, updateStatus.getReason());
 		} catch (Exception e) {
-			log.error("Exception occurred in updateRestaurant {}", e.getMessage());
-			return false;
+			log.error("Exception occurred while updating restaurant {}: {}",
+					updateStatus.getRestaurantId(), e.getMessage(), e);
 		}
 	}
 
@@ -517,7 +544,7 @@ public class PosServiceImpl implements PosService {
 		return CompletableFuture.runAsync(() -> {
 			long start = System.currentTimeMillis();
 			action.run();
-			log.info("Time taken for saving {}: {} ms", entityName, (System.currentTimeMillis() - start));
+			log.info("Time taken for logEntityInsert {}: {} ms", entityName, (System.currentTimeMillis() - start));
 		}, executorService);
 	}
 
@@ -525,16 +552,10 @@ public class PosServiceImpl implements PosService {
 		long startTime = System.currentTimeMillis();
 		return CompletableFuture.supplyAsync(() -> {
 			T result = supplier.get();
-			log.info("Time taken for saving {}: {} ms", label, (System.currentTimeMillis() - startTime));
+			log.info("Time taken for logItemInsert {}: {} ms", label, (System.currentTimeMillis() - startTime));
 			return result;
 		});
 	}
-
-//	private void sendNotification(String alertTemplate, PosStockRequest stockRequest) {
-//		List<String> parameters = CommonUtils.buildStringList(stockRequest.getRestaurantId(), stockRequest.isInStock(),
-//				stockRequest.getCustomTurnOnTime(), stockRequest.getMessage());
-//		notificationService.sendInternalGroupNotification(alertTemplate, parameters);
-//	}
 
 	public void sendAlert(PosException e) {
 		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,

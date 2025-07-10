@@ -183,7 +183,6 @@ public class NotificationService {
 		String alertMobileNum = redisService.getAlertUsers();
 		log.debug("Retrieved alert users string: {}", alertMobileNum);
 		String[] mobileNumbers = alertMobileNum.split(",");
-		log.info("Parsed {} mobile number(s) for internal group notification", mobileNumbers.length);
 		for (String mobile : mobileNumbers) {
 			log.debug("Sending internal group notification to mobile: {}", mobile);
 			sendNotification(mobile, templateName, parameters);

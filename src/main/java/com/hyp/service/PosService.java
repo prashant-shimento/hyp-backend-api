@@ -26,7 +26,7 @@ public interface PosService {
 
 	public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 
-	public boolean updateRestaurant(PosStatusRequest updateStatus);
+	public void updateRestaurant(PosStatusRequest updateStatus);
 
 	public boolean updateStock(PosStockRequest stockRequest);
 

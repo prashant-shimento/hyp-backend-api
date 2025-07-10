@@ -1,13 +1,20 @@
 package com.hyp.config;
 
+import com.hyp.temporal.activities.OrderFulfillmentActivitiesImpl;
+import com.hyp.temporal.activities.OrderPaymentActivitiesImpl;
+import com.hyp.temporal.activities.RestaurantActivitiesImpl;
+import com.hyp.temporal.activities.StockUpdateActivitiesImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 import io.temporal.worker.WorkerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Slf4j
 @Configuration
 public class TemporalConfig {
 

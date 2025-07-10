@@ -1,7 +1,10 @@
 package com.hyp.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import com.hyp.request.PosStockRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -15,6 +18,7 @@ import com.hyp.entity.Variation;
 import com.hyp.repository.VariationRepository;
 
 @Service
+@Slf4j
 public class VariationService extends BaseServiceImpl<Variation, String> {
 
 	@Autowired
@@ -54,6 +58,25 @@ public class VariationService extends BaseServiceImpl<Variation, String> {
 
 		return LookupOperation.newLookup().from("addon_groups").localField("addon_group_id").foreignField("_id")
 				.pipeline(addonItemsLookupPipeline).as("addon_groups");
+	}
+
+	public void updateVariationStock(List<String> variationIds, boolean inStock) {
+		long findByVariationsStart = System.currentTimeMillis();
+		List<Variation> variations = findByIds(variationIds);
+		log.info("Fetched variations in {} ms", System.currentTimeMillis() - findByVariationsStart);
+
+		if (variations.isEmpty()) {
+			log.warn("No items or variations found for given IDs: {}", variationIds);
+			return;
+		}
+
+		variations.forEach(variation -> {
+			variation.setActive(inStock ? "1" : "0");
+		});
+
+		long bulkWriteStart = System.currentTimeMillis();
+		bulkUpdate(variations, Variation.class);
+		log.info("Bulk write for variations completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 
 }

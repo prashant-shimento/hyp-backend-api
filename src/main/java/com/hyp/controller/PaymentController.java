@@ -69,6 +69,17 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 		return ResponseEntity.ok(Response.builder().data(Collections.singletonList(order)).error(false).message("Order Payment Consumed Successfully").build());
 	}
 
+	@PostMapping("/process/{orderId}")
+	public ResponseEntity<Response> processPayment(@PathVariable String orderId) throws PaymentException, EntityNotFoundException {
+		Order order = Optional.ofNullable(orderService.findById(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+		Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
+				.orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
+		log.info("Payment Processing API");
+		paymentService.processPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
+		return ResponseEntity.ok(Response.builder().data(Collections.singletonList(order)).error(false).message("Payment Order Processed Successfully").build());
+	}
+
 	@PostMapping("/verify/{orderId}")
 	public ResponseEntity<Response> verifyPayment(@PathVariable String orderId,
 			@RequestBody RazorpayVerifyDto razorPayDto) throws PaymentException, EntityNotFoundException {

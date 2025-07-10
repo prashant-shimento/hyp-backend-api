@@ -94,11 +94,11 @@ public class PosController {
 					.status("failed").build();
 			return ResponseEntity.ok(response);
 		}
-		boolean result = posDataService.updateRestaurant(updateStatus);
+		posDataService.updateRestaurant(updateStatus);
 		messageTemplate.convertAndSend("/topic/restaurant-status", updateStatus);
-		response = PosResponse.builder().code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
-				.message(result ? "Restaurant Updated Successfully" : "Something Went Wrong")
-				.status(result ? "success" : "failed").build();
+		response = PosResponse.builder().code(HttpStatus.OK.value())
+				.message("Restaurant Updated Successfully")
+				.status("success").build();
 		return ResponseEntity.ok(response);
 	}
 

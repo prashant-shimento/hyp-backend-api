@@ -196,9 +196,12 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 		for (T entity : entities) {
 			String id = ((BaseEntity) entity).getId();
 			Bson filter = Filters.eq("_id", id);
-		    Map<String, Object> entityMap = objectMapper.convertValue(entity, new TypeReference<Map<String, Object>>() {});
-		    Document entityDoc = new Document(entityMap);
-			Bson update = new Document("$set", entityDoc);
+
+			Document doc = new Document();
+			mongoTemplate.getConverter().write(entity, doc);
+			doc.remove("_id");
+
+			Bson update = new Document("$set", doc);
 			writeModels.add(new UpdateOneModel<>(filter, update));
 		}
 
