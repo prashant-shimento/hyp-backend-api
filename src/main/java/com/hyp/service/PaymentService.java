@@ -362,7 +362,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	public void verifyPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) throws PaymentException {
 		if ("paid".equalsIgnoreCase(paymentStatus)) {
-			processSuccessPayment(order, payment, paymentStatus);
+				processSuccessPayment(order, payment, paymentStatus);
 		}
 	}
 
@@ -385,7 +385,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 				status == OrderStatusType.PAYMENT_FAILED ||
 				status == OrderStatusType.ERROR ||
 				status == OrderStatusType.PROCESSING) {
-			log.info("Updating order {} to PAID", order.getId());
+			log.info("Updating order {} to PAID", order	.getId());
 			boolean save = orderService.updateStatus(order.getId(), OrderStatusType.PAID);
 			if(!save){
 				log.error("Unable to update the status of order for ID {}", order.getId());

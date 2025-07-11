@@ -290,7 +290,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				OrderStatusType.PROCESSING
 		);
 
-		Query query = new Query(Criteria.where("_id").is(new ObjectId(orderId))
+		Query query = new Query(Criteria.where("_id").is(orderId)
 				.and("status").in(allowedStatuses));
 		Update update = new Update()
 				.set("status", newStatus)
