@@ -3,7 +3,7 @@ name: CI/CD Staging Pipeline
 on:
   push:
     branches:
-      - staging
+      - main
 
 jobs:
   build:
@@ -103,28 +103,28 @@ jobs:
           docker tag hyp-backend-api lognathp/hyp-backend-api:staging
           docker push lognathp/hyp-backend-api:staging
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Deploy to VPS
-        env:
-          VPS_PRIVATE: ${{ secrets.STAGING_VPS_PRIVATE }}
-          VPS_HOST: ${{ secrets.STAGING_VPS_HOST }}
-          VPS_USER: ${{ secrets.STAGING_VPS_USER }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.STAGING_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.STAGING_VPS_USER }}@${{ secrets.STAGING_VPS_HOST }} << 'EOF'
-            CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:staging)
-            if [ ! -z "$CONTAINER_ID" ]; then
-              docker stop $CONTAINER_ID
-              docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
-              docker rm $CONTAINER_ID
-            fi
-            docker rmi lognathp/hyp-backend-api:staging
-            docker pull lognathp/hyp-backend-api:staging
-            docker run -p 9090:9090 -e ENV=staging -d lognathp/hyp-backend-api:staging
-          EOF
+#  deploy:
+#    runs-on: ubuntu-latest
+#    needs: build
+#
+#    steps:
+#      - name: Deploy to VPS
+#        env:
+#          VPS_PRIVATE: ${{ secrets.STAGING_VPS_PRIVATE }}
+#          VPS_HOST: ${{ secrets.STAGING_VPS_HOST }}
+#          VPS_USER: ${{ secrets.STAGING_VPS_USER }}
+#        run: |
+#          mkdir -p ~/.ssh
+#          echo "${{ secrets.STAGING_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
+#          chmod 600 ~/.ssh/id_rsa
+#          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.STAGING_VPS_USER }}@${{ secrets.STAGING_VPS_HOST }} << 'EOF'
+#            CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:staging)
+#            if [ ! -z "$CONTAINER_ID" ]; then
+#              docker stop $CONTAINER_ID
+#              docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
+#              docker rm $CONTAINER_ID
+#            fi
+#            docker rmi lognathp/hyp-backend-api:staging
+#            docker pull lognathp/hyp-backend-api:staging
+#            docker run -p 9090:9090 -e ENV=staging -d lognathp/hyp-backend-api:staging
+#          EOF
