@@ -8,6 +8,8 @@ import com.hyp.entity.User;
 import com.hyp.exception.OneSignalException;
 import com.hyp.repository.UserRepository;
 
+import jakarta.validation.Valid;
+
 @Service
 public class UserService extends BaseServiceImpl<User, String> {
 
@@ -27,5 +29,9 @@ public class UserService extends BaseServiceImpl<User, String> {
 	
 	public void registerOneSignalUser(String userId, String oneSignalId) throws OneSignalException {
 		oneSignalClient.registerUser(userId, oneSignalId).block();
+	}
+
+	public User create(@Valid User user) {
+		return userRepository.save(user);
 	}
 }

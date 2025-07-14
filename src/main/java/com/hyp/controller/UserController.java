@@ -24,7 +24,7 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/user")
-public class UserController extends BaseController<UserDto, User, String> {
+public class UserController extends BaseListController<UserDto, User, String> {
 
 	@Autowired
 	public UserTranslation userTranslation;
@@ -47,5 +47,26 @@ public class UserController extends BaseController<UserDto, User, String> {
 	    UserDto userData = userTranslation.getDto(user);
 	    return ResponseEntity.ok(new Response(Collections.singletonList(userData), false, "Login successful"));
 	}
-	
+
+	@PostMapping
+	public ResponseEntity<Response> create(@RequestBody @Valid UserDto userDto) {
+		boolean emailExists = userService.findByEmail(userDto.getEmail()) != null;
+		boolean restaurantExists = userService.findByRestaurantId(userDto.getRestaurantId()) != null;
+
+		if (emailExists) {
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body(new Response(null, false, "Email is already registered with another user."));
+		}
+
+		if (restaurantExists) {
+			return ResponseEntity.status(HttpStatus.CONFLICT)
+					.body(new Response(null, false, "A user already exists for this restaurant."));
+		}
+
+		User user = userTranslation.getEntity(userDto);
+		User savedUser = userService.create(user);
+
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(new Response(Collections.singletonList(savedUser), true, "User created successfully."));
+	}
 }
