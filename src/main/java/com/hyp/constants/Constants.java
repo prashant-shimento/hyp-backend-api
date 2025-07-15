@@ -95,16 +95,9 @@ public interface Constants {
 	String FULFILLMENT_WORKFLOW_ENABLED = "fulfillment_workflow_enabled";
 	String STOCK_WORKFLOW_ENABLED = "stock_workflow_enabled";
 
-	Set<OrderStatusType> CANCELABLE_STATUSES = EnumSet.of(
-			OrderStatusType.ACCEPTED,
-			OrderStatusType.READY_FOR_DELIVERY,
-			OrderStatusType.PAID,
-			OrderStatusType.OUT_FOR_PICKUP,
-			OrderStatusType.REACHED_PICKUP,
-			OrderStatusType.PICKED_UP,
-			OrderStatusType.OUT_FOR_DELIVERY,
-			OrderStatusType.REACHED_DELIVERY,
-			OrderStatusType.DELIVERED
-	);
+	Set<OrderStatusType> CANCELABLE_STATUSES = EnumSet.of(OrderStatusType.ACCEPTED, OrderStatusType.READY_FOR_DELIVERY,
+			OrderStatusType.PAID, OrderStatusType.SEARCHING_RIDER, OrderStatusType.OUT_FOR_PICKUP,
+			OrderStatusType.REACHED_PICKUP, OrderStatusType.PICKED_UP, OrderStatusType.OUT_FOR_DELIVERY,
+			OrderStatusType.REACHED_DELIVERY, OrderStatusType.DELIVERED);
 
 }
