@@ -1,5 +1,6 @@
 package com.hyp.listener;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import com.hyp.exception.PaymentException;
@@ -79,7 +80,6 @@ public class OrderListener implements MessageListener {
 						log.info("Order status updated as dropped_off for {}", orderId);
 						order.setStatus(OrderStatusType.DROPPED_OFF);
 						orderService.save(order);
-
 					}
 				}
 			}
@@ -88,7 +88,18 @@ public class OrderListener implements MessageListener {
 				log.info("Received Order Delay Expiry from Redis for {}", orderId);
 				Order order = orderService.findById(orderId);
 				if (order != null) {
-					if (!OrderStatusType.DELIVERED.name().equalsIgnoreCase(order.getStatus().name())) {
+					EnumSet<OrderStatusType> eligibleStatuses = EnumSet.of(
+							OrderStatusType.ACCEPTED,
+							OrderStatusType.READY_FOR_DELIVERY,
+							OrderStatusType.PAID,
+							OrderStatusType.SEARCHING_RIDER,
+							OrderStatusType.OUT_FOR_PICKUP,
+							OrderStatusType.REACHED_PICKUP,
+							OrderStatusType.PICKED_UP,
+							OrderStatusType.OUT_FOR_DELIVERY,
+							OrderStatusType.REACHED_DELIVERY
+					);
+					if (eligibleStatuses.contains(order.getStatus())) {
 						Customer customer = customerService.findById(order.getCustomerId());
 						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 						List<String> parameters = CommonUtils.buildStringList(customer.getName(), orderId, restaurant.getRestaurantName(),
