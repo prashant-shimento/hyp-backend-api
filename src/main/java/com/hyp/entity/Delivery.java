@@ -2,7 +2,9 @@ package com.hyp.entity;
 
 import java.io.Serial;
 import java.time.LocalDateTime;
+import java.util.List;
 
+import com.hyp.model.DeliveryOrderStatus;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -53,6 +55,8 @@ public class Delivery extends BaseEntity {
 	private String fulfillmentType;
 	@Field("fulfillment_at")
 	private LocalDateTime fulfillmentAt;
+	@Field("fulfillment_histories")
+	private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
 
 	@Data
 	@NoArgsConstructor

@@ -6,6 +6,7 @@ import java.util.List;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
 
+import com.hyp.model.DeliveryOrderStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,6 +32,7 @@ public class DeliveryDto extends BaseDto {
     private DeliveryFulfillmentDto fulfillment;
     private String fulfillmentType;
     private LocalDateTime fulfillmentAt;
+    private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
 
 
     @Data

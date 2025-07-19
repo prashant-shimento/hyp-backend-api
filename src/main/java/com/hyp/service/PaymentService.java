@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import com.hyp.dto.RefundDto;
@@ -255,6 +256,34 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
+	public String fetchPaymentId(String orderId) {
+		try {
+			RazorpayClient razorpayClient = getRazorpayClient(orderId);
+			Payment payment = findByOrderId(orderId);
+
+			List<com.razorpay.Payment> payments = razorpayClient.orders.fetchPayments(payment.getPaymentOrderId());
+
+			com.razorpay.Payment matchedPayment = payments.stream()
+					.filter(p -> {
+						String status = p.get("status");
+						return "captured".equalsIgnoreCase(status) || "authorized".equalsIgnoreCase(status);
+					})
+					.findFirst()
+					.orElse(null);
+
+			if (matchedPayment != null) {
+				String paymentId = matchedPayment.get("id");
+				log.info("Fetched Razorpay Payment ID: {} for Order ID: {}", paymentId, orderId);
+				return paymentId;
+			}
+
+			log.warn("No matching payment found for Order ID: {}", orderId);
+		} catch (Exception e) {
+			log.error("Error fetching Razorpay Payment ID for Order ID: {}. Exception:", orderId, e);
+		}
+		return null;
+	}
+
 	public Payment findByPaymentOrderId(String paymentOrderId) {
 		return paymentRepository.findByPaymentOrderId(paymentOrderId);
 	}
@@ -375,6 +404,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			log.info("Processing order {}", order.getId());
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByPaymentStatus(paymentStatus));
 			payment.setStatus(paymentStatus);
+			if(payment.getPaymentId() == null){
+				payment.setPaymentId(fetchPaymentId(order.getId()));
+			}
 			save(payment);
 		}
 	}
@@ -391,6 +423,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 				log.error("Unable to update the status of order for ID {}", order.getId());
 			}
 			payment.setStatus(paymentStatus);
+			if(payment.getPaymentId() == null){
+				payment.setPaymentId(fetchPaymentId(order.getId()));
+			}
 			save(payment);
 			orderEventPublisher.publishProcessOrderEvent(order);
 		}
