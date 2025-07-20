@@ -11,8 +11,10 @@ import lombok.NoArgsConstructor;
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 public class PosStatusRequest {
 
-	@JsonProperty("restID")
+	@JsonProperty("restaurant_id")
 	private String restaurantId;
+	@JsonProperty("restID")
+	private String menuSharingCode;
     private String status;
 	@JsonProperty("store_status")
 	private String storeStatus;

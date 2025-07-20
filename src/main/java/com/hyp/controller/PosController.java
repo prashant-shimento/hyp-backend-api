@@ -87,19 +87,13 @@ public class PosController {
 
 	@PostMapping("/status/update")
 	public ResponseEntity<PosResponse> updateStatus(@RequestBody PosStatusRequest updateStatus) {
-		PosResponse response = null;
-		Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
-		if (restaurant == null) {
-			response = PosResponse.builder().httpCode(HttpStatus.NOT_FOUND.value()).message("Restaurant Not Found")
-					.status("failed").build();
-			return ResponseEntity.ok(response);
-		}
 		posDataService.updateRestaurant(updateStatus);
 		messageTemplate.convertAndSend("/topic/restaurant-status", updateStatus);
-		response = PosResponse.builder().code(HttpStatus.OK.value())
+		return ResponseEntity.ok(PosResponse.builder()
+				.httpCode(HttpStatus.OK.value())
 				.message("Restaurant Updated Successfully")
-				.status("success").build();
-		return ResponseEntity.ok(response);
+				.status("success")
+				.build());
 	}
 
 	@PostMapping("/stock")

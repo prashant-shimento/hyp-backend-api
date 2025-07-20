@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 import com.hyp.entity.*;
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.temporal.service.RestaurantWorkflowService;
 import com.hyp.temporal.service.StockWorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -477,7 +478,18 @@ public class PosServiceImpl implements PosService {
 	@Override
 	public void updateRestaurant(PosStatusRequest updateStatus) {
 		try {
-			Restaurant restaurant = restaurantService.findByMenuSharingCode(updateStatus.getRestaurantId());
+			Restaurant restaurant = null;
+			if(updateStatus.getMenuSharingCode() != null){
+				restaurant = restaurantService.findByMenuSharingCode(updateStatus.getMenuSharingCode());
+			}
+			if(updateStatus.getRestaurantId() != null){
+				restaurant = restaurantService.findById(updateStatus.getRestaurantId());
+			}
+
+			Optional.ofNullable(restaurant)
+					.orElseThrow(() -> new EntityNotFoundException("Restaurant",
+							updateStatus.getRestaurantId() != null ? updateStatus.getRestaurantId() : updateStatus.getMenuSharingCode()));
+
 			boolean status = "1".equalsIgnoreCase(updateStatus.getStoreStatus());
 			restaurant.setActive(status);
 
