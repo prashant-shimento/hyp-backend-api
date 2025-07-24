@@ -181,6 +181,12 @@ public class Restaurant {
 	@Field("payment_route_list")
 	private List<PaymentRoute> paymentRouteList;
 
+	@Field("show_custom_message")
+	private boolean showCustomMessage;
+
+	@Field("custom_message")
+	private String customMessage;
+
 	@Getter
 	@Setter
 	@NoArgsConstructor

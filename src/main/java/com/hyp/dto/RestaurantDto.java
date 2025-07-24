@@ -67,5 +67,7 @@ public class RestaurantDto extends BaseDto {
 	private List<PlatformFee> platformFee;
 	private boolean paymentRoutingEnabled;
 	private List<PaymentRoute> paymentRouteList;
+	private boolean showCustomMessage;
+	private String customMessage;
 
 }
