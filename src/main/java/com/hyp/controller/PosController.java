@@ -75,7 +75,7 @@ public class PosController {
 
 	@PostMapping("/status/get")
 	public ResponseEntity<PosResponse> getStatus(@RequestBody PosStatusRequest getStatus) {
-		Restaurant restaurant = restaurantService.findByMenuSharingCode(getStatus.getRestaurantId());
+		Restaurant restaurant = restaurantService.findByMenuSharingCode(getStatus.getMenuSharingCode());
 		PosResponse response = PosResponse.builder()
 				.httpCode(restaurant != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
 				.status(restaurant != null ? "success" : "failed")

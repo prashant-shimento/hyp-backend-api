@@ -103,30 +103,30 @@ jobs:
         docker tag hyp-backend-api lognathp/hyp-backend-api:production
         docker push lognathp/hyp-backend-api:production
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-    - name: Deploy to VPS
-      env:
-        VPS_PRIVATE: ${{ secrets.PRODUCTION_VPS_PRIVATE }}
-        VPS_HOST: ${{ secrets.PRODUCTION_VPS_HOST }}
-        VPS_USER: ${{ secrets.PRODUCTION_VPS_USER }}
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.PRODUCTION_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
-          CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
-          if [ ! -z '$CONTAINER_ID' ]; then
-            docker stop $CONTAINER_ID
-            mkdir -p /home/logs
-            docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
-            docker rm $CONTAINER_ID
-          fi
-          docker rmi -f lognathp/hyp-backend-api:production || true
-          docker pull lognathp/hyp-backend-api:production
-          fuser -k 9090/tcp || true
-          docker run --restart always -p 9090:9090 -e ENV=production -d lognathp/hyp-backend-api:production
-        EOF
+#  deploy:
+#    runs-on: ubuntu-latest
+#    needs: build
+#
+#    steps:
+#    - name: Deploy to VPS
+#      env:
+#        VPS_PRIVATE: ${{ secrets.PRODUCTION_VPS_PRIVATE }}
+#        VPS_HOST: ${{ secrets.PRODUCTION_VPS_HOST }}
+#        VPS_USER: ${{ secrets.PRODUCTION_VPS_USER }}
+#      run: |
+#        mkdir -p ~/.ssh
+#        echo "${{ secrets.PRODUCTION_VPS_PRIVATE }}" | tr -d '\r' > ~/.ssh/id_rsa
+#        chmod 600 ~/.ssh/id_rsa
+#        ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ secrets.PRODUCTION_VPS_USER }}@${{ secrets.PRODUCTION_VPS_HOST }} << 'EOF'
+#          CONTAINER_ID=$(docker ps -q --filter ancestor=lognathp/hyp-backend-api:production)
+#          if [ ! -z '$CONTAINER_ID' ]; then
+#            docker stop $CONTAINER_ID
+#            mkdir -p /home/logs
+#            docker logs $CONTAINER_ID > /home/logs/$CONTAINER_ID-$(date +"%d%m%Y%H%M%S").log
+#            docker rm $CONTAINER_ID
+#          fi
+#          docker rmi -f lognathp/hyp-backend-api:production || true
+#          docker pull lognathp/hyp-backend-api:production
+#          fuser -k 9090/tcp || true
+#          docker run --restart always -p 9090:9090 -e ENV=production -d lognathp/hyp-backend-api:production
+#        EOF
