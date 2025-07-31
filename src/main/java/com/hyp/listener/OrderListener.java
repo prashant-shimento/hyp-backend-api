@@ -3,7 +3,6 @@ package com.hyp.listener;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.hyp.exception.PaymentException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -20,9 +19,11 @@ import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
+import com.hyp.exception.PaymentException;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
+import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RedisService;
@@ -61,6 +62,8 @@ public class OrderListener implements MessageListener {
 
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
+	@Autowired
+	private OneSignalAlertService oneSignalAlertService;
 
     @Override
 	public void onMessage(Message message, byte[] pattern) {
@@ -158,10 +161,13 @@ public class OrderListener implements MessageListener {
 						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 						Delivery delivery = deliveryService.findByOrderId(orderId);
 						if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-							List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
-									order.getStatus(), customer.getName(), customer.getMobile(), "-", "-");
-							notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE,
-									parameters);
+							List<String> parameters = CommonUtils.buildStringList(orderId,
+									restaurant.getRestaurantName(), order.getStatus(), customer.getName(),
+									customer.getMobile(), "-", "-");
+							notificationService.sendInternalGroupNotification(
+									Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
+							oneSignalAlertService.notifyDeliveryDelay(orderId, restaurant.getRestaurantName(),
+									order.getStatus(), customer.getName(), customer.getMobile());
 							log.info("Sent delivery delay alert for {}", orderId);
 						}
 					}

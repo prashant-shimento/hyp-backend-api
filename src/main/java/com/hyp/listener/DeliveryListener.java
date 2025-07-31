@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,7 @@ import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.LocationService;
 import com.hyp.service.NotificationService;
+import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.OrderService;
 import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
@@ -57,156 +59,179 @@ public class DeliveryListener implements MessageListener {
     @Autowired
     LocationService locationService;
 
-    @Override
-    public void onMessage(Message message, byte[] pattern) {
-        String expiredKey = message.toString();
-        handleDeliveryExpiry(expiredKey);
-    }
+	@Autowired
+	private OneSignalAlertService oneSignalAlertService;
 
-    private void handleDeliveryExpiry(String expiredKey) {
-        String[] parts = expiredKey.split(":");
-        if (parts.length < 3) {
-            log.warn("Invalid expiredKey format: {}", expiredKey);
-            return;
-        }
-        if (expiredKey.startsWith("delivery:")) {
-            String orderId = parts[1];
-            String status = parts[2];
+	@Value("${onesignal.app.id}")
+	private String appId;
 
-            if (List.of(DeliveryFulfillStatusType.CREATED.name(), DeliveryFulfillStatusType.OUT_FOR_PICKUP.name())
-                    .contains(status)) {
-                log.info("Received Delivery Delay Expiry from Redis for Order ID: {}", orderId);
+	@Override
+	public void onMessage(Message message, byte[] pattern) {
+		String expiredKey = message.toString();
+		handleDeliveryExpiry(expiredKey);
+	}
 
-                Order order = orderService.findById(orderId);
-                if (order == null) {
-                    log.warn("Order not found for ID: {}", orderId);
-                    return;
-                }
+	private void handleDeliveryExpiry(String expiredKey) {
+		String[] parts = expiredKey.split(":");
+		if (parts.length < 3) {
+			log.warn("Invalid expiredKey format: {}", expiredKey);
+			return;
+		}
+		if (expiredKey.startsWith("delivery:")) {
+			String orderId = parts[1];
+			String status = parts[2];
 
-                Customer customer = customerService.findById(order.getCustomerId());
-                Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-                Delivery delivery = deliveryService.findByOrderId(orderId);
+			if (List.of(DeliveryFulfillStatusType.CREATED.name(), DeliveryFulfillStatusType.OUT_FOR_PICKUP.name())
+					.contains(status)) {
+				log.info("Received Delivery Delay Expiry from Redis for Order ID: {}", orderId);
 
-                if (delivery == null || delivery.getFulfillment() == null) {
-                    log.warn("No fulfillment data for Order ID: {}", orderId);
-                    return;
-                }
+				Order order = orderService.findById(orderId);
+				if (order == null) {
+					log.warn("Order not found for ID: {}", orderId);
+					return;
+				}
 
-                DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
-                if (currentStatus.name().equals(status)) {
-                    Rider rider = delivery.getFulfillment().getRider();
-                    List<String> parameters = CommonUtils.buildStringList(orderId,
-                            restaurant != null ? restaurant.getRestaurantName() : "-", order.getStatus(),
-                            customer != null ? customer.getName() : "-", customer != null ? customer.getMobile() : "-",
-                            rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
+				Customer customer = customerService.findById(order.getCustomerId());
+				Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+				Delivery delivery = deliveryService.findByOrderId(orderId);
 
-                    notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE,
-                            parameters);
-                    log.info("Sent delivery delay alert for Order ID: {}", orderId);
+				if (delivery == null || delivery.getFulfillment() == null) {
+					log.warn("No fulfillment data for Order ID: {}", orderId);
+					return;
+				}
 
-                    String triggerFulfillOnRiderDelay = redisService.getRedisData(Constants.REDIS_KEY_TRIGGER_FULFILL_ON_RIDER_DELAY).orElse("false");
-                    log.info("triggerSmartFulfill on delay enabled status {}", triggerFulfillOnRiderDelay);
-                    if (triggerFulfillOnRiderDelay.equalsIgnoreCase("true")) {
-                        log.info("Smart fulfilling the order again due to delay in assigning rider for order, {}",
-                                orderId);
-                        try {
-                            deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
-                        } catch (DeliveryException e) {
-                            log.error("Exception occurred on processDeliverySmartFulfill on expiry Order for {}, Exception {}",
-                                    orderId, e.getMessage());
-                        }
-                    }
+				DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
+				if (currentStatus.name().equals(status)) {
+					Rider rider = delivery.getFulfillment().getRider();
+					List<String> parameters = CommonUtils.buildStringList(orderId,
+							restaurant != null ? restaurant.getRestaurantName() : "-", order.getStatus(),
+							customer != null ? customer.getName() : "-", customer != null ? customer.getMobile() : "-",
+							rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
 
-                }
+					notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE,
+							parameters);
+					oneSignalAlertService.notifyDeliveryDelay(orderId, restaurant.getRestaurantName(),
+							order.getStatus(), customer.getName(), customer.getMobile());
+					log.info("Sent delivery delay alert for Order ID: {}", orderId);
 
-            }
-        }
-        if (expiredKey.startsWith("rider_location:")) {
-            try {
-                String orderId = parts[1];
-                String lastStatus = parts[2]; // OUT_FOR_PICKUP, REACHED_PICKUP, PICKED_UP, etc.
+					String triggerFulfillOnRiderDelay = redisService
+							.getRedisData(Constants.REDIS_KEY_TRIGGER_FULFILL_ON_RIDER_DELAY).orElse("false");
+					log.info("triggerSmartFulfill on delay enabled status {}", triggerFulfillOnRiderDelay);
+					if (triggerFulfillOnRiderDelay.equalsIgnoreCase("true")) {
+						log.info("Smart fulfilling the order again due to delay in assigning rider for order, {}",
+								orderId);
+						try {
+							deliveryService.processDeliverySmartFulfill(delivery, Constants.SYSTEM);
+						} catch (DeliveryException e) {
+							log.error(
+									"Exception occurred on processDeliverySmartFulfill on expiry Order for {}, Exception {}",
+									orderId, e.getMessage());
+						}
+					}
 
-                log.info("Received Rider Location Expiry from Redis for Order ID: {} with Status: {}", orderId,
-                        lastStatus);
-                Order order = orderService.findById(orderId);
-                Delivery delivery = deliveryService.findByOrderId(orderId);
-                Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-                Customer customer = customerService.findById(order.getCustomerId());
-                if (delivery == null || delivery.getFulfillment() == null) {
-                    log.warn("No fulfillment data found for Order ID: {}", orderId);
-                    return;
-                }
-                Duration expiryDuration;
-                DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
+				}
 
-                // Fetch last known rider location from logs
-                Optional<Location> lastKnownLocation = delivery.getFulfillment().getLogs().stream()
-                        .filter(log -> log.getStatus().equals(lastStatus)).map(Log::getLocation)
-                        .filter(Objects::nonNull).findFirst();
+			}
+		}
+		if (expiredKey.startsWith("rider_location:")) {
+			try {
+				String orderId = parts[1];
+				String lastStatus = parts[2]; // OUT_FOR_PICKUP, REACHED_PICKUP, PICKED_UP, etc.
 
-                // Fetch current rider location from live tracking API
-                RiderLocation currentRiderLocation = null;
-                if(delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
-                || delivery.getService().equalsIgnoreCase("porter")){
-                    log.info("Getting Porter Rider location of the order {}", orderId);
-                    currentRiderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
-                } else {
-                    log.info("Getting Rider location of the order {}", orderId);
-                    currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
-                }
-                log.info("Current Rider location of the order {}, status {},Location: {}", orderId, lastStatus, currentRiderLocation.toString());
+				log.info("Received Rider Location Expiry from Redis for Order ID: {} with Status: {}", orderId,
+						lastStatus);
+				Order order = orderService.findById(orderId);
+				Delivery delivery = deliveryService.findByOrderId(orderId);
+				Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+				Customer customer = customerService.findById(order.getCustomerId());
+				if (delivery == null || delivery.getFulfillment() == null) {
+					log.warn("No fulfillment data found for Order ID: {}", orderId);
+					return;
+				}
+				Duration expiryDuration;
+				DeliveryFulfillStatusType currentStatus = delivery.getFulfillment().getStatus();
 
-                boolean isLocationMissing = currentRiderLocation.getData() == null || currentRiderLocation.getData().getLatitude() == null && currentRiderLocation.getData().getLongitude() == null;
-                if (isLocationMissing) {
-                    log.warn("Rider location is missing or incomplete for Order ID: {}. Setting fallback expiry.", orderId);
-                    expiryDuration = Duration.ofMinutes(2);
-                } else {
-                    if (lastKnownLocation.isPresent()) {
-                        Location lastLocation = lastKnownLocation.get();
-                        Location currentLocation = currentRiderLocation.getData();
-                        Double currentLat = currentLocation.getLatitude();
-                        Double currentLong = currentLocation.getLongitude();
+				// Fetch last known rider location from logs
+				Optional<Location> lastKnownLocation = delivery.getFulfillment().getLogs().stream()
+						.filter(log -> log.getStatus().equals(lastStatus)).map(Log::getLocation)
+						.filter(Objects::nonNull).findFirst();
 
-                        if (Double.compare(lastLocation.getLatitude(), currentLat) == 0
-                                && Double.compare(lastLocation.getLongitude(), currentLong) == 0) {
+				// Fetch current rider location from live tracking API
+				RiderLocation currentRiderLocation = null;
+				if (delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
+						|| delivery.getService().equalsIgnoreCase("porter")) {
+					log.info("Getting Porter Rider location of the order {}", orderId);
+					currentRiderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+				} else {
+					log.info("Getting Rider location of the order {}", orderId);
+					currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
+				}
+				log.info("Current Rider location of the order {}, status {},Location: {}", orderId, lastStatus,
+						currentRiderLocation.toString());
 
-                            log.warn("Rider has NOT moved for Order ID: {}", orderId);
+				boolean isLocationMissing = currentRiderLocation.getData() == null
+						|| currentRiderLocation.getData().getLatitude() == null
+								&& currentRiderLocation.getData().getLongitude() == null;
+				if (isLocationMissing) {
+					log.warn("Rider location is missing or incomplete for Order ID: {}. Setting fallback expiry.",
+							orderId);
+					expiryDuration = Duration.ofMinutes(2);
+				} else {
+					if (lastKnownLocation.isPresent()) {
+						Location lastLocation = lastKnownLocation.get();
+						Location currentLocation = currentRiderLocation.getData();
+						Double currentLat = currentLocation.getLatitude();
+						Double currentLong = currentLocation.getLongitude();
 
-                            Rider rider = delivery.getFulfillment().getRider();
-                            List<String> parameters = CommonUtils.buildStringList(orderId, restaurant.getRestaurantName(),
-                                    delivery.getFulfillment().getStatus(), customer.getName(), customer.getMobile(),
-                                    rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
+						if (Double.compare(lastLocation.getLatitude(), currentLat) == 0
+								&& Double.compare(lastLocation.getLongitude(), currentLong) == 0) {
 
-                            notificationService.sendInternalGroupNotification(Constants.META_RIDER_DELAY_ALERT_TEMPLATE, parameters);
-                        } else {
-                            log.info("Rider has MOVED for Order ID: {}, updating last known location.", orderId);
-                        }
-                    }
+							log.warn("Rider has NOT moved for Order ID: {}", orderId);
 
-                    if (List.of(DeliveryFulfillStatusType.OUT_FOR_PICKUP, DeliveryFulfillStatusType.REACHED_PICKUP,
-                            DeliveryFulfillStatusType.PICKED_UP).contains(currentStatus)) {
-                        String riderLocationPickupStage = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE).orElse("5");
-                        expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationPickupStage));
-                    } else if (List.of(DeliveryFulfillStatusType.OUT_FOR_DELIVERY, DeliveryFulfillStatusType.REACHED_DELIVERY)
-                            .contains(currentStatus)) {
-                        String riderLocationOfdStage = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_OFD_STAGE).orElse("10");
-                        expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationOfdStage));
-                    } else {
-                        log.info("Order ID: {} has reached final status: {}, stopping tracking.", orderId, currentStatus);
-                        return;
-                    }
+							Rider rider = delivery.getFulfillment().getRider();
+							List<String> parameters = CommonUtils.buildStringList(orderId,
+									restaurant.getRestaurantName(), delivery.getFulfillment().getStatus(),
+									customer.getName(), customer.getMobile(), rider != null ? rider.getName() : "-",
+									rider != null ? rider.getMobile() : "-");
 
-                }
+							notificationService.sendInternalGroupNotification(Constants.META_RIDER_DELAY_ALERT_TEMPLATE,
+									parameters);
+							oneSignalAlertService.notifyRiderNotMovingAlert(orderId, restaurant.getRestaurantName(),
+									delivery.getFulfillment().getStatus(), customer.getName(), customer.getMobile(),
+									rider != null ? rider.getName() : "-", rider != null ? rider.getMobile() : "-");
+						} else {
+							log.info("Rider has MOVED for Order ID: {}, updating last known location.", orderId);
+						}
+					}
 
-                if(currentStatus != DeliveryFulfillStatusType.DELIVERED){
-                    String locationKey = "rider_location:" + orderId + ":" + currentStatus;
-                    redisService.setRedisData(locationKey, currentStatus, expiryDuration.toSeconds());
-                }
+					if (List.of(DeliveryFulfillStatusType.OUT_FOR_PICKUP, DeliveryFulfillStatusType.REACHED_PICKUP,
+							DeliveryFulfillStatusType.PICKED_UP).contains(currentStatus)) {
+						String riderLocationPickupStage = redisService
+								.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE).orElse("5");
+						expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationPickupStage));
+					} else if (List
+							.of(DeliveryFulfillStatusType.OUT_FOR_DELIVERY, DeliveryFulfillStatusType.REACHED_DELIVERY)
+							.contains(currentStatus)) {
+						String riderLocationOfdStage = redisService
+								.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_OFD_STAGE).orElse("10");
+						expiryDuration = Duration.ofMinutes(Long.parseLong(riderLocationOfdStage));
+					} else {
+						log.info("Order ID: {} has reached final status: {}, stopping tracking.", orderId,
+								currentStatus);
+						return;
+					}
 
-            } catch (DeliveryException e) {
-                log.error("Error processing rider location expiry: {}", e.getMessage(), e);
-            }
-        }
-    }
+				}
+
+				if (currentStatus != DeliveryFulfillStatusType.DELIVERED) {
+					String locationKey = "rider_location:" + orderId + ":" + currentStatus;
+					redisService.setRedisData(locationKey, currentStatus, expiryDuration.toSeconds());
+				}
+
+			} catch (DeliveryException e) {
+				log.error("Error processing rider location expiry: {}", e.getMessage(), e);
+			}
+		}
+	}
 
 }

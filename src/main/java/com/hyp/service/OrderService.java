@@ -5,10 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import com.hyp.enums.OrderType;
-import com.hyp.temporal.service.OrderWorkflowService;
-import com.mongodb.client.result.UpdateResult;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -28,16 +24,19 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.OrderType;
 import com.hyp.enums.PaymentType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
+import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
+import com.mongodb.client.result.UpdateResult;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -104,6 +103,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
+
+	@Autowired
+	private OneSignalAlertService oneSignalAlertService;
 
 	public Order create(OrderDto orderDto) throws Exception {
 
@@ -201,6 +203,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		List<String> parameters = CommonUtils.buildStringList(customer.getName(), customer.getMobile(), order.getId(),
 				order.getStatus(), restaurant.getRestaurantName());
 		notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+		oneSignalAlertService.notifyNewOrder(customer.getName(), customer.getMobile(), order.getId(), order.getStatus(),
+				restaurant.getRestaurantName());
 		return order;
 
 	}

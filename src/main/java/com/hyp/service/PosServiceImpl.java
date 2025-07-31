@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,10 +12,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-import com.hyp.entity.*;
-import com.hyp.exception.EntityNotFoundException;
-import com.hyp.temporal.service.RestaurantWorkflowService;
-import com.hyp.temporal.service.StockWorkflowService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -27,9 +22,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.constants.Constants;
+import com.hyp.entity.AddonItem;
+import com.hyp.entity.Category;
+import com.hyp.entity.Customer;
+import com.hyp.entity.Delivery;
+import com.hyp.entity.Item;
+import com.hyp.entity.Order;
+import com.hyp.entity.OrderType;
+import com.hyp.entity.Restaurant;
+import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.model.DeliveryOrderStatus.Rider;
@@ -42,6 +47,8 @@ import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
+import com.hyp.temporal.service.RestaurantWorkflowService;
+import com.hyp.temporal.service.StockWorkflowService;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
@@ -81,6 +88,9 @@ public class PosServiceImpl implements PosService {
 
 	@Autowired
 	RestaurantWorkflowService restaurantWorkflowService;
+
+	@Autowired
+	OneSignalAlertService oneSignalAlertService;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
@@ -168,7 +178,10 @@ public class PosServiceImpl implements PosService {
 					posDataRequest.getRestaurants().get(0).getDetails().getMenusharingcode());
 
 			notificationService.sendInternalGroupNotification(Constants.META_MENU_PUSH_ALERT_TEMPLATE, parameters);
-
+			oneSignalAlertService.notifyMenuPush(
+					posDataRequest.getRestaurants().get(0).getDetails().getRestaurantname(),
+					posDataRequest.getRestaurants().get(0).getRestaurantid(),
+					posDataRequest.getRestaurants().get(0).getDetails().getMenusharingcode());
 			return true;
 		} catch (Exception e) {
 			log.error("Exception occurred while saving POS data: {}", e.getMessage(), e);
@@ -572,6 +585,7 @@ public class PosServiceImpl implements PosService {
 	public void sendAlert(PosException e) {
 		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,
 				List.of(e.getAction(), e.getMessage(), "POS"));
+		oneSignalAlertService.notifyErrorResponseAlert(e.getAction(), e.getMessage(), "POS");
 	}
 
 }

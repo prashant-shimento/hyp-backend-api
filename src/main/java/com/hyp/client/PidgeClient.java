@@ -3,7 +3,6 @@ package com.hyp.client;
 import java.time.Duration;
 import java.util.List;
 
-import com.hyp.model.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
@@ -20,6 +19,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import com.hyp.constants.Constants;
 import com.hyp.exception.DeliveryException;
+import com.hyp.model.DeliveryOrderStatus;
+import com.hyp.model.DeliveryQuote;
+import com.hyp.model.DeliveryRiderLocation;
+import com.hyp.model.Location;
+import com.hyp.model.RiderLocation;
 import com.hyp.request.DeliveryFulfillRequest;
 import com.hyp.request.DeliveryFulfillResponse;
 import com.hyp.request.DeliveryOrderRequest;
@@ -27,6 +31,7 @@ import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.PidgeLoginRequest;
 import com.hyp.service.MockService;
 import com.hyp.service.NotificationService;
+import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.RedisService;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.LoggingUtils;
@@ -72,6 +77,9 @@ public class PidgeClient {
 	
 	@Autowired
 	private Environment env;
+
+	@Autowired
+	private OneSignalAlertService oneSignalAlertService;
 
 	private String getToken() throws DeliveryException {
 		return redisService.getRedisData(Constants.REDIS_KEY_PIDGE_TOKEN).orElseThrow(() -> {
@@ -373,6 +381,8 @@ public class PidgeClient {
 	public void sendAlert(DeliveryException e) {
 		notificationService.sendInternalGroupNotification(Constants.META_GENERIC_ALERT_TEMPLATE,
 				List.of(e.getAction(), e.getMessage(), "DELIVERY"));
+		oneSignalAlertService.notifyErrorResponseAlert(e.getAction(), e.getMessage(), "DELIVERY");
+
 	}
 
 	@Retryable(retryFor = { WebClientResponseException.Unauthorized.class })
