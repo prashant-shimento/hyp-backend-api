@@ -1,17 +1,22 @@
 package com.hyp.service;
 
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.Optional;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
+import com.google.common.net.HttpHeaders;
+import com.hyp.exception.DeliveryException;
+import com.hyp.exception.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-
+@Slf4j
 @Component
 public class OtpService {
 
@@ -21,48 +26,55 @@ public class OtpService {
 	@Value("${sms.key}")
 	private String smsKey;
 
-	private static final Integer EXPIRE_MINS = 1;
-	private LoadingCache<String, Integer> otpCache;
-	private WebClient webClient;
+	private static final int EXPIRE_MINS = 1;
+	private static final int OTP_LENGTH = 6;
 
-	public OtpService(WebClient.Builder webClientBuilder) {
-		otpCache = CacheBuilder.newBuilder().expireAfterWrite(EXPIRE_MINS, TimeUnit.MINUTES)
-				.build(new CacheLoader<String, Integer>() {
-					public Integer load(String key) {
-						return 0;
-					}
-				});
-		this.webClient = webClientBuilder.build();
+	private final RedisService redisService;
+	private final WebClient webClient;
 
+	@Autowired
+	public OtpService(RedisService redisService) {
+		this.redisService = redisService;
+		this.webClient = WebClient.builder().build();
 	}
 
-	public int generateOTP(String key) {
-		Random random = new Random();
-		int otp = 100000 + random.nextInt(900000);
-		otpCache.put(key, otp);
-		return otp;
-	}
+	public void sendOtp(String mobileNum) throws Exception {
+		int otp = generateOtp(mobileNum);
 
-	public int getOtp(String key) {
+		String smsUrl = smsBaseUrl
+				.replace("{key}", smsKey)
+				.replace("{mobile}", mobileNum)
+				.replace("{otp}", String.valueOf(otp));
+
 		try {
-			return otpCache.get(key);
+			Mono<String> responseMono = webClient.get()
+					.uri(smsUrl)
+					.retrieve()
+					.bodyToMono(String.class);
+
+			responseMono
+					.map(response -> new JSONObject(response).optString("Status"))
+					.map("Success"::equalsIgnoreCase)
+					.block();
 		} catch (Exception e) {
-			return 0;
+			log.error("Error while sending OTP SMS {}", e.getMessage());
+			throw new Exception(e.getMessage());
 		}
 	}
 
-	public void clearOTP(String key) {
-		otpCache.invalidate(key);
+	public int generateOtp(String key) {
+		int otp = new SecureRandom().nextInt(900000) + 100000;
+		redisService.setRedisData("otp:"+key, otp, Duration.ofMinutes(EXPIRE_MINS).toSeconds());
+		return otp;
 	}
 
-	public boolean sendOtp(String mobileNum) {
-		int otp = generateOTP(mobileNum);
-		String smsUrl = smsBaseUrl;
-		String apikey = smsKey;
-		smsUrl = smsUrl.replace("{key}", apikey).replace("{mobile}", mobileNum).replace("{otp}", String.valueOf(otp));
+	public int getOtp(String key) throws EntityNotFoundException {
+		return redisService.getRedisData("otp:"+key)
+				.map(Integer::parseInt)
+				.orElseThrow(() -> new EntityNotFoundException("OTP",key));
+	}
 
-		return webClient.get().uri(smsUrl).retrieve().bodyToMono(String.class)
-				.map(response -> new JSONObject(response).optString("Status"))
-				.map(status -> status.equalsIgnoreCase("Success")).block();
+	public void clearOtp(String key) {
+		redisService.removeRedisData("otp:"+key);
 	}
 }

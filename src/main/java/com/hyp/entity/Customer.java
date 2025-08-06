@@ -2,7 +2,9 @@ package com.hyp.entity;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
+import lombok.Builder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -22,6 +24,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
+@Builder
 public class Customer {
 	
 	@Id
@@ -45,5 +48,5 @@ public class Customer {
 	@LastModifiedDate
 	private LocalDateTime updatedAt;
 	
-	private List<String> restaurants;
+	private Set<String> restaurants;
 }
