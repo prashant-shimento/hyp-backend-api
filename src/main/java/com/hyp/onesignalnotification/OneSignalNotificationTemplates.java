@@ -72,7 +72,7 @@ public class OneSignalNotificationTemplates {
 				🍽️ Name: %s
 				🏷️ ID: %s
 				🔗 Menu Sharing Code: %s
-				""", restaurantname, restaurantid, menusharingcode);
+				""", restaurantname, restaurantid, restaurantname, restaurantid, menusharingcode);
 	}
 
 	public String buildRiderNotMovingAlertMessage(String orderId, String restaurantName,
