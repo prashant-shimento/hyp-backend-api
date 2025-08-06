@@ -98,6 +98,7 @@ public class LoginController {
 
 			if (!checkIfInternalUser(verificationRequest.getMobile())) {
 				int storedOtp = otpService.getOtp(verificationRequest.getMobile());
+				log.info("storedOTP {} requestedOTP {}", storedOtp, verificationRequest.getOtp());
 				if (verificationRequest.getOtp() != storedOtp) {
 					return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 							.body(new Response(null, true, "OTP Verification Failed"));
