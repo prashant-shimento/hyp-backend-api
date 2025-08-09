@@ -16,6 +16,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import com.hyp.listener.DeliveryListener;
 import com.hyp.listener.ItemStockListener;
 import com.hyp.listener.OrderListener;
+import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisClientConfig;
+import redis.clients.jedis.JedisPooled;
 
 @Configuration
 public class RedisConfig {
@@ -24,18 +28,16 @@ public class RedisConfig {
 	private String redisHost;
 
 	@Value("${spring.data.redis.port}")
-	private String redisPort;
+	private Integer redisPort;
 
 	@Value("${spring.data.redis.password}")
 	private String redisPassword;
 
 	@Bean
-	JedisConnectionFactory jedisConnectionFactory() {
-		RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration();
-		configuration.setHostName(redisHost);
-		configuration.setPort(Integer.valueOf(redisPort));
-		configuration.setPassword(redisPassword);
-		return new JedisConnectionFactory(configuration);
+	public JedisConnectionFactory jedisConnectionFactory() {
+		RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisHost, redisPort);
+		config.setPassword(redisPassword);
+		return new JedisConnectionFactory(config);
 	}
 
 	@Bean
@@ -45,6 +47,13 @@ public class RedisConfig {
 		template.setKeySerializer(new StringRedisSerializer());
 		template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 		return template;
+	}
+
+	@Bean
+	public JedisPooled jedisPooled() {
+		HostAndPort hostAndPort = new HostAndPort(redisHost, redisPort);
+		JedisClientConfig config = DefaultJedisClientConfig.builder().password(redisPassword).build();
+		return new JedisPooled(hostAndPort, config);
 	}
 
 	@Bean

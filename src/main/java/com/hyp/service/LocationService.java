@@ -1,9 +1,14 @@
 package com.hyp.service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -26,6 +31,12 @@ public class LocationService {
 	@Value("${google.api.key}")
 	private String googleApiKey;
 
+	@Autowired
+	private RedisService redisService;
+
+	@Autowired
+	private ObjectMapper objectMapper;
+
 	public boolean isLocationDeliverable(double userLatitude, double userLongitude, double restaurantLatitude,
 			double restaurantLongitude, double radius) {
 		double distance = calculateDistance(userLatitude, userLongitude, restaurantLatitude, restaurantLongitude);
@@ -43,25 +54,57 @@ public class LocationService {
 	}
 
 	public PlacePredictionData getLocationPrediction(String search) {
+		String key = "google:map:search:" + search;
+
+		Optional<PlacePredictionData> cachedData = redisService.getRedisJsonData(key, PlacePredictionData.class);
+		if (cachedData.isPresent()) {
+			redisService.increment("metrics:places:autocomplete:cache_hits");
+			log.info("Returning cached PlacePredictionData for key: {}", key);
+			return cachedData.get();
+		}
+
 		try {
-			PredictionRequest predictionRequest = new PredictionRequest();
-			predictionRequest.setInput(search);
-			List<String> region = new ArrayList<>();
-			region.add("in");
-			predictionRequest.setIncludedRegionCodes(region);
+			String sessionToken = UUID.randomUUID().toString();
+			PredictionRequest predictionRequest = PredictionRequest.builder()
+					.input(search)
+					//.sessionToken(sessionToken)
+					.includedRegionCodes(List.of("in"))
+					.locationBias(PredictionRequest.LocationBias.builder()
+							.circle(PredictionRequest.LocationBiasCircle.builder()
+									.radius(50000)
+									.center(PredictionRequest.LatLng.builder()
+											.latitude(17.4065)
+											.longitude(78.4772)
+											.build())
+									.build())
+							.build())
+					.build();
 			String apiUrl = "https://places.googleapis.com/v1/places:autocomplete";
 
-			WebClient webClient = WebClient.builder().baseUrl(apiUrl).defaultHeader("X-Goog-Api-Key", googleApiKey)
+			WebClient webClient = WebClient.builder().baseUrl(apiUrl)
+					.defaultHeader("X-Goog-Api-Key", googleApiKey)
+					.defaultHeader("X-Goog-FieldMask", "suggestions.placePrediction.placeId,suggestions.placePrediction.text.text")
 					.build();
-			Mono<PlacePredictionData> placePredictionResponse = webClient.post()
-					.body(BodyInserters.fromValue(predictionRequest)).retrieve().bodyToMono(PlacePredictionData.class);
-			placePredictionResponse.subscribe(response -> {
+			PlacePredictionData placePredictionResponse = webClient.post()
+					.body(BodyInserters.fromValue(predictionRequest)).retrieve().bodyToMono(PlacePredictionData.class)
+					.doOnError(e -> log.error("Error in getLocationPrediction on search {} : {}", search,
+							e.getMessage(), e)
+					).block();
+			redisService.increment("metrics:places:autocomplete:api_hits");
+			if (placePredictionResponse != null) {
+				redisService.setRedisJsonData(key, placePredictionResponse, Duration.ofMinutes(60).toSeconds());
 
-			}, error -> {
-				System.err.println("Error response: " + error.getMessage());
+				//TODO: Next session
+//				placePredictionResponse.getSuggestions().forEach(suggestion -> {
+//						String placeId = suggestion.getPlacePrediction().getPlaceId();
+//						if (placeId != null) {
+//							String tokenKey = "google:map:session:" + placeId;
+//							redisService.setRedisData(tokenKey, sessionToken, Duration.ofMinutes(5).toSeconds());
+//						}
+//				});
+			}
 
-			});
-			return placePredictionResponse.block();
+			return placePredictionResponse;
 		} catch (Exception e) {
 			log.error("Error in getLocationPrediction {}", e.getMessage());
 			throw new RuntimeException("Error in getLocationPrediction: " + e.getMessage(), e);
@@ -69,20 +112,37 @@ public class LocationService {
 	}
 
 	public String getPlaceDetails(String placeId) {
+		String key = "google:map:details:" + placeId;
+		Optional<String> cachedDetails = redisService.getRedisJsonData(key, String.class);
+		if (cachedDetails.isPresent()) {
+			redisService.increment("metrics:places:details:cache_hits");
+			log.info("Returning cached PlaceDetails for placeId: {}", placeId);
+			return cachedDetails.get();
+		}
+
 		try {
 
+			//String tokenKey = "google:map:session:" + placeId; //TODO: Need to set the session token from front end
+			//Optional<String> sessionToken = redisService.getRedisData(tokenKey);
 			String url = "https://places.googleapis.com/v1/places/" + placeId;
-			WebClient webClient = WebClient.builder().baseUrl(url)
+			WebClient.Builder builder = WebClient.builder().baseUrl(url)
 					.defaultHeader("X-Goog-Api-Key", googleApiKey)
-					.defaultHeaders(headers -> headers.set("X-Goog-FieldMask", "*")).build();
-			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class);
-			placeResponse.subscribe(response -> {
-				
-			}, error -> {
-				System.err.println("Error response: " + error.getMessage());
-				
-			});
-			return placeResponse.block();
+					.defaultHeader("X-Goog-FieldMask", "addressComponents,location");
+
+            //sessionToken.ifPresent(s -> builder.defaultHeader("X-Goog-Session-Token", s));
+
+			WebClient webClient = builder.build();
+			Mono<String> placeResponse = webClient.get().retrieve().bodyToMono(String.class)
+			.doOnError(e -> log.error("Error in getPlaceDetails on placeId {} : {}", placeId,
+					e.getMessage(), e)
+			);
+			String response = placeResponse.block();
+			redisService.increment("metrics:places:details:api_hits");
+
+			if (response != null) {
+				redisService.setRedisJsonData(key, response, Duration.ofHours(12).toSeconds());
+			}
+			return response;
 		} catch (Exception e) {
 			log.error("Error in getPlaceDetails {}", e.getMessage());
 			throw new RuntimeException("Error in getPlaceDetails: " + e.getMessage(), e);
@@ -117,5 +177,4 @@ public class LocationService {
 			throw new RuntimeException("Error in getServiceableRestaurants: " + e.getMessage(), e);
 		}
 	}
-
 }
