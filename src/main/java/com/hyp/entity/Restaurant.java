@@ -187,6 +187,9 @@ public class Restaurant {
 	@Field("custom_message")
 	private String customMessage;
 
+	@Field("embed_map_url")
+	private String embedMapUrl;
+
 	@Getter
 	@Setter
 	@NoArgsConstructor

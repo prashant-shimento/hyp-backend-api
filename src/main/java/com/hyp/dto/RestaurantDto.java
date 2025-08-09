@@ -69,5 +69,6 @@ public class RestaurantDto extends BaseDto {
 	private List<PaymentRoute> paymentRouteList;
 	private boolean showCustomMessage;
 	private String customMessage;
+	private String embedMapUrl;
 
 }
