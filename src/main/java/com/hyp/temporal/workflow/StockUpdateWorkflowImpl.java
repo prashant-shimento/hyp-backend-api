@@ -19,17 +19,17 @@ public class StockUpdateWorkflowImpl implements StockUpdateWorkflow{
     );
 
     @Override
-    public void handleStockUpdate(PosStockRequest stockRequest, long delay) {
+    public void handleStockUpdate(PosStockRequest stockRequest, long delay, String workflowId) {
         Workflow.sleep(Duration.ofSeconds(delay));
         String type = stockRequest.getType();
         String restaurantId = stockRequest.getRestaurantId();
-        log.info("Starting auto turn-on workflow for restaurant {} and {} items after {} delay",
-                restaurantId, stockRequest.getItemId().size(), delay);
+        log.info("Starting auto turn-on workflow for restaurant {} and {} items after {} delay in workflow {}",
+                restaurantId, stockRequest.getItemId().size(), delay, workflowId);
         try {
             activities.updateStock(stockRequest.getItemId(), type, true);
-            log.info("Successfully turned on {} items of type {} for restaurant {} ", stockRequest.getItemId().size(), type, restaurantId);
+            log.info("Successfully turned on {} items of type {} for restaurant {} in workflow {}", stockRequest.getItemId().size(), type, restaurantId, workflowId);
         } catch (Exception e) {
-            log.error("Failed to auto turn-on items: {} for restaurant {} ", stockRequest.getItemId().size(), restaurantId, e);
+            log.error("Failed to auto turn-on items: {} for restaurant {} in workflow {}", stockRequest.getItemId().size(), restaurantId, workflowId, e);
         }
     }
 }

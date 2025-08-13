@@ -7,5 +7,5 @@ import io.temporal.workflow.WorkflowMethod;
 @WorkflowInterface
 public interface StockUpdateWorkflow {
     @WorkflowMethod
-    void handleStockUpdate(PosStockRequest stockRequest, long delay);
+    void handleStockUpdate(PosStockRequest stockRequest, long delay, String workflowId);
 }

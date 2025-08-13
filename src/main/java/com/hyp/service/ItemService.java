@@ -1,13 +1,15 @@
 package com.hyp.service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import com.hyp.request.PosStockRequest;
+import com.mongodb.client.model.BulkWriteOptions;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.UpdateOneModel;
+import com.mongodb.client.model.WriteModel;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -84,7 +86,7 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 					.map(doc -> doc.getList("item_variations", Document.class)).flatMap(List::stream)
 					.collect(Collectors.collectingAndThen(Collectors.toList(), this::mapToVariations));
 		} catch (Exception e) {
-			log.error("Exception occurred in getVariationsByItemId for itemid {} cause :", itemId, e.getMessage());
+			log.error("Exception occurred in getVariationsByItemId for item id {} cause : {}", itemId, e.getMessage());
 			return Collections.emptyList();
 		}
 	}
@@ -113,7 +115,7 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 			return results.getMappedResults().stream().map(Item::getItemAddons).filter(Objects::nonNull)
 					.flatMap(List::stream).collect(Collectors.toList());
 		} catch (Exception e) {
-			log.error("Exception occurred in getAddonsByItemId for itemid {} cause :", itemId, e.getMessage());
+			log.error("Exception occurred in getAddonsByItemId for item id {} cause : {}", itemId, e.getMessage());
 			return Collections.emptyList();
 		}
 
@@ -137,8 +139,7 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 			List<Document> addonGroups = variationDoc.getList("addon_groups", Document.class);
 			if (addonGroups != null) {
 				List<AddonGroup> mappedAddonGroups = addonGroups.stream().map(addonGroupDoc -> {
-					AddonGroup addonGroup = new AddonGroup();
-					return addonGroup;
+                    return new AddonGroup();
 				}).collect(Collectors.toList());
 				variation.setAddonGroups(mappedAddonGroups);
 			}
@@ -158,11 +159,23 @@ public class ItemService extends BaseServiceImpl<Item, String> {
 			return;
 		}
 
-		items.forEach(item -> {
-			item.setActive(inStock ? "1" : "0");
-		});
+		List<WriteModel<Document>> writeModels = new ArrayList<>();
+
+		for (Item item : items) {
+			Bson filter = Filters.eq("_id", item.getId());
+
+			Document updateFields = new Document()
+					.append("in_stock", inStock)
+					.append("active", inStock ? "1" : "0")
+					.append("updated_at", LocalDateTime.now());
+
+			Bson update = new Document("$set", updateFields);
+
+			writeModels.add(new UpdateOneModel<>(filter, update));
+		}
+
 		long bulkWriteStart = System.currentTimeMillis();
-		bulkUpdate(items, Item.class);
+		mongoTemplate.getCollection("items").bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
 		log.info("Bulk write items completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
 	}
 

@@ -21,14 +21,15 @@ public class StockWorkflowService {
     public static final String STOCK_TASK_QUEUE = "stock-task-queue";
 
     public void startStockUpdateWorkflow(PosStockRequest stockRequest, long delay) {
+        String workflowId = CommonUtils.generateWorkflowId(stockRequest.getRestaurantId());
         StockUpdateWorkflow workflow = workflowClient.newWorkflowStub(
                 StockUpdateWorkflow.class,
                 WorkflowOptions.newBuilder()
-                        .setWorkflowId("stock-update-" + CommonUtils.generateWorkflowId(stockRequest.getRestaurantId()))
+                        .setWorkflowId("stock-update-" + workflowId)
                         .setTaskQueue(STOCK_TASK_QUEUE)
                         .build()
         );
-        WorkflowClient.start(workflow::handleStockUpdate,stockRequest, delay);
+        WorkflowClient.start(workflow::handleStockUpdate,stockRequest, delay, workflowId);
     }
 
 }

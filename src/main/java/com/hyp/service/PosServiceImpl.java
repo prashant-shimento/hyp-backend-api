@@ -379,16 +379,18 @@ public class PosServiceImpl implements PosService {
 
 		items.forEach(item -> {
 			item.setActive(stockRequest.isInStock() ? "1" : "0");
-			String redisKey = stockRequest.getType() + ":" + item.getId() + ":stock";
-			if (!stockRequest.isInStock()) {
-				item.setAutoTurnOnTime(autoTurnOn);
-				if (ttl > 0) {
-					redisService.setRedisData(redisKey, stockRequest, ttl);
-				}
-			} else {
-				item.setAutoTurnOnTime(null);
-				redisService.removeRedisData(redisKey);
-			}
+			// TODO: Remove the below block after workflow is stable
+//			String redisKey = stockRequest.getType() + ":" + item.getId() + ":stock";
+//			if (!stockRequest.isInStock()) {
+//				item.setAutoTurnOnTime(autoTurnOn);
+//				if (ttl > 0) {
+//					redisService.setRedisData(redisKey, stockRequest, ttl);
+//				}
+//			} else {
+//				item.setAutoTurnOnTime(null);
+//				redisService.removeRedisData(redisKey);
+//			}
+
 		});
 		long bulkWriteStart = System.currentTimeMillis();
 		itemService.bulkUpdate(items, Item.class);
@@ -407,16 +409,17 @@ public class PosServiceImpl implements PosService {
 
 		variations.forEach(variation -> {
 			variation.setActive(stockRequest.isInStock() ? "1" : "0");
-			String redisKey = "variation:" + variation.getId() + ":stock";
-			if (!stockRequest.isInStock()) {
-				variation.setAutoTurnOnTime(autoTurnOn);
-				if (ttl > 0) {
-					redisService.setRedisData(redisKey, stockRequest, ttl);
-				}
-			} else {
-				variation.setAutoTurnOnTime(null);
-				redisService.removeRedisData(redisKey);
-			}
+			// TODO: Remove the below block after workflow is stable
+//			String redisKey = "variation:" + variation.getId() + ":stock";
+//			if (!stockRequest.isInStock()) {
+//				variation.setAutoTurnOnTime(autoTurnOn);
+//				if (ttl > 0) {
+//					redisService.setRedisData(redisKey, stockRequest, ttl);
+//				}
+//			} else {
+//				variation.setAutoTurnOnTime(null);
+//				redisService.removeRedisData(redisKey);
+//			}
 		});
 
 		long bulkWriteStart = System.currentTimeMillis();
