@@ -83,4 +83,7 @@ public class Partner {
 	private String contact;
 
 	private String email;
+
+	@Field("theme-color")
+	private String themeColor;
 }

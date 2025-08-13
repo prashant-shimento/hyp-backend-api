@@ -67,4 +67,6 @@ public class PartnerDto {
 	private String contact;
 
 	private String email;
+
+	private String themeColor;
 }

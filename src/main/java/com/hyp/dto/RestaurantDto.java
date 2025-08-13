@@ -70,5 +70,6 @@ public class RestaurantDto extends BaseDto {
 	private boolean showCustomMessage;
 	private String customMessage;
 	private String embedMapUrl;
+	private String googleAnalytics;
 
 }

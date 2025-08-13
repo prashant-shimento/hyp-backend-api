@@ -190,6 +190,9 @@ public class Restaurant {
 	@Field("embed_map_url")
 	private String embedMapUrl;
 
+	@Field("google_analytics")
+	private String googleAnalytics;
+
 	@Getter
 	@Setter
 	@NoArgsConstructor
