@@ -46,18 +46,18 @@ import io.micrometer.common.util.StringUtils;
 public class PosDataRequestTranslation {
 
 	public static PosData getPosData(PosDataRequest posDataRequest) {
-        return PosData.builder()
-                .orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
-                .attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
-                .discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
-                .categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
-                .taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
-                .addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
-                .addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
-                        posDataRequest.getItems()))
-                .variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
-                        posDataRequest.getItems()))
-                .items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems())).build();
+		return PosData.builder()
+				.orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
+				.attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
+				.discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
+				.categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
+				.taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
+				.addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
+				.addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(posDataRequest.getAddongroups(),
+						posDataRequest.getItems()))
+				.variations(PosDataRequestTranslation.translateToVariationList(posDataRequest.getVariations(),
+						posDataRequest.getItems()))
+				.items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems())).build();
 	}
 
 	public static Attribute translateToAttribute(AttributeRequest attributeRequest) {
@@ -214,7 +214,6 @@ public class PosDataRequestTranslation {
 		restaurant.setCurrencyHtml(restaurantRequest.getDetails().getCurrency_html());
 		restaurant.setCountry(restaurantRequest.getDetails().getCountry());
 		restaurant.setMinimumOrderAmount(restaurantRequest.getDetails().getMinimumorderamount());
-		restaurant.setRestaurantName(restaurantRequest.getDetails().getRestaurantname());
 		restaurant.setPackagingApplicableOn(restaurantRequest.getDetails().getPackaging_applicable_on());
 		restaurant.setCity(restaurantRequest.getDetails().getCity());
 		restaurant.setPackagingCharge(restaurantRequest.getDetails().getPackaging_charge());
@@ -230,6 +229,11 @@ public class PosDataRequestTranslation {
 		restaurant.setTax(new RestaurantTax(restaurantRequest.getDetails().getDc_taxes_id(),
 				restaurantRequest.getDetails().getPc_taxes_id()));
 
+		if (existingRestaurant != null && existingRestaurant.getRestaurantName() != null) {
+			restaurant.setRestaurantName(existingRestaurant.getRestaurantName());
+		} else {
+			restaurant.setRestaurantName(restaurantRequest.getDetails().getRestaurantname());
+		}
 		if (existingRestaurant != null && existingRestaurant.getFssai() != null) {
 			restaurant.setFssai(existingRestaurant.getFssai());
 		} else {
@@ -279,13 +283,12 @@ public class PosDataRequestTranslation {
 		}
 		if (existingRestaurant != null && existingRestaurant.getScreens() != null) {
 			restaurant.setScreens(existingRestaurant.getScreens());
-		}else {
+		} else {
 			restaurant.setScreens(null);
 		}
 		if (existingRestaurant != null && existingRestaurant.getWebsiteUrl() != null) {
 			restaurant.setWebsiteUrl(existingRestaurant.getWebsiteUrl());
-		}
-		else {
+		} else {
 			restaurant.setWebsiteUrl(null);
 		}
 		return restaurant;
@@ -395,7 +398,7 @@ public class PosDataRequestTranslation {
 	public static List<AddonGroup> getUniqueAddonGroupList(List<AddonGroupRequest> addonGroupRequestList) {
 		return addonGroupRequestList == null ? Collections.emptyList()
 				: new ArrayList<>(addonGroupRequestList.stream().map(PosDataRequestTranslation::translateToAddonGroup)
-                .collect(Collectors.toSet()));
+						.collect(Collectors.toSet()));
 	}
 
 	public static AddonItem translateToAddonItem(AddonItemRequest addonItemRequest) {
