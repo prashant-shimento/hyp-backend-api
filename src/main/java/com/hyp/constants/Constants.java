@@ -1,8 +1,13 @@
 package com.hyp.constants;
 
-import com.hyp.enums.OrderStatusType;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import java.util.*;
+import com.hyp.enums.OrderStatusType;
 
 public interface Constants {
 
@@ -38,6 +43,7 @@ public interface Constants {
 	List<String> PAYMENT_API_PARAMS = Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider",
 			"status", "amount", "paymentId");
 	List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
+	List<String> CUSTOMER_TESTONOMIAL_PARAMS = Arrays.asList("partnerId");
 	List<String> FILE_EXTENSIONS = Arrays.asList(".jpg", ".png", ".jpeg");
 	List<String> BOOLEAN_API_PARAMS = Arrays.asList("active", "serviceable");
 

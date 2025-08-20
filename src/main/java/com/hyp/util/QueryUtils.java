@@ -30,6 +30,8 @@ public class QueryUtils {
 		ALLOWED_API_PARAMS.put("Restaurant", Constants.RESTAURANT_API_PARAMS);
 		ALLOWED_API_PARAMS.put("Payment", Constants.PAYMENT_API_PARAMS);
 		ALLOWED_API_PARAMS.put("OrderType", Constants.ORDER_TYPE_API_PARAMS);
+		ALLOWED_API_PARAMS.put("CustomerTestimonial", Constants.CUSTOMER_TESTONOMIAL_PARAMS);
+
 	}
 
 	public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
