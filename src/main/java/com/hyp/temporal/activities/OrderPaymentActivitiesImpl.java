@@ -55,10 +55,29 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
         return order.getStatus().name();
     }
 
-    @Override
-    public void dropOffOrder(String orderId) {
-        Order order = orderService.findById(orderId);
-        order.setStatus(OrderStatusType.DROPPED_OFF);
-        orderService.save(order);
-    }
+	@Override
+	public void dropOffOrder(String orderId) {
+		Order order = orderService.findById(orderId);
+		order.setStatus(OrderStatusType.DROPPED_OFF);
+		orderService.save(order);
+	}
+
+	@Override
+	public void initiateRefund(String orderId, boolean instantRefund) {
+		log.info("initiateRefund orderId={} instantRefund={}", orderId, instantRefund);
+		try {
+			Order order = orderService.findById(orderId);
+
+			paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), instantRefund, "Order Cancelled");
+
+			order.setStatus(OrderStatusType.REFUND_INITIATED);
+			orderService.save(order);
+
+			log.info("refund initiated for orderId={} amount={}", orderId, order.getGrandTotalAmount());
+		} catch (Exception e) {
+			log.error("refund failed for orderId={}", orderId, e);
+			throw new RuntimeException("Refund initiation failed", e);
+		}
+	}
+
 }
