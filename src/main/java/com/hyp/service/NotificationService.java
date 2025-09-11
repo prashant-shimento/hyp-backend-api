@@ -229,4 +229,9 @@ public class NotificationService {
 		oneSignalClient.sendNotification(oneSignalNotificationRequest);
 	}
 
+	public void sendOneSignalNotificationForPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
+			throws OneSignalException {
+		oneSignalClient.sendNotificationforPartner(oneSignalNotificationRequest);
+	}
+
 }
