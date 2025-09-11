@@ -136,7 +136,7 @@ public class OrderEventListener {
 						Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
 			} else {
 				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(), restaurant.getContact(),
+						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(),
 						restaurant.getSupportContact());
 				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
 						parameters);
@@ -164,7 +164,7 @@ public class OrderEventListener {
 			}
 
 			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
-					order.getId(), order.getStatus(), restaurant.getSupportContact(), restaurant.getContact());
+					order.getId(), order.getStatus(), restaurant.getSupportContact());
 
 			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
 					templateParameters);
@@ -173,7 +173,7 @@ public class OrderEventListener {
 		case PICKED_UP:
 			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
 					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
-					restaurant.getContact(), restaurant.getSupportContact());
+					restaurant.getSupportContact());
 
 			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
 					templateParameters, order.getId());
