@@ -71,5 +71,6 @@ public class RestaurantDto extends BaseDto {
 	private String customMessage;
 	private String embedMapUrl;
 	private String googleAnalytics;
+	private String restaurantAltContact;
 
 }

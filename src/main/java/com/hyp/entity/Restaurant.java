@@ -193,6 +193,9 @@ public class Restaurant {
 	@Field("google_analytics")
 	private String googleAnalytics;
 
+	@Field("restaurant_alt_Contact")
+	private String restaurantAltContact;
+
 	@Getter
 	@Setter
 	@NoArgsConstructor
