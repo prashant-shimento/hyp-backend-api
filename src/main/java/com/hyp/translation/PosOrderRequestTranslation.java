@@ -88,7 +88,7 @@ public class PosOrderRequestTranslation {
 	}
 
 	public PosRiderUpdateRequest getPosRiderStatusUpdateRequest(Restaurant restaurant, Order order,
-			RiderDetails riderDetails, RiderStatusType riderStatus) {
+			RiderDetails riderDetails, String riderStatus) {
 		PosRiderUpdateRequest posRiderUpdateRequest = new PosRiderUpdateRequest();
 		try {
 			posRiderUpdateRequest.setAccessToken(accessToken);
