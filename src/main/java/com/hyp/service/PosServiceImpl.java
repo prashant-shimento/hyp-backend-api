@@ -486,7 +486,7 @@ public class PosServiceImpl implements PosService {
 			riderStatus = RiderStatusType.getRiderStatusByOrderStatusType(order.getStatus());
 		}
 		PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation
-				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus);
+				.getPosRiderStatusUpdateRequest(restaurant, order, riderDetails, riderStatus.getValue());
 
 		this.updatePosRiderStatus(posRiderUpdateRequest);
 	}

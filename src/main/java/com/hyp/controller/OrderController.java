@@ -140,7 +140,7 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 			Order order = orderService.findById(orderId);
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 			PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation.getPosRiderStatusUpdateRequest(
-					restaurant, order, new RiderDetails("rider", "9964552656"), RiderStatusType.rider_assigned);
+					restaurant, order, new RiderDetails("rider", "9964552656"), RiderStatusType.rider_assigned.getValue());
 			String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
 			response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
 			return ResponseEntity.ok(response);
