@@ -1,20 +1,17 @@
 package com.hyp.controller;
 
-import java.time.Duration;
 import java.util.Collections;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hyp.enums.OrderStatusType;
 import com.hyp.model.FacebookMessageResponse;
 import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FileUploadRequest;
@@ -32,21 +29,19 @@ public class PlaygroundController {
 
 	@Autowired
 	MetaService metaService;
-	
+
 	@Autowired
 	MailService mailService;
-	
+
 	@Autowired
 	BucketService bucketService;
-	
+
 	@Autowired
-    RedisTemplate<String, Object> redisTemplate;
-	
+	RedisTemplate<String, Object> redisTemplate;
+
 	@Autowired
 	NotificationService notificationService;
 
-	
-	
 	@PostMapping("/meta-message")
 	public ResponseEntity<Response> metaSendMessage(@RequestBody FacebookMessageRequest facebookMessageRequest) {
 		Response response;
@@ -60,7 +55,7 @@ public class PlaygroundController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+
 	@PostMapping("/send-mail")
 	public ResponseEntity<Response> metaSendMessage(@RequestBody MailNotificationRequest mailNotificationRequest) {
 		Response response;
@@ -74,7 +69,7 @@ public class PlaygroundController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
-	
+
 	@PostMapping("/file-upload")
 	public ResponseEntity<Response> fileUpload(@RequestBody FileUploadRequest fileUploadRequest) {
 		Response response;
@@ -89,9 +84,9 @@ public class PlaygroundController {
 		}
 	}
 
-	
 	@PostMapping("/one-signal/notification")
-	public ResponseEntity<Response> sendNotification(@RequestBody OneSignalNotificationRequest oneSignalNotificationRequest) {
+	public ResponseEntity<Response> sendNotification(
+			@RequestBody OneSignalNotificationRequest oneSignalNotificationRequest) {
 		Response response;
 		try {
 			notificationService.sendOneSignalNotification(oneSignalNotificationRequest);
@@ -103,4 +98,19 @@ public class PlaygroundController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 		}
 	}
+
+	@PostMapping("/one-signal/test/{resId}")
+	public ResponseEntity<Response> sendPlainTextNotification(@PathVariable String resId) {
+		Response response;
+		try {
+			notificationService.sendTestNotification(resId);
+			response = new Response(null, false, "Notification Sent!");
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			response = new Response(null, true, e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+		}
+	}
+
 }
