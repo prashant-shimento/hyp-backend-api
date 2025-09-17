@@ -187,9 +187,8 @@ public class OrderEventListener {
 				notificationService.sendNotification(customer.getMobile(),
 						Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
 			} else {
-				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-						restaurant.getContact(), restaurant.getSupportContact(), restaurant.getRestaurantName(),
-						restaurant.getWebsiteUrl());
+				templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
+						order.getId(), restaurant.getSupportContact(), restaurant.getWebsiteUrl());
 
 				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
 						templateParameters);
