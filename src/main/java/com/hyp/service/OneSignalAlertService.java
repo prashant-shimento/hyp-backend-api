@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -24,6 +25,9 @@ public class OneSignalAlertService {
 
 	@Autowired
 	private NotificationService notificationService;
+
+	@Autowired
+	private SimpMessagingTemplate messageTemplate;
 
 	@Autowired
 	private OneSignalNotificationTemplates oneSignalNotificationTemplates;
@@ -120,7 +124,7 @@ public class OneSignalAlertService {
 			long finalMinutesSinceCreation, String nextExpected) {
 		String messageBody = oneSignalNotificationTemplates.buildOrderTrackAlertMessage(orderId, restaurantName,
 				currentStatus, finalMinutesSinceCreation, nextExpected);
-
+		messageTemplate.convertAndSend("/topic/order-track", messageBody);
 		OneSignalNotificationRequest request = OneSignalNotificationRequest.builder().targetChannel("push").appId(appId)
 				.includedSegments(List.of("All")).contents(Map.of("en", messageBody)).build();
 
