@@ -114,4 +114,22 @@ public class OneSignalNotificationTemplates {
 				""", customerName, orderId, restaurantName1, supportContact, restaurantName2);
 	}
 
+	public String buildOrderTrackAlertMessage(String orderId, String restaurantName, String currentStatus,
+			long minutesSinceLastStatus, String expectedStatus) {
+		return String.format(
+				"""
+						🚨 Order Alert
+
+						🆔 Order ID: %s
+						🏪 Restaurant: %s
+						📌 Current Status: %s
+						⏱ Time Since Last Status: %d mins
+						🎯 Expected Status: %s
+
+						⚡ Action Required: Order is stuck at '%s'. Please take necessary action to move it towards '%s' immediately.
+						""",
+				orderId, restaurantName, currentStatus, minutesSinceLastStatus, expectedStatus, currentStatus,
+				expectedStatus);
+	}
+
 }

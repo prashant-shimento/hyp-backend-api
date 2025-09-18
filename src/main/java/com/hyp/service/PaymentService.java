@@ -8,13 +8,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import com.hyp.dto.RefundDto;
-import com.hyp.enums.FeeType;
-import com.hyp.event.OrderEventPublisher;
-import com.hyp.exception.PaymentException;
-import com.hyp.model.PaymentRoute;
-import com.hyp.temporal.service.OrderWorkflowService;
-import com.razorpay.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,15 +17,28 @@ import org.springframework.stereotype.Component;
 
 import com.hyp.constants.Constants;
 import com.hyp.dto.RazorpayVerifyDto;
+import com.hyp.dto.RefundDto;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
+import com.hyp.enums.FeeType;
 import com.hyp.enums.OrderStatusType;
-import com.hyp.model.PaymentConfig;
 import com.hyp.enums.RefundType;
+import com.hyp.event.OrderEventPublisher;
+import com.hyp.exception.PaymentException;
+import com.hyp.model.PaymentConfig;
+import com.hyp.model.PaymentRoute;
 import com.hyp.repository.PaymentRepository;
+import com.hyp.temporal.service.OrderTrackWorkflowService;
+import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.EncryptionUtils;
+import com.razorpay.Account;
+import com.razorpay.Order;
+import com.razorpay.RazorpayClient;
+import com.razorpay.RazorpayException;
+import com.razorpay.Refund;
+import com.razorpay.Utils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,13 +71,17 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 	OrderWorkflowService orderWorkflowService;
 
 	@Autowired
+	OrderTrackWorkflowService orderTrackWorkflowService;
+
+	@Autowired
 	private OrderEventPublisher orderEventPublisher;
 
 	public Payment createPaymentOrder(String orderId, double amount) throws PaymentException {
 		try {
 			com.hyp.entity.Order order = orderService.findById(orderId);
 			if (order == null || !OrderStatusType.CREATED.equals(order.getStatus())) {
-				throw new IllegalStateException("Order is in Invalid Status: " + (order != null ? order.getStatus() : "null"));
+				throw new IllegalStateException(
+						"Order is in Invalid Status: " + (order != null ? order.getStatus() : "null"));
 			}
 
 			Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
@@ -82,7 +92,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 				try {
 					payment = createRoutingOrder(razorpayClient, orderId, amount, restaurant);
 				} catch (Exception routingEx) {
-					log.warn("Routing failed for order {}: {}. Falling back to standard order.", orderId, routingEx.getMessage());
+					log.warn("Routing failed for order {}: {}. Falling back to standard order.", orderId,
+							routingEx.getMessage());
 					payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
 				}
 			} else {
@@ -96,7 +107,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		}
 	}
 
-	private Payment createRoutingOrder(RazorpayClient razorpayClient, String orderId, double amount, Restaurant restaurant) throws RazorpayException {
+	private Payment createRoutingOrder(RazorpayClient razorpayClient, String orderId, double amount,
+			Restaurant restaurant) throws RazorpayException {
 		JSONObject orderRequest = new JSONObject();
 		orderRequest.put("amount", CommonUtils.getISOAmount(amount));
 		orderRequest.put("currency", "INR");
@@ -104,7 +116,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		JSONArray transfers = new JSONArray();
 		double totalTransferAmount = 0.0;
 
-		for (PaymentRoute route : Optional.ofNullable(restaurant.getPaymentRouteList()).orElse(Collections.emptyList())) {
+		for (PaymentRoute route : Optional.ofNullable(restaurant.getPaymentRouteList())
+				.orElse(Collections.emptyList())) {
 			double transferAmount = calculateRoutingAmount(amount, restaurant);
 
 			if (transferAmount <= 0 || totalTransferAmount + transferAmount > amount) {
@@ -135,7 +148,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 				transfers.put(transfer);
 				totalTransferAmount += transferAmount;
 			} catch (RazorpayException ex) {
-				log.warn("Error fetching account for {}: {}. Skipping this route.", route.getRecipientId(), ex.getMessage());
+				log.warn("Error fetching account for {}: {}. Skipping this route.", route.getRecipientId(),
+						ex.getMessage());
 			}
 		}
 
@@ -148,7 +162,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		return buildPaymentFromOrder(paymentOrder, orderId);
 	}
 
-	private Payment createStandardOrder(RazorpayClient razorpayClient, String orderId, double amount, Restaurant restaurant) throws RazorpayException {
+	private Payment createStandardOrder(RazorpayClient razorpayClient, String orderId, double amount,
+			Restaurant restaurant) throws RazorpayException {
 		JSONObject orderRequest = new JSONObject();
 		orderRequest.put("amount", CommonUtils.getISOAmount(amount));
 		orderRequest.put("currency", "INR");
@@ -180,6 +195,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		orderWorkflowService.startOrderPaymentWorkflow(orderId);
 	}
 
+	public void startOrderTrackWorkflow(String orderId) {
+		orderTrackWorkflowService.startOrderTrackWorkflow(orderId);
+	}
+
 	private void updateOrderStatusInRedis(String orderId) {
 		String redisStateKey = "order:" + orderId + ":state";
 		String redisPaymentKey = "order:" + orderId + ":payment";
@@ -192,8 +211,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	private void setPaymentCheck(String orderId) {
 		boolean isWorkflowEnabled = redisService.getRedisData(Constants.PAYMENT_WORKFLOW_ENABLED)
-				.map(Boolean::parseBoolean)
-				.orElse(false);
+				.map(Boolean::parseBoolean).orElse(false);
 
 		if (isWorkflowEnabled) {
 			startOrderPaymentWorkflow(orderId);
@@ -207,28 +225,20 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		double petPoojaApiFee = orderAmount / 100.0;
 		double deliveryFee = (platformFee <= 0) ? restaurant.getDeliveryFee() : 0.0;
 		double total = platformFee + petPoojaApiFee + deliveryFee;
-		return 	BigDecimal.valueOf(total)
-				.setScale(2, RoundingMode.HALF_UP)
-				.doubleValue();
+		return BigDecimal.valueOf(total).setScale(2, RoundingMode.HALF_UP).doubleValue();
 	}
 
 	public double calculatePlatformFee(double orderAmount, Restaurant restaurant) {
-		return Optional.ofNullable(restaurant.getPlatformFee())
-				.orElse(Collections.emptyList())
-				.stream()
-				.filter(rule ->
-						(rule.getMinOrderAmount() == null || orderAmount >= rule.getMinOrderAmount()) &&
-								(rule.getMaxOrderAmount() == null || orderAmount <= rule.getMaxOrderAmount())
-				)
-				.findFirst()
-				.map(rule -> {
+		return Optional.ofNullable(restaurant.getPlatformFee()).orElse(Collections.emptyList()).stream()
+				.filter(rule -> (rule.getMinOrderAmount() == null || orderAmount >= rule.getMinOrderAmount())
+						&& (rule.getMaxOrderAmount() == null || orderAmount <= rule.getMaxOrderAmount()))
+				.findFirst().map(rule -> {
 					if (rule.getFeeType() == FeeType.FIXED) {
 						return rule.getFeeValue();
 					} else {
 						return (orderAmount * rule.getFeeValue()) / 100.0;
 					}
-				})
-				.orElse(0.0);
+				}).orElse(0.0);
 	}
 
 	public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String orderId) throws PaymentException {
@@ -237,7 +247,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			verifyRequest.put("razorpay_order_id", razorPayVerifyDto.getRazorpayOrderId());
 			verifyRequest.put("razorpay_payment_id", razorPayVerifyDto.getRazorpayPaymentId());
 			verifyRequest.put("razorpay_signature", razorPayVerifyDto.getRazorpaySignature());
-			return Utils.verifyPaymentSignature(verifyRequest, EncryptionUtils.decrypt(getRazorpayPaymentConfig(orderId).getSecret()));
+			return Utils.verifyPaymentSignature(verifyRequest,
+					EncryptionUtils.decrypt(getRazorpayPaymentConfig(orderId).getSecret()));
 		} catch (Exception e) {
 			log.error("Error in verifySignature {}", e.getMessage());
 			throw new PaymentException("Error in verifySignature: " + e.getMessage(), e);
@@ -263,13 +274,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 			List<com.razorpay.Payment> payments = razorpayClient.orders.fetchPayments(payment.getPaymentOrderId());
 
-			com.razorpay.Payment matchedPayment = payments.stream()
-					.filter(p -> {
-						String status = p.get("status");
-						return "captured".equalsIgnoreCase(status) || "authorized".equalsIgnoreCase(status);
-					})
-					.findFirst()
-					.orElse(null);
+			com.razorpay.Payment matchedPayment = payments.stream().filter(p -> {
+				String status = p.get("status");
+				return "captured".equalsIgnoreCase(status) || "authorized".equalsIgnoreCase(status);
+			}).findFirst().orElse(null);
 
 			if (matchedPayment != null) {
 				String paymentId = matchedPayment.get("id");
@@ -296,7 +304,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		return paymentRepository.findByPaymentId(paymentId);
 	}
 
-	public Payment createRefund(String orderId, double amount, boolean instantRefund, String reason) throws PaymentException {
+	public Payment createRefund(String orderId, double amount, boolean instantRefund, String reason)
+			throws PaymentException {
 		try {
 			Payment payment = paymentRepository.findByOrderId(orderId);
 
@@ -336,15 +345,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 			RazorpayClient razorpayClient = getRazorpayClient(orderId);
 
 			Refund refund = razorpayClient.payments.fetchRefund(payment.getPaymentId(), payment.getRefund().getId());
-			return RefundDto.builder().id(refund.get("id"))
-					.paymentId(refund.get("payment_id"))
-					.paymentOrderId(payment.getPaymentOrderId())
-					.orderId(orderId)
-					.currency(refund.get("currency"))
-					.amount(CommonUtils.parseISOAmount(refund.get("amount")))
-					.status(refund.get("status"))
-					.speedProcessed(refund.get("speed_processed"))
-					.speedRequested(refund.get("speed_requested"))
+			return RefundDto.builder().id(refund.get("id")).paymentId(refund.get("payment_id"))
+					.paymentOrderId(payment.getPaymentOrderId()).orderId(orderId).currency(refund.get("currency"))
+					.amount(CommonUtils.parseISOAmount(refund.get("amount"))).status(refund.get("status"))
+					.speedProcessed(refund.get("speed_processed")).speedRequested(refund.get("speed_requested"))
 					.build();
 
 		} catch (Exception e) {
@@ -355,19 +359,12 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	@Cacheable(value = "paymentConfigCache", key = "#restaurant.id")
 	private PaymentConfig getPaymentConfig(Restaurant restaurant) {
-		return Optional.ofNullable(restaurant.getPaymentPartner())
-				.map(partnerService::findById)
+		return Optional.ofNullable(restaurant.getPaymentPartner()).map(partnerService::findById)
 				.map(Partner::getApiConfigs)
-				.map(apiConfig -> PaymentConfig.builder()
-						.key(apiConfig.getKey())
-						.secret(apiConfig.getSecret())
-						.build())
+				.map(apiConfig -> PaymentConfig.builder().key(apiConfig.getKey()).secret(apiConfig.getSecret()).build())
 				.orElseGet(() -> {
 					log.warn("Falling back to default payment config for restaurant: {}", restaurant.getId());
-					return PaymentConfig.builder()
-							.key(razorPayKey)
-							.secret(razorPaySecret)
-							.build();
+					return PaymentConfig.builder().key(razorPayKey).secret(razorPaySecret).build();
 				});
 	}
 
@@ -375,10 +372,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		try {
 			Restaurant restaurant = restaurantService.findById(orderService.findById(orderId).getRestaurantId());
 			PaymentConfig paymentConfig = getPaymentConfig(restaurant);
-			return new RazorpayClient(
-					EncryptionUtils.decrypt(paymentConfig.getKey()),
-					EncryptionUtils.decrypt(paymentConfig.getSecret())
-			);
+			return new RazorpayClient(EncryptionUtils.decrypt(paymentConfig.getKey()),
+					EncryptionUtils.decrypt(paymentConfig.getSecret()));
 		} catch (Exception e) {
 			throw new PaymentException("Failed to initialize RazorpayClient", e);
 		}
@@ -389,22 +384,22 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 		return getPaymentConfig(restaurant);
 	}
 
-	public void verifyPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) throws PaymentException {
+	public void verifyPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus)
+			throws PaymentException {
 		if ("paid".equalsIgnoreCase(paymentStatus)) {
-				processSuccessPayment(order, payment, paymentStatus);
+			processSuccessPayment(order, payment, paymentStatus);
+			startOrderTrackWorkflow(order.getId());
 		}
 	}
 
 	public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
 		OrderStatusType status = order.getStatus();
-		if (status == OrderStatusType.PAYMENT_PENDING ||
-				status == OrderStatusType.PAYMENT_FAILED ||
-				status == OrderStatusType.ERROR ||
-				status == OrderStatusType.PROCESSING) {
+		if (status == OrderStatusType.PAYMENT_PENDING || status == OrderStatusType.PAYMENT_FAILED
+				|| status == OrderStatusType.ERROR || status == OrderStatusType.PROCESSING) {
 			log.info("Processing order {}", order.getId());
 			orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByPaymentStatus(paymentStatus));
 			payment.setStatus(paymentStatus);
-			if(payment.getPaymentId() == null){
+			if (payment.getPaymentId() == null) {
 				payment.setPaymentId(fetchPaymentId(order.getId()));
 			}
 			save(payment);
@@ -413,17 +408,15 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
 	public void processSuccessPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
 		OrderStatusType status = order.getStatus();
-		if (status == OrderStatusType.PAYMENT_PENDING ||
-				status == OrderStatusType.PAYMENT_FAILED ||
-				status == OrderStatusType.ERROR ||
-				status == OrderStatusType.PROCESSING) {
-			log.info("Updating order {} to PAID", order	.getId());
+		if (status == OrderStatusType.PAYMENT_PENDING || status == OrderStatusType.PAYMENT_FAILED
+				|| status == OrderStatusType.ERROR || status == OrderStatusType.PROCESSING) {
+			log.info("Updating order {} to PAID", order.getId());
 			boolean save = orderService.updateStatus(order.getId(), OrderStatusType.PAID);
-			if(!save){
+			if (!save) {
 				log.error("Unable to update the status of order for ID {}", order.getId());
 			}
 			payment.setStatus(paymentStatus);
-			if(payment.getPaymentId() == null){
+			if (payment.getPaymentId() == null) {
 				payment.setPaymentId(fetchPaymentId(order.getId()));
 			}
 			save(payment);

@@ -5,15 +5,15 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-import com.hyp.constants.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.client.PidgeClient;
+import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
@@ -34,8 +34,10 @@ import com.hyp.model.RiderLocation;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
+import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.util.CommonUtils;
+
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -92,6 +94,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 	AddressService addressService;
 
 	@Autowired
+	OrderTrackWorkflowService orderTrackWorkflowService;
+
+	@Autowired
 	private OrderEventPublisher orderEventPublisher;
 
 	public Delivery findByOrderId(String orderId) {
@@ -111,7 +116,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 					address, customer, order);
 			createOrder(deliveryOrderRequest, order);
 		} catch (DeliveryException e) {
-			log.error("Error occurred while processDeliveryOrder for orderId {} cause: {}", order.getId(), e.getMessage());
+			log.error("Error occurred while processDeliveryOrder for orderId {} cause: {}", order.getId(),
+					e.getMessage());
 		}
 	}
 
@@ -149,12 +155,13 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				DeliveryFulfillment fulfillment = deliveryOrderData.getFulfillment();
 				DeliveryFulfillStatusType fulfillmentStatus = fulfillment.getStatus();
 
-				log.info("Delivery status: PENDING, Order status: {}, Fulfillment status: {}",
-						order.getStatus(), fulfillmentStatus);
+				log.info("Delivery status: PENDING, Order status: {}, Fulfillment status: {}", order.getStatus(),
+						fulfillmentStatus);
 
 				if (fulfillmentStatus == DeliveryFulfillStatusType.CANCELLED) {
 					log.info("Rider cancelled delivery for Order ID: {}", order.getId());
-					orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
+					orderService.updateOrderStatus(order.getId(),
+							OrderStatusType.getOrderStatusByDeliveryStatus(DeliveryFulfillStatusType.CANCELLED));
 					orderEventPublisher.publishDeliveryEvent(delivery);
 				}
 			}
@@ -175,10 +182,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		DeliveryFulfillment deliveryFulfill = deliveryOrderData.getFulfillment();
 		DeliveryFulfillStatusType fullFillStatus = deliveryFulfill.getStatus();
 
-		log.info("Current order status: {}, delivery status: {}, fulfillment status: {}",
-				order.getStatus(),delivery.getStatus(), fullFillStatus);
+		log.info("Current order status: {}, delivery status: {}, fulfillment status: {}", order.getStatus(),
+				delivery.getStatus(), fullFillStatus);
 
-		if(OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus).equals(order.getStatus())){
+		if (OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus).equals(order.getStatus())) {
 			log.info("Duplicate delivery status received. Skipping further processing for orderId: {}", order.getId());
 			return;
 		}
@@ -187,14 +194,16 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 				|| fullFillStatus.equals(DeliveryFulfillStatusType.CREATED)) {
 			String redisKey = "delivery:" + delivery.getOrderId() + ":" + fullFillStatus;
 			String deliveryDelay = redisService.getRedisData(Constants.REDIS_KEY_DELIVERY_DELAY).orElse("12");
-			redisService.setRedisData(redisKey, fullFillStatus, Duration.ofMinutes(Long.parseLong(deliveryDelay)).toSeconds());
+			redisService.setRedisData(redisKey, fullFillStatus,
+					Duration.ofMinutes(Long.parseLong(deliveryDelay)).toSeconds());
 		}
-		
+
 		if (fullFillStatus.equals(DeliveryFulfillStatusType.OUT_FOR_PICKUP)) {
-			 String locationKey = "rider_location:" + delivery.getOrderId() + ":" + fullFillStatus;
+			String locationKey = "rider_location:" + delivery.getOrderId() + ":" + fullFillStatus;
 			String riderDelay = redisService.getRedisData(Constants.REDIS_KEY_RIDER_LOCATION_DELAY).orElse("5");
-			redisService.setRedisData(locationKey, fullFillStatus, Duration.ofMinutes(Long.parseLong(riderDelay)).toSeconds());
-	    }
+			redisService.setRedisData(locationKey, fullFillStatus,
+					Duration.ofMinutes(Long.parseLong(riderDelay)).toSeconds());
+		}
 
 		delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
 		delivery.setService(deliveryFulfill.getChannel().getName());
@@ -204,15 +213,21 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
 			delivery.getFulfillment().setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
 		}
-		//TODO:Need to Move this saveOrder some where - unwanted save operation
-		if(order.getDeliveryTrackingLink() == null) {
-			order.setDeliveryTrackingLink("https://api.hyperapps.in/api/v2/order/track/"+order.getId());
+		// TODO:Need to Move this saveOrder some where - unwanted save operation
+		if (order.getDeliveryTrackingLink() == null) {
+			order.setDeliveryTrackingLink("https://api.hyperapps.in/api/v2/order/track/" + order.getId());
 		}
 		orderService.save(order);
 		orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus));
 
 		if (posService.isPosUpdateRequired(fullFillStatus)) {
 			posService.updatePosRiderStatus(delivery, order);
+		}
+		try {
+			log.info("Starting OrderTrack workflow for order {}", order.getId());
+			orderTrackWorkflowService.startOrderTrackWorkflow(order.getId());
+		} catch (Exception e) {
+			log.error("Failed to start OrderTrack workflow for order {}", order.getId(), e);
 		}
 	}
 
@@ -295,7 +310,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	public void processDeliverySmartFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
 		try {
-			pidgeClient.smartFulfillDeliveryOrder(DeliveryRequestTranslation.getSmartFulfillRequest(delivery)).subscribe();
+			pidgeClient.smartFulfillDeliveryOrder(DeliveryRequestTranslation.getSmartFulfillRequest(delivery))
+					.subscribe();
 			delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
 			delivery.setFulfillmentType(fulfilledBy);
 			delivery.setFulfillmentAt(LocalDateTime.now());
@@ -338,9 +354,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		String fulfillRedisKey = "order:" + orderId + ":fulfill";
 		redisService.setRedisData(fulfillRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(expiry).getSeconds());
 		String deliveryRedisKey = "order:" + orderId + ":delivery";
-		redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED, Duration.ofMinutes(expiry + 2).getSeconds());
+		redisService.setRedisData(deliveryRedisKey, OrderStatusType.ACCEPTED,
+				Duration.ofMinutes(expiry + 2).getSeconds());
 	}
-	
+
 	public RiderLocation getRiderLocation(String deliveryOrderId) throws DeliveryException {
 		return pidgeClient.getRiderLocation(deliveryOrderId);
 	}

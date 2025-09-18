@@ -116,4 +116,21 @@ public class OneSignalAlertService {
 		}
 	}
 
+	public void notifyOrderTrackDelay(String orderId, String restaurantName, String currentStatus,
+			long finalMinutesSinceCreation, String nextExpected) {
+		String messageBody = oneSignalNotificationTemplates.buildOrderTrackAlertMessage(orderId, restaurantName,
+				currentStatus, finalMinutesSinceCreation, nextExpected);
+
+		OneSignalNotificationRequest request = OneSignalNotificationRequest.builder().targetChannel("push").appId(appId)
+				.includedSegments(List.of("All")).contents(Map.of("en", messageBody)).build();
+
+		log.info("Sending Order Track Delay notification [orderId={}]", orderId);
+		try {
+			notificationService.sendOneSignalNotification(request);
+			log.info("Order Track Delay notification sent successfully for orderId={}", orderId);
+		} catch (OneSignalException e) {
+			log.error("Error sending Order Track Delay notification for orderId={} — payload={}", orderId, request, e);
+		}
+	}
+
 }

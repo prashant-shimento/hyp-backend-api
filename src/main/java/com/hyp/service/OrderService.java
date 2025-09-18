@@ -31,6 +31,7 @@ import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
+import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
@@ -100,6 +101,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 	@Autowired
 	OrderWorkflowService orderWorkflowService;
+	@Autowired
+	OrderTrackWorkflowService orderTrackWorkFlowService;
 
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
@@ -112,13 +115,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		Restaurant restaurant = Optional.ofNullable(restaurantService.findById(orderDto.getRestaurantId())).orElseThrow(
 				() -> new EntityNotFoundException(Restaurant.class.getSimpleName(), orderDto.getRestaurantId()));
 
-		if(!restaurant.isServiceable()){
+		if (!restaurant.isServiceable()) {
 			throw new Exception("Restaurant is not serviceable");
 		}
 		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
 			throw new Exception("Order cannot be processed: Outside delivery hours.");
 		}
-		if(!restaurant.isActive()){
+		if (!restaurant.isActive()) {
 			throw new Exception("Restaurant is not active");
 		}
 
@@ -127,8 +130,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
 		Address address = null;
 
-		//TODO: Need to validate orderType from DB once front end accommodate the changes
-		if(OrderType.fromCode(orderDto.getOrderType()) == OrderType.H) {
+		// TODO: Need to validate orderType from DB once front end accommodate the
+		// changes
+		if (OrderType.fromCode(orderDto.getOrderType()) == OrderType.H) {
 			if (orderDto.getDeliveryDetails() != null) {
 				address = Optional.ofNullable(addressService.findById(orderDto.getDeliveryDetails().getAddressId()))
 						.orElseThrow(() -> new EntityNotFoundException(Address.class.getSimpleName(),
@@ -139,13 +143,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 						restaurant.getLocation().getLongitude(), restaurant.getDeliveryRadius())) {
 					throw new Exception("Location Not Deliverable");
 				}
-			} else { //TODO: this has to be moved to orderType Dine and needs front end changes in mocoda
+			} else { // TODO: this has to be moved to orderType Dine and needs front end changes in
+						// mocoda
 				if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
 					throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
 				}
 			}
 		}
-
 
 		if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
 			throw new Exception("Order cannot be processed: Outside delivery hours.");
@@ -228,27 +232,34 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 			}
 
 			OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
+
 			order.setStatus(newOrderStatus);
 			if (newOrderStatus == OrderStatusType.ACCEPTED) {
 				order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
 				order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
 				order = update(order);
-
+				try {
+					log.info("Starting OrderTrack workflow for order {}", order.getId());
+					orderTrackWorkFlowService.startOrderTrackWorkflow(order.getId());
+				} catch (Exception e) {
+					log.error("Failed to start OrderTrack workflow for order {}", order.getId(), e);
+				}
 				int fulfillmentDelay = Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(0);
 
 				if (fulfillmentDelay > 0) {
 					log.info("Scheduling fulfillment for order {} after {} minutes", order.getId(), fulfillmentDelay);
 					boolean isWorkflowEnabled = redisService.getRedisData(Constants.FULFILLMENT_WORKFLOW_ENABLED)
-							.map(Boolean::parseBoolean)
-							.orElse(false);
+							.map(Boolean::parseBoolean).orElse(false);
 
 					if (isWorkflowEnabled) {
 						startOrderFulfillmentWorkflow(order.getId(), fulfillmentDelay);
+
 					} else {
 						deliveryService.setFulfillExpiry(order.getId(), fulfillmentDelay);
 					}
 					return;
 				}
+
 				String fulfillmentMode = redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 
@@ -258,7 +269,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 				}
 				deliveryService.processDeliveryOrderFulfill(delivery, Constants.PET_POOJA, fulfillmentMode);
 			} else if (newOrderStatus == OrderStatusType.CANCELLED) {
-				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(),"Cancelled by Restaurant");
+				paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(),
+						"Cancelled by Restaurant");
 				Delivery delivery = deliveryService.findByOrderId(order.getId());
 				if (delivery != null && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
 						|| delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
@@ -286,19 +298,16 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 		orderWorkflowService.startOrderFulfillmentWorkflow(orderId, fulfillmentDelay);
 	}
 
-	public boolean updateStatus(String orderId, OrderStatusType newStatus) {
-		List<OrderStatusType> allowedStatuses = Arrays.asList(
-				OrderStatusType.PAYMENT_PENDING,
-				OrderStatusType.PAYMENT_FAILED,
-				OrderStatusType.ERROR,
-				OrderStatusType.PROCESSING
-		);
+//	public void startOrderTrackingWorkflow(String orderId) {
+//		orderTrackWorkFlowService.startOrderPaymentWorkflow(orderId);
+//	}
 
-		Query query = new Query(Criteria.where("_id").is(orderId)
-				.and("status").in(allowedStatuses));
-		Update update = new Update()
-				.set("status", newStatus)
-				.push("orderLogs", new Order.OrderLog(newStatus.name()));
+	public boolean updateStatus(String orderId, OrderStatusType newStatus) {
+		List<OrderStatusType> allowedStatuses = Arrays.asList(OrderStatusType.PAYMENT_PENDING,
+				OrderStatusType.PAYMENT_FAILED, OrderStatusType.ERROR, OrderStatusType.PROCESSING);
+
+		Query query = new Query(Criteria.where("_id").is(orderId).and("status").in(allowedStatuses));
+		Update update = new Update().set("status", newStatus).push("orderLogs", new Order.OrderLog(newStatus.name()));
 
 		UpdateResult result = mongoTemplate.updateFirst(query, update, Order.class);
 
