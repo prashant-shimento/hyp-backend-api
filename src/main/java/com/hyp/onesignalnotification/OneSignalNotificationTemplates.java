@@ -1,5 +1,7 @@
 package com.hyp.onesignalnotification;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Service;
 
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -132,4 +134,26 @@ public class OneSignalNotificationTemplates {
 				expectedStatus);
 	}
 
+	public String buildFraudRiderAlertMessage(String riderContact, String riderName) {
+		String name = (riderName == null || riderName.isBlank()) ? "Unknown" : riderName;
+		String contact = (riderContact == null || riderContact.isBlank()) ? "Unknown" : riderContact;
+		String detectedAt = Instant.now().toString();
+
+		return String.format("""
+				🚨 Rider Alert
+
+				👤 Rider: %s
+				📱 Contact: %s
+				🕒 Detected At: %s
+
+				⚠️ This rider matched a flagged/flaggable record.
+
+				🔎 Suggested actions:
+				• Verify rider identity and recent allocations.
+				• Pause new allocations for this rider until cleared.
+				• Escalate to Ops/Security for investigation.
+
+				⚡ Action Required: Review the rider immediately and take appropriate action.
+				""", name, contact, detectedAt);
+	}
 }
