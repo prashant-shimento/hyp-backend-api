@@ -7,6 +7,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import com.hyp.annotation.GenerateId;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,6 +25,7 @@ public class RiderRecord {
 
 	@Id
 	@Field("id")
+	@GenerateId(sequenceName = "rider_sequence")
 	private String id;
 
 	@Field("rider_name")

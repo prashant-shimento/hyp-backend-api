@@ -275,47 +275,44 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 		try {
 			RiderRecord record = riderRecordRepository.findByRiderContact(riderContact);
 
-			// channel from delivery (may be null)
-			String channel = delivery == null ? null : delivery.getService();
-
+			// don't create — if not present, skip and continue
 			if (record == null) {
-				// create new record
-				record = new RiderRecord();
-				record.setRiderName(riderName);
-				record.setRiderContact(riderContact);
-				record.setFraudCount(1);
-
-				if (channel != null && !channel.isBlank()) {
-					List<String> channels = new ArrayList<>();
-					channels.add(channel);
-					record.setChannels(channels);
-				}
-
-				riderRecordRepository.save(record);
-				log.info("Created new RiderRecord for {} (fraudCount=1)", riderContact);
-			} else {
-				// update existing record
-				int newCount = (record.getFraudCount() == null ? 0 : record.getFraudCount()) + 1;
-				record.setFraudCount(newCount);
-
-				if (channel != null && !channel.isBlank()) {
-					List<String> channels = record.getChannels();
-					if (channels == null) {
-						channels = new ArrayList<>();
-						record.setChannels(channels);
-					}
-					if (!channels.contains(channel)) {
-						channels.add(channel);
-					}
-				}
-
-				riderRecordRepository.save(record);
-				log.info("Updated RiderRecord for {} (fraudCount={})", riderContact, record.getFraudCount());
+				log.debug("No RiderRecord found for {} - skipping (won't create).", riderContact);
+				return;
 			}
 
-			// send notification after persist
-			oneSignalAlertService.notifyFraudRiderAlert(riderContact, riderName);
-			log.info("Fraud alert sent for rider {}", riderContact);
+			boolean modified = false;
+
+			// increment fraud count
+			Integer currentCount = record.getFraudCount();
+			int newCount = (currentCount == null ? 0 : currentCount) + 1;
+			record.setFraudCount(newCount);
+			modified = true;
+
+			// update channel list if present and new
+			String channel = delivery == null ? null : delivery.getService();
+			if (channel != null && !channel.isBlank()) {
+				List<String> channels = record.getChannels();
+				if (channels == null) {
+					channels = new ArrayList<>();
+					channels.add(channel);
+					record.setChannels(channels);
+					modified = true;
+				} else if (!channels.contains(channel)) {
+					channels.add(channel);
+					modified = true;
+				}
+			}
+
+			// persist and notify only when changed
+			if (modified) {
+				riderRecordRepository.save(record);
+				log.info("Updated RiderRecord for {} (fraudCount={})", riderContact, record.getFraudCount());
+				oneSignalAlertService.notifyFraudRiderAlert(riderContact, riderName);
+				log.info("Fraud alert sent for rider {}", riderContact);
+			} else {
+				log.debug("No updates needed for RiderRecord {} - skipping save/notify", riderContact);
+			}
 		} catch (Exception e) {
 			log.error("Error checking/alerting fraud rider {}: {}", riderContact, e.getMessage(), e);
 		}
