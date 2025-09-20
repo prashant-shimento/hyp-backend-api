@@ -2,6 +2,7 @@ package com.hyp.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.entity.RiderRecord;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
 import com.hyp.enums.OrderStatusType;
@@ -27,13 +29,16 @@ import com.hyp.exception.DeliveryException;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
+import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.model.RiderLocation;
 import com.hyp.repository.DeliveryRepository;
+import com.hyp.repository.RiderRecordRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
+import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.util.CommonUtils;
@@ -98,6 +103,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
 	@Autowired
 	private OrderEventPublisher orderEventPublisher;
+
+	@Autowired
+	private RiderRecordRepository riderRecordRepository;
+
+	@Autowired
+	OneSignalAlertService oneSignalAlertService;
 
 	public Delivery findByOrderId(String orderId) {
 		return deliveryRepository.findByOrderIdAndIsDeletedFalse(orderId);
@@ -224,10 +235,89 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 			posService.updatePosRiderStatus(delivery, order);
 		}
 		try {
+			if (DeliveryFulfillStatusType.OUT_FOR_PICKUP.equals(fullFillStatus)) {
+				if (delivery == null || delivery.getFulfillment() == null) {
+					log.debug("Delivery or fulfillment is null; skipping rider fraud check.");
+				} else {
+					Rider rider = delivery.getFulfillment().getRider();
+					if (rider == null) {
+						log.debug("No rider found in fulfillment; skipping rider fraud check.");
+					} else {
+						RiderDetails riderDetails = new RiderDetails(rider.getName(), rider.getMobile());
+						checkAndAlertFraudRider(riderDetails, delivery);
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error("Failed while checking/alerting fraud rider", e);
+		}
+
+		try {
 			log.info("Starting OrderTrack workflow for order {}", order.getId());
 			orderTrackWorkflowService.startOrderTrackWorkflow(order.getId());
 		} catch (Exception e) {
 			log.error("Failed to start OrderTrack workflow for order {}", order.getId(), e);
+		}
+	}
+
+	private void checkAndAlertFraudRider(RiderDetails riderDetails, Delivery delivery) {
+		if (riderDetails == null)
+			return;
+
+		String riderContact = riderDetails.getRiderContact();
+		String riderName = riderDetails.getRiderName();
+
+		if (riderContact == null || riderContact.isBlank()) {
+			log.debug("Empty rider contact - skipping fraud check");
+			return;
+		}
+
+		try {
+			RiderRecord record = riderRecordRepository.findByRiderContact(riderContact);
+
+			// channel from delivery (may be null)
+			String channel = delivery == null ? null : delivery.getService();
+
+			if (record == null) {
+				// create new record
+				record = new RiderRecord();
+				record.setRiderName(riderName);
+				record.setRiderContact(riderContact);
+				record.setFraudCount(1);
+
+				if (channel != null && !channel.isBlank()) {
+					List<String> channels = new ArrayList<>();
+					channels.add(channel);
+					record.setChannels(channels);
+				}
+
+				riderRecordRepository.save(record);
+				log.info("Created new RiderRecord for {} (fraudCount=1)", riderContact);
+			} else {
+				// update existing record
+				int newCount = (record.getFraudCount() == null ? 0 : record.getFraudCount()) + 1;
+				record.setFraudCount(newCount);
+
+				if (channel != null && !channel.isBlank()) {
+					List<String> channels = record.getChannels();
+					if (channels == null) {
+						channels = new ArrayList<>();
+						record.setChannels(channels);
+					}
+					if (!channels.contains(channel)) {
+						channels.add(channel);
+					}
+				}
+
+				riderRecordRepository.save(record);
+				log.info("Updated RiderRecord for {} (fraudCount={})", riderContact, record.getFraudCount());
+			}
+
+			// send notification after persist
+			oneSignalAlertService.notifyFraudRiderAlert(riderContact, riderName);
+			log.info("Fraud alert sent for rider {}", riderContact);
+		} catch (Exception e) {
+			log.error("Error checking/alerting fraud rider {}: {}", riderContact, e.getMessage(), e);
 		}
 	}
 

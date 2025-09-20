@@ -137,4 +137,26 @@ public class OneSignalAlertService {
 		}
 	}
 
+	public void notifyFraudRiderAlert(String riderContact, String riderName) {
+		if (riderContact == null || riderContact.isBlank()) {
+			log.warn("notifyFraudRiderAlert called with empty riderContact; skipping");
+			return;
+		}
+
+		String messageBody = oneSignalNotificationTemplates.buildFraudRiderAlertMessage(riderContact, riderName);
+		messageTemplate.convertAndSend("/topic/rider-alert", messageBody);
+		OneSignalNotificationRequest request = OneSignalNotificationRequest.builder().targetChannel("push").appId(appId)
+				.includedSegments(List.of("All")).contents(Map.of("en", messageBody)).build();
+
+		log.info("Sending fraud rider alert for riderContact={}", riderContact);
+		try {
+			notificationService.sendOneSignalNotification(request);
+			log.info("Fraud rider alert sent for riderContact={}", riderContact);
+		} catch (OneSignalException e) {
+			log.error("Error sending fraud rider alert for riderContact={} — payload={}", riderContact, request, e);
+		} catch (Exception e) {
+			log.error("Unexpected error sending fraud rider alert for riderContact={}", riderContact, e);
+		}
+	}
+
 }
