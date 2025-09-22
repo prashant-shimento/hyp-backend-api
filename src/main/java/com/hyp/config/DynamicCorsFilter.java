@@ -98,10 +98,6 @@
 //			if (host == null)
 //				return false;
 //
-//			if ("localhost".equalsIgnoreCase(host)) {
-//				return true;
-//			}
-//
 //			// Normalize base domain and do fast-path match for subdomains
 //			String base = props.getBaseDomain();
 //			if (base != null && !base.isBlank()) {
