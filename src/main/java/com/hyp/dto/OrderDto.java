@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.enums.OrderPlateform;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,7 +19,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Data
-@EqualsAndHashCode(callSuper=false)
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
 public class OrderDto extends BaseDto {
@@ -73,10 +75,11 @@ public class OrderDto extends BaseDto {
 	private String screen;
 	private String seat;
 	private String paymentOrderId;
-    private List<OrderLog> orderLogs = new ArrayList<>();
+	private List<OrderLog> orderLogs = new ArrayList<>();
 	private OrderCase orderCase;
 	private Double platformFee;
-	
+	private OrderPlateform orderPlateform;
+
 	@Data
 	@NoArgsConstructor
 	@JsonInclude(Include.NON_NULL)
@@ -171,13 +174,13 @@ public class OrderDto extends BaseDto {
 		private String pickUpNow;
 		private Double networkId;
 	}
-	
+
 	@Data
-    @NoArgsConstructor
-    public static class OrderLog {
-        private String status;
-        private LocalDateTime loggedAt;
-    }
+	@NoArgsConstructor
+	public static class OrderLog {
+		private String status;
+		private LocalDateTime loggedAt;
+	}
 
 	@Data
 	@NoArgsConstructor

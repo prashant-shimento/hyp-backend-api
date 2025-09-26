@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hyp.enums.CaseStatusType;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -12,6 +11,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import com.hyp.annotation.GenerateId;
+import com.hyp.enums.CaseStatusType;
+import com.hyp.enums.OrderPlateform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
 
@@ -52,7 +53,7 @@ public class Order {
 
 	@Field("total_amount")
 	private double totalAmount;
-	
+
 	@Field("grand_total_amount")
 	private double grandTotalAmount;
 
@@ -118,18 +119,18 @@ public class Order {
 
 	@Field("minimum_delivery_time")
 	private String minDeliveryTime;
-	
+
 	@Field("delivery_tracking_link")
 	private String deliveryTrackingLink;
 
 	@Field("screen")
 	private String screen;
-	
+
 	@Field("seat")
 	private String seat;
-	
+
 	@Field("order_logs")
-    private List<OrderLog> orderLogs = new ArrayList<>();
+	private List<OrderLog> orderLogs = new ArrayList<>();
 
 	@Field("follow_up_by")
 	private String followUpBy;
@@ -139,6 +140,9 @@ public class Order {
 
 	@Field("platform_fee")
 	private Double platformFee;
+
+	@Field("order_plateform")
+	private OrderPlateform orderPlateform;
 
 	@Data
 	@NoArgsConstructor
@@ -247,21 +251,21 @@ public class Order {
 		@Field("network_id")
 		private int networkId;
 	}
-	
-	@Data
-    @NoArgsConstructor
-    public static class OrderLog {
-        @Field("status")
-        private String status;
-        
-        @Field("logged_at")
-        private LocalDateTime loggedAt;
 
-        public OrderLog(String status) {
-            this.status = status;
-            this.loggedAt = LocalDateTime.now();
-        }
-    }
+	@Data
+	@NoArgsConstructor
+	public static class OrderLog {
+		@Field("status")
+		private String status;
+
+		@Field("logged_at")
+		private LocalDateTime loggedAt;
+
+		public OrderLog(String status) {
+			this.status = status;
+			this.loggedAt = LocalDateTime.now();
+		}
+	}
 
 	@Data
 	@NoArgsConstructor
@@ -294,8 +298,5 @@ public class Order {
 		private CaseStatusType status;
 
 	}
-	
-	
-
 
 }
