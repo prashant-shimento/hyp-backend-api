@@ -4,8 +4,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
@@ -17,6 +19,7 @@ import com.hyp.client.OneSignalClient;
 import com.hyp.constants.Constants;
 import com.hyp.entity.Feedback;
 import com.hyp.entity.Partner;
+import com.hyp.entity.User;
 import com.hyp.enums.PartnerType;
 import com.hyp.exception.NotificationException;
 import com.hyp.exception.OneSignalException;
@@ -24,6 +27,7 @@ import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FacebookMessageRequest.Component;
 import com.hyp.request.FacebookMessageRequest.Language;
 import com.hyp.request.FacebookMessageRequest.Parameter;
+import com.hyp.request.OneSignalNotificationAlias;
 import com.hyp.request.OneSignalNotificationRequest;
 
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +54,12 @@ public class NotificationService {
 
 	@Autowired
 	private MetaService metaService;
+
+	@Autowired
+	private UserService userService;
+
+	@Value("${onesignal.partner.app.id}")
+	private String partberAppId;
 
 	@Scheduled(cron = "0 10 12,18,23 * * ?")
 	public void sendFeedbackMessageAndUpdateFlag() {
@@ -234,4 +244,22 @@ public class NotificationService {
 		oneSignalClient.sendNotificationforPartner(oneSignalNotificationRequest);
 	}
 
+	public void sendTestNotification(String restaurantId) {
+		User user = userService.findByRestaurantId(restaurantId);
+		if (user == null) {
+			log.warn("No user found for restaurantId={}", restaurantId);
+			return;
+		}
+
+		OneSignalNotificationRequest request = OneSignalNotificationRequest.builder().targetChannel("push")
+				.includeAliases(OneSignalNotificationAlias.builder().externalId(List.of(user.getId())).build())
+				.appId(partberAppId).contents(Map.of("en", "OneSignal notification is working fine")).build();
+
+		try {
+			sendOneSignalNotificationForPartner(request);
+			log.info("Test notification sent to userId={} for restaurantId={}", user.getId(), restaurantId);
+		} catch (OneSignalException e) {
+			log.error("Error occurred in sending push notification {}", request, e);
+		}
+	}
 }

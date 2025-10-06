@@ -78,6 +78,33 @@ public class OneSignalClient {
 				}));
 	}
 
+	public Mono<Void> deleteUser(String userId, String oneSignalId) throws OneSignalException {
+		String endpoint = baseUrl + "/apps/" + partberAppId + "/users/by/onesignal_id/" + oneSignalId;
+
+		log.info("deleteUser endpoint {}", endpoint);
+
+		return executeWithRetry(
+				getClientForPartner().delete().uri(endpoint).header("Authorization", "Key " + PartnerApiKey)
+
+						.accept(MediaType.APPLICATION_JSON).retrieve()
+						.onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+								resp -> resp.bodyToMono(String.class).flatMap(body -> {
+									log.error("Failed deleteUser {} status {} body {}", oneSignalId,
+											resp.statusCode().value(), body);
+									return Mono.error(new OneSignalException("deleteUser " + oneSignalId, body));
+								}))
+						.bodyToMono(Void.class)
+						.doOnSuccess(unused -> log.info("deleteUser completed successfully for onesignalId: {}",
+								oneSignalId))
+						.doOnError(e -> log.error("Error in deleteUser for onesignalId {}: {}", oneSignalId,
+								e.getMessage(), e))
+						.onErrorMap(e -> {
+							log.error("Final failure after retries for onesignalId {}. Alerting about failure...",
+									oneSignalId);
+							return new OneSignalException("deleteUser " + oneSignalId, e.getMessage());
+						}));
+	}
+
 	public void sendNotification(OneSignalNotificationRequest oneSignalNotificationRequest) throws OneSignalException {
 		String endpoint = "/notifications?c=push";
 		LoggingUtils.logRequest("sendNotification", oneSignalNotificationRequest);
