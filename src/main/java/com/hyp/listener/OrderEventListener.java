@@ -1,17 +1,5 @@
 package com.hyp.listener;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
-
 import com.hyp.constants.Constants;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
@@ -39,195 +27,238 @@ import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.UserService;
 import com.hyp.util.CommonUtils;
-
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
 public class OrderEventListener {
 
-	@Autowired
-	SimpMessagingTemplate messageTemplate;
+    @Autowired
+    SimpMessagingTemplate messageTemplate;
 
-	@Autowired
-	RestaurantService restaurantService;
+    @Autowired
+    RestaurantService restaurantService;
 
-	@Autowired
-	CustomerService customerService;
+    @Autowired
+    CustomerService customerService;
 
-	@Autowired
-	DeliveryService deliveryService;
+    @Autowired
+    DeliveryService deliveryService;
 
-	@Autowired
-	PaymentService paymentService;
+    @Autowired
+    PaymentService paymentService;
 
-	@Autowired
-	NotificationService notificationService;
+    @Autowired
+    NotificationService notificationService;
 
-	@Autowired
-	private OrderEventPublisher orderEventPublisher;
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
 
-	@Autowired
-	private PartnerService partnerService;
+    @Autowired
+    private PartnerService partnerService;
 
-	@Autowired
-	UserService userService;
+    @Autowired
+    UserService userService;
 
-	@Autowired
-	RedisService redisService;
+    @Autowired
+    RedisService redisService;
 
-//	@Value("${onesignal.app.id}")
-//	private String appId;
+    //	@Value("${onesignal.app.id}")
+    //	private String appId;
 
-	@Value("${onesignal.partner.app.id}")
-	private String partberAppId;
+    @Value("${onesignal.partner.app.id}")
+    private String partberAppId;
 
-	@Async
-	@EventListener
-	public void handleProcessOrder(OrderEvent event) {
-		log.info("Order Event listener handleProcessOrder");
-		Order order = event.getOrder();
-		if (restaurantService.findById(order.getRestaurantId()).getPosPartner()
-				.equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
-			orderEventPublisher.publishPosOrderEvent(order);
-		}
-		log.info("Order Type {}", order.getOrderType());
-		if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
-			orderEventPublisher.publishDeliveryOrderEvent(order);
-		}
-		String delayAlertTime = redisService.getRedisData(Constants.REDIS_KEY_DELAY_ALERT_TIME).orElse("45");
-		String redisDelayKey = "order:" + order.getId() + ":delay";
-		long delayTtl = Duration.ofMinutes(Integer.parseInt(delayAlertTime)).toSeconds();
-		redisService.setRedisData(redisDelayKey, OrderStatusType.PAID, delayTtl);
+    @Async
+    @EventListener
+    public void handleProcessOrder(OrderEvent event) {
+        log.info("Order Event listener handleProcessOrder");
+        Order order = event.getOrder();
+        if (restaurantService
+                .findById(order.getRestaurantId())
+                .getPosPartner()
+                .equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
+            orderEventPublisher.publishPosOrderEvent(order);
+        }
+        log.info("Order Type {}", order.getOrderType());
+        if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
+            orderEventPublisher.publishDeliveryOrderEvent(order);
+        }
+        String delayAlertTime =
+                redisService.getRedisData(Constants.REDIS_KEY_DELAY_ALERT_TIME).orElse("45");
+        String redisDelayKey = "order:" + order.getId() + ":delay";
+        long delayTtl = Duration.ofMinutes(Integer.parseInt(delayAlertTime)).toSeconds();
+        redisService.setRedisData(redisDelayKey, OrderStatusType.PAID, delayTtl);
+    }
 
-	}
+    @Async
+    @EventListener
+    public void handleOrderStatusChange(OrderStatusChangeEvent event) {
+        log.info("Order Event listener handleOrderStatusChange");
 
-	@Async
-	@EventListener
-	public void handleOrderStatusChange(OrderStatusChangeEvent event) {
-		log.info("Order Event listener handleOrderStatusChange");
+        List<String> templateParameters = null;
+        Order order = event.getOrder();
 
-		List<String> templateParameters = null;
-		Order order = event.getOrder();
+        messageTemplate.convertAndSend("/topic/order-status", order);
 
-		messageTemplate.convertAndSend("/topic/order-status", order);
+        Customer customer = customerService.findById(order.getCustomerId());
+        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+        Delivery delivery = deliveryService.findByOrderId(order.getId());
+        Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
 
-		Customer customer = customerService.findById(order.getCustomerId());
-		Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-		Delivery delivery = deliveryService.findByOrderId(order.getId());
-		Partner partner = partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.THEATRE);
+        switch (order.getStatus()) {
+            case CREATED:
+                if (partner != null) {
+                    List<String> parameters = CommonUtils.buildStringList(
+                            customer.getName(), restaurant.getRestaurantName(), order.getId());
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_ORDER_CREATED_THEATRE_TEMPLATE, parameters);
+                }
+                break;
 
-		switch (order.getStatus()) {
+            case ACCEPTED:
+                if (partner != null) {
+                    List<String> parameters = CommonUtils.buildStringList(
+                            customer.getName(),
+                            restaurant.getRestaurantName(),
+                            order.getId(),
+                            order.getScreen(),
+                            order.getSeat());
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
+                } else {
+                    List<String> parameters = CommonUtils.buildStringList(
+                            customer.getName(),
+                            restaurant.getRestaurantName(),
+                            restaurant.getCity(),
+                            order.getId(),
+                            restaurant.getSupportContact());
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE, parameters);
+                }
+                break;
 
-		case CREATED:
-			if (partner != null) {
-				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-						restaurant.getRestaurantName(), order.getId());
-				notificationService.sendNotification(customer.getMobile(),
-						Constants.META_ORDER_CREATED_THEATRE_TEMPLATE, parameters);
-			}
-			break;
+            case PAID:
+                if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
+                    User user = userService.findByRestaurantId(order.getRestaurantId());
+                    Map<String, Object> customDataMap = new HashMap<>();
+                    customDataMap.put("userName", user.getName());
+                    customDataMap.put("orderId", order.getId());
+                    customDataMap.put("customerName", customer.getName());
 
-		case ACCEPTED:
-			if (partner != null) {
-				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-						restaurant.getRestaurantName(), order.getId(), order.getScreen(), order.getSeat());
-				notificationService.sendNotification(customer.getMobile(),
-						Constants.META_ORDER_CONFIRMED_THEATRE_TEMPLATE, parameters);
-			} else {
-				List<String> parameters = CommonUtils.buildStringList(customer.getName(),
-						restaurant.getRestaurantName(), restaurant.getCity(), order.getId(),
-						restaurant.getSupportContact());
-				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CONFIRMED_TEMPLATE,
-						parameters);
-			}
-			break;
+                    OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
+                            .targetChannel("push")
+                            .includeAliases(OneSignalNotificationAlias.builder()
+                                    .externalId(List.of(user.getId()))
+                                    .build())
+                            .appId(partberAppId)
+                            .templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
+                            .customData(customDataMap)
+                            .build();
 
-		case PAID:
-			if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
-				User user = userService.findByRestaurantId(order.getRestaurantId());
-				Map<String, Object> customDataMap = new HashMap<>();
-				customDataMap.put("userName", user.getName());
-				customDataMap.put("orderId", order.getId());
-				customDataMap.put("customerName", customer.getName());
+                    try {
+                        notificationService.sendOneSignalNotificationForPartner(request);
+                    } catch (OneSignalException e) {
+                        log.error("Error occurred in sending push notification {}", request);
+                    }
+                }
 
-				OneSignalNotificationRequest request = OneSignalNotificationRequest.builder().targetChannel("push")
-						.includeAliases(OneSignalNotificationAlias.builder().externalId(List.of(user.getId())).build())
-						.appId(partberAppId).templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
-						.customData(customDataMap).build();
+                templateParameters = CommonUtils.buildStringList(
+                        customer.getName(),
+                        restaurant.getRestaurantName(),
+                        order.getId(),
+                        order.getStatus(),
+                        restaurant.getSupportContact());
 
-				try {
-					notificationService.sendOneSignalNotificationForPartner(request);
-				} catch (OneSignalException e) {
-					log.error("Error occurred in sending push notification {}", request);
-				}
-			}
+                notificationService.sendNotification(
+                        customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE, templateParameters);
+                break;
 
-			templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
-					order.getId(), order.getStatus(), restaurant.getSupportContact());
+            case PICKED_UP:
+                templateParameters = CommonUtils.buildStringList(
+                        customer.getName(),
+                        order.getId(),
+                        delivery.getFulfillment().getRider().getName(),
+                        delivery.getFulfillment().getRider().getMobile(),
+                        restaurant.getSupportContact());
 
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PAID_TEMPLATE,
-					templateParameters);
-			break;
+                notificationService.sendNotification(
+                        customer.getMobile(),
+                        Constants.META_ORDER_PICKEDUP_TEMPLATE,
+                        templateParameters,
+                        order.getId());
+                break;
 
-		case PICKED_UP:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-					delivery.getFulfillment().getRider().getName(), delivery.getFulfillment().getRider().getMobile(),
-					restaurant.getSupportContact());
+            case DELIVERED:
+                if (partner != null) {
+                    templateParameters = CommonUtils.buildStringList(
+                            customer.getName(), order.getId(), restaurant.getSupportContact());
 
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_PICKEDUP_TEMPLATE,
-					templateParameters, order.getId());
-			break;
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
+                } else {
+                    templateParameters = CommonUtils.buildStringList(
+                            customer.getName(),
+                            restaurant.getRestaurantName(),
+                            order.getId(),
+                            restaurant.getSupportContact(),
+                            restaurant.getWebsiteUrl());
 
-		case DELIVERED:
-			if (partner != null) {
-				templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-						restaurant.getSupportContact());
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE, templateParameters);
+                }
+                break;
 
-				notificationService.sendNotification(customer.getMobile(),
-						Constants.META_ORDER_DELIVERED_THEATRE_TEMPLATE, templateParameters);
-			} else {
-				templateParameters = CommonUtils.buildStringList(customer.getName(), restaurant.getRestaurantName(),
-						order.getId(), restaurant.getSupportContact(), restaurant.getWebsiteUrl());
+            case CANCELLED:
+                templateParameters =
+                        CommonUtils.buildStringList(customer.getName(), order.getId(), restaurant.getRestaurantName());
 
-				notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_DELIVERED_TEMPLATE,
-						templateParameters);
-			}
-			break;
+                notificationService.sendNotification(
+                        customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE, templateParameters);
+                break;
 
-		case CANCELLED:
-			templateParameters = CommonUtils.buildStringList(customer.getName(), order.getId(),
-					restaurant.getRestaurantName());
+            case REFUND_INITIATED:
+            case REFUND_COMPLETED:
+                Payment payment = paymentService.findByOrderId(order.getId());
 
-			notificationService.sendNotification(customer.getMobile(), Constants.META_ORDER_CANCELLED_TEMPLATE,
-					templateParameters);
-			break;
+                if (payment != null && payment.getRefund() != null) {
+                    String customerName = customer.getName();
+                    String refundAmount = String.valueOf(
+                            CommonUtils.parseISOAmount((int) payment.getRefund().getAmount()));
+                    String orderId = order.getId();
+                    String restaurantName = restaurant.getRestaurantName();
+                    String refundReason = payment.getRefund().getReason();
+                    String refundId = payment.getRefund().getId();
+                    String supportContact = restaurant.getSupportContact();
 
-		case REFUND_INITIATED:
-		case REFUND_COMPLETED:
-			Payment payment = paymentService.findByOrderId(order.getId());
+                    templateParameters = CommonUtils.buildStringList(
+                            customerName,
+                            refundAmount,
+                            orderId,
+                            restaurantName,
+                            refundReason,
+                            refundId,
+                            supportContact,
+                            restaurantName);
 
-			if (payment != null && payment.getRefund() != null) {
-				String customerName = customer.getName();
-				String refundAmount = String.valueOf(CommonUtils.parseISOAmount((int) payment.getRefund().getAmount()));
-				String orderId = order.getId();
-				String restaurantName = restaurant.getRestaurantName();
-				String refundReason = payment.getRefund().getReason();
-				String refundId = payment.getRefund().getId();
-				String supportContact = restaurant.getSupportContact();
-
-				templateParameters = CommonUtils.buildStringList(customerName, refundAmount, orderId, restaurantName,
-						refundReason, refundId, supportContact, restaurantName);
-
-				notificationService.sendNotification(customer.getMobile(), Constants.META_REFUND_TEMPLATE,
-						templateParameters);
-			} else {
-				log.warn("Refund details not found for order ID: {}", order.getId());
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
+                    notificationService.sendNotification(
+                            customer.getMobile(), Constants.META_REFUND_TEMPLATE, templateParameters);
+                } else {
+                    log.warn("Refund details not found for order ID: {}", order.getId());
+                }
+                break;
+            default:
+                break;
+        }
+    }
 }

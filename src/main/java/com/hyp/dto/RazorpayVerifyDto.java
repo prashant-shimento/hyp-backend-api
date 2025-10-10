@@ -1,16 +1,17 @@
 package com.hyp.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 
 @Data
 public class RazorpayVerifyDto {
 
-	@JsonProperty("razorpay_payment_id")
-	private String razorpayPaymentId;
-	@JsonProperty("razorpay_order_id")
-	private String razorpayOrderId;
-	@JsonProperty("razorpay_signature")
-	private String razorpaySignature;
+    @JsonProperty("razorpay_payment_id")
+    private String razorpayPaymentId;
+
+    @JsonProperty("razorpay_order_id")
+    private String razorpayOrderId;
+
+    @JsonProperty("razorpay_signature")
+    private String razorpaySignature;
 }

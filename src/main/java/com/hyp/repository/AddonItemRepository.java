@@ -1,9 +1,6 @@
 package com.hyp.repository;
 
+import com.hyp.entity.AddonItem;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.AddonItem;
-
-public interface AddonItemRepository extends MongoRepository<AddonItem, String> {
-
-}
+public interface AddonItemRepository extends MongoRepository<AddonItem, String> {}

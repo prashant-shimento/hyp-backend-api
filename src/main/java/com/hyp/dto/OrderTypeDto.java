@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class OrderTypeDto {
-	private String id;
-	private String orderType;
-	private int orderTypeId;
-	private String createdAt;
-	private String updatedAt;
-	private String restaurantId;
-	private boolean isDeleted;
+    private String id;
+    private String orderType;
+    private int orderTypeId;
+    private String createdAt;
+    private String updatedAt;
+    private String restaurantId;
+    private boolean isDeleted;
 }

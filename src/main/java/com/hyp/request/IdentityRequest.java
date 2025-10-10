@@ -17,17 +17,16 @@ import lombok.ToString;
 @Builder
 public class IdentityRequest {
 
-	private Identity identity;
+    private Identity identity;
 
-	@Getter
-	@Setter
-	@AllArgsConstructor
-	@ToString
-	@Builder
-	public static class Identity {
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @ToString
+    @Builder
+    public static class Identity {
 
-		@JsonProperty("external_id")
-		private String externalId;
-
-	}
+        @JsonProperty("external_id")
+        private String externalId;
+    }
 }

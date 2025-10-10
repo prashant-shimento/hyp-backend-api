@@ -1,7 +1,6 @@
 package com.hyp.model;
 
 import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,18 +10,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ChatResponse {
 
-	private List<ChatData> data;
+    private List<ChatData> data;
 
-	@Data
-	@AllArgsConstructor
-	@NoArgsConstructor
-	public static class ChatData {
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ChatData {
 
-		private String mobileNumber;
+        private String mobileNumber;
 
-		private String lastMessageDateTimeUTC;
+        private String lastMessageDateTimeUTC;
 
-		private String lastMessage;
-
-	}
+        private String lastMessage;
+    }
 }

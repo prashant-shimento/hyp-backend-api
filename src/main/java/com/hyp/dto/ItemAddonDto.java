@@ -5,8 +5,7 @@ import lombok.Data;
 @Data
 public class ItemAddonDto {
 
-	private String addonGroupId;
-	private String addonItemSelectionMin;
-	private String addonItemSelectionMax;
-
+    private String addonGroupId;
+    private String addonItemSelectionMin;
+    private String addonItemSelectionMax;
 }

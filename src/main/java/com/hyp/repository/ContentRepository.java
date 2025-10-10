@@ -1,9 +1,6 @@
 package com.hyp.repository;
 
+import com.hyp.entity.Content;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.Content;
-
-public interface ContentRepository extends MongoRepository<Content, String> {
-
-}
+public interface ContentRepository extends MongoRepository<Content, String> {}

@@ -1,17 +1,15 @@
 package com.hyp.dto;
 
-import java.util.List;
-import java.util.Map;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.PartnerType;
 import com.hyp.model.ApiConfig;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,51 +20,52 @@ import lombok.NoArgsConstructor;
 @JsonInclude(Include.NON_NULL)
 public class PartnerDto {
 
-	private String id;
-	@NotBlank(message = "Name is required")
-	private String name;
+    private String id;
 
-	@NotNull(message = "Type is required")
-	private PartnerType type;
+    @NotBlank(message = "Name is required")
+    private String name;
 
-	private boolean isIntegrated;
+    @NotNull(message = "Type is required")
+    private PartnerType type;
 
-	@NotNull(message = "Domain is required")
-	private String domain;
+    private boolean isIntegrated;
 
-	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private Map<String, String> configs;
+    @NotNull(message = "Domain is required")
+    private String domain;
 
-	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-	private ApiConfig apiConfigs;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private Map<String, String> configs;
 
-	private List<String> restaurants;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private ApiConfig apiConfigs;
 
-	private String createdAt;
-	private String updatedAt;
-	private List<Restaurant> restaurantDetails;
+    private List<String> restaurants;
 
-	@NotNull(message = "LogoUrl is required")
-	private String logoUrl;
+    private String createdAt;
+    private String updatedAt;
+    private List<Restaurant> restaurantDetails;
 
-	@NotNull(message = "WebUrl is required")
-	private String webUrl;
+    @NotNull(message = "LogoUrl is required")
+    private String logoUrl;
 
-	private String headerImageUrls;
+    @NotNull(message = "WebUrl is required")
+    private String webUrl;
 
-	private String about;
+    private String headerImageUrls;
 
-	private String description;
+    private String about;
 
-	private List<String> galleryImageUrl;
+    private String description;
 
-	private Map<String, String> socialMediaHandlesLink;
+    private List<String> galleryImageUrl;
 
-	private String officeAddress;
+    private Map<String, String> socialMediaHandlesLink;
 
-	private String contact;
+    private String officeAddress;
 
-	private String email;
+    private String contact;
 
-	private String themeColor;
+    private String email;
+
+    private String themeColor;
 }

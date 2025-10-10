@@ -1,5 +1,10 @@
 package com.hyp.controller;
 
+import com.hyp.dto.PartnerDto;
+import com.hyp.entity.Partner;
+import com.hyp.response.Response;
+import com.hyp.service.PartnerService;
+import com.hyp.translation.PartnerTranslation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -12,34 +17,34 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
-import com.hyp.dto.PartnerDto;
-import com.hyp.entity.Partner;
-import com.hyp.response.Response;
-import com.hyp.service.PartnerService;
-import com.hyp.translation.PartnerTranslation;
-
 @RestController
 @RequestMapping("/partner")
 public class PartnerController extends BaseController<PartnerDto, Partner, String> {
 
-	@Autowired
-	public PartnerTranslation partnerTranslation;
-	@Autowired
-	PartnerService partnerService;
+    @Autowired
+    public PartnerTranslation partnerTranslation;
 
-	@PostMapping(value = "/{partnerId}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ResponseEntity<Response> uploadPartnerImages(@PathVariable String partnerId,
-			MultipartHttpServletRequest multipartRequest) {
+    @Autowired
+    PartnerService partnerService;
 
-		MultiValueMap<String, MultipartFile> fileMap = multipartRequest.getMultiFileMap();
+    @PostMapping(value = "/{partnerId}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Response> uploadPartnerImages(
+            @PathVariable String partnerId, MultipartHttpServletRequest multipartRequest) {
 
-		try {
-			partnerService.uploadAndSavePartnerImages(partnerId, fileMap);
-			return ResponseEntity.ok(Response.builder().error(false).message("Images uploaded successfully").build());
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-					.body(Response.builder().error(true).message("Image upload failed: " + e.getMessage()).build());
-		}
-	}
+        MultiValueMap<String, MultipartFile> fileMap = multipartRequest.getMultiFileMap();
 
+        try {
+            partnerService.uploadAndSavePartnerImages(partnerId, fileMap);
+            return ResponseEntity.ok(Response.builder()
+                    .error(false)
+                    .message("Images uploaded successfully")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Response.builder()
+                            .error(true)
+                            .message("Image upload failed: " + e.getMessage())
+                            .build());
+        }
+    }
 }

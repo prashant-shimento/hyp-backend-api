@@ -1,10 +1,8 @@
 package com.hyp.dto;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,11 +16,11 @@ import lombok.ToString;
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
 public class AddonGroupDto extends BaseDto {
-	private String addonGroupName;
-	private String addonGroupRank;
-	private String active;
-	private String addonItemSelectionMax;
-	private String addonItemSelectionMin;
-	private List<String> addonGroupItems;
-	private List<AddonItemDto> addonItems;
+    private String addonGroupName;
+    private String addonGroupRank;
+    private String active;
+    private String addonItemSelectionMax;
+    private String addonItemSelectionMin;
+    private List<String> addonGroupItems;
+    private List<AddonItemDto> addonItems;
 }

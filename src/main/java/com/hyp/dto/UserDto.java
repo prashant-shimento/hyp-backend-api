@@ -14,8 +14,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
 public class UserDto extends BaseDto {
-	
-	@NotEmpty(message = "Name cannot be empty")
+
+    @NotEmpty(message = "Name cannot be empty")
     private String name;
 
     @Pattern(regexp = "^\\d{10}$", message = "Mobile number must be exactly 10 digits")
@@ -24,16 +24,15 @@ public class UserDto extends BaseDto {
     @Email(message = "Invalid Email Address format. Please enter a valid email address.")
     @NotEmpty(message = "Email cannot be empty")
     private String email;
-    
+
     @NotEmpty(message = "Password cannot be empty")
     private String password;
-    
+
     @NotEmpty(message = "RestaurantId cannot be empty")
     private String restaurantId;
-    
+
     @NotEmpty(message = "PartnerIds cannot be empty")
     private String partnerId;
-    
+
     private Boolean active;
-	
 }

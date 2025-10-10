@@ -10,8 +10,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LoginDto {
-	@NotEmpty(message = "Name cannot be empty")
-	private String name;
-	@Pattern(regexp = "^\\d{10}$", message = "Invalid Mobile Number format. Please enter a 10-digit number.")
-	private String mobile;
+    @NotEmpty(message = "Name cannot be empty")
+    private String name;
+
+    @Pattern(regexp = "^\\d{10}$", message = "Invalid Mobile Number format. Please enter a 10-digit number.")
+    private String mobile;
 }

@@ -5,24 +5,21 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ApiConfig {
 
-	private String baseUrl;
-	
-	private String token;
+    private String baseUrl;
 
-	private String secret;
-	
-	private String key;
-	
-	private String username;
-	
-	private String password;
+    private String token;
 
+    private String secret;
+
+    private String key;
+
+    private String username;
+
+    private String password;
 }

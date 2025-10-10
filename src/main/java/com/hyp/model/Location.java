@@ -12,8 +12,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Location {
 
-	@NotNull(message = "Latitude is mandatory")
-	private Double latitude;
-	@NotNull(message = "Longitude is mandatory")
-	private Double longitude;
+    @NotNull(message = "Latitude is mandatory")
+    private Double latitude;
+
+    @NotNull(message = "Longitude is mandatory")
+    private Double longitude;
 }

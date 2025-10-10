@@ -1,14 +1,5 @@
 package com.hyp.listener;
 
-import java.util.EnumSet;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.connection.Message;
-import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
-
 import com.hyp.constants.Constants;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
@@ -29,153 +20,172 @@ import com.hyp.service.PaymentService;
 import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.util.CommonUtils;
-
+import java.util.EnumSet;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.Message;
+import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 public class OrderListener implements MessageListener {
 
-	@Autowired
-	OrderService orderService;
+    @Autowired
+    OrderService orderService;
 
-	@Autowired
-	DeliveryService deliveryService;
+    @Autowired
+    DeliveryService deliveryService;
 
-	@Autowired
-	StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
 
-	@Autowired
-	PaymentService paymentService;
+    @Autowired
+    PaymentService paymentService;
 
-	@Autowired
-	CustomerService customerService;
+    @Autowired
+    CustomerService customerService;
 
-	@Autowired
-	RestaurantService restaurantService;
+    @Autowired
+    RestaurantService restaurantService;
 
-	@Autowired
-	NotificationService notificationService;
+    @Autowired
+    NotificationService notificationService;
 
-	@Autowired
-	RedisService redisService;
+    @Autowired
+    RedisService redisService;
 
-	@Autowired
-	private OrderEventPublisher orderEventPublisher;
-	@Autowired
-	private OneSignalAlertService oneSignalAlertService;
+    @Autowired
+    private OrderEventPublisher orderEventPublisher;
+
+    @Autowired
+    private OneSignalAlertService oneSignalAlertService;
 
     @Override
-	public void onMessage(Message message, byte[] pattern) {
-		try {
-			String expiredKey = message.toString();
-			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":state")) {
-				String orderId = expiredKey.split(":")[1];
-				log.info("Received Order Expiry from Redis for {}", orderId);
-				Order order = orderService.findById(orderId);
-				if (order != null) {
-					if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(order.getStatus().name())) {
-						Payment payment = paymentService.findByOrderId(orderId);
-						String paymentStatus = null;
-						paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
-						payment.setStatus(paymentStatus);
-						paymentService.save(payment);
-						log.info("Order status updated as dropped_off for {}", orderId);
-						order.setStatus(OrderStatusType.DROPPED_OFF);
-						orderService.save(order);
-					}
-				}
-			}
-			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delay")) {
-				String orderId = expiredKey.split(":")[1];
-				log.info("Received Order Delay Expiry from Redis for {}", orderId);
-				Order order = orderService.findById(orderId);
-				if (order != null) {
-					EnumSet<OrderStatusType> eligibleStatuses = EnumSet.of(
-							OrderStatusType.ACCEPTED,
-							OrderStatusType.READY_FOR_DELIVERY,
-							OrderStatusType.PAID,
-							OrderStatusType.SEARCHING_RIDER,
-							OrderStatusType.OUT_FOR_PICKUP,
-							OrderStatusType.REACHED_PICKUP,
-							OrderStatusType.PICKED_UP,
-							OrderStatusType.OUT_FOR_DELIVERY,
-							OrderStatusType.REACHED_DELIVERY
-					);
-					if (eligibleStatuses.contains(order.getStatus())) {
-						Customer customer = customerService.findById(order.getCustomerId());
-						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-						List<String> parameters = CommonUtils.buildStringList(customer.getName(), orderId, restaurant.getRestaurantName(),
-								restaurant.getSupportContact(), restaurant.getRestaurantName());
-						notificationService.sendNotification(customer.getMobile(),Constants.META_ORDER_DELAY_ALERT_TEMPLATE,
-								parameters);
-						log.info("Sent Order delay alert for {}", orderId);
-					}
-				}
-			}
-			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":payment")) {
-				String orderId = expiredKey.split(":")[1];
-				log.info("Received Payment Paid Order Expiry from Redis for {}", orderId);
-				Order order = orderService.findById(orderId);
-				if (order != null) {
-					if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
-						Payment payment = paymentService.findByOrderId(orderId);
-						String paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
-						if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
-							orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
-							payment.setStatus(paymentStatus);
-							paymentService.save(payment);
-							orderEventPublisher.publishProcessOrderEvent(order);
-							log.info("Order processed via expiry for {}", orderId);
-
-						}
-					}
-				}
-			}
-			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":fulfill")) {
-				String orderId = expiredKey.split(":")[1];
-				log.info("Received Order Fulfill Expiry from Redis for {}", orderId);
-				Order order = orderService.findById(orderId);
-				if (order != null) {
-					if (order.getStatus().equals(OrderStatusType.ACCEPTED)
-							|| order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
-						Delivery delivery = deliveryService.findByOrderId(order.getId());
-						String fulfillType = stringRedisTemplate.opsForValue().get("fulfill");
-						try {
-							deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
-						} catch (DeliveryException e) {
-							log.error("Exception occurred on redis expiry delivery fulfill");
-							orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
-						}
-						log.info("Order is fulfilled on redis expiry for {}", orderId);
-					}
-				}
-			}
-			if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delivery")) {
-				String orderId = expiredKey.split(":")[1];
-				log.info("Received Order Delivery Check Expiry from Redis for {}", orderId);
-				Order order = orderService.findById(orderId);
-				if (order != null) {
-					if (order.getStatus().equals(OrderStatusType.ACCEPTED)) {
-						Customer customer = customerService.findById(order.getCustomerId());
-						Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-						Delivery delivery = deliveryService.findByOrderId(orderId);
-						if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-							List<String> parameters = CommonUtils.buildStringList(orderId,
-									restaurant.getRestaurantName(), order.getStatus(), customer.getName(),
-									customer.getMobile(), "-", "-");
-							notificationService.sendInternalGroupNotification(
-									Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
-							oneSignalAlertService.notifyDeliveryDelay(orderId, restaurant.getRestaurantName(),
-									order.getStatus(), customer.getName(), customer.getMobile());
-							log.info("Sent delivery delay alert for {}", orderId);
-						}
-					}
-				}
-			}
-		} catch (PaymentException e) {
-			log.error("Payment Exception Occurred in OrderListener {}", e.getMessage());
-		}
-	}
-
+    public void onMessage(Message message, byte[] pattern) {
+        try {
+            String expiredKey = message.toString();
+            if (expiredKey.startsWith("order:") && expiredKey.endsWith(":state")) {
+                String orderId = expiredKey.split(":")[1];
+                log.info("Received Order Expiry from Redis for {}", orderId);
+                Order order = orderService.findById(orderId);
+                if (order != null) {
+                    if (OrderStatusType.PAYMENT_PENDING
+                            .name()
+                            .equalsIgnoreCase(order.getStatus().name())) {
+                        Payment payment = paymentService.findByOrderId(orderId);
+                        String paymentStatus = null;
+                        paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
+                        payment.setStatus(paymentStatus);
+                        paymentService.save(payment);
+                        log.info("Order status updated as dropped_off for {}", orderId);
+                        order.setStatus(OrderStatusType.DROPPED_OFF);
+                        orderService.save(order);
+                    }
+                }
+            }
+            if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delay")) {
+                String orderId = expiredKey.split(":")[1];
+                log.info("Received Order Delay Expiry from Redis for {}", orderId);
+                Order order = orderService.findById(orderId);
+                if (order != null) {
+                    EnumSet<OrderStatusType> eligibleStatuses = EnumSet.of(
+                            OrderStatusType.ACCEPTED,
+                            OrderStatusType.READY_FOR_DELIVERY,
+                            OrderStatusType.PAID,
+                            OrderStatusType.SEARCHING_RIDER,
+                            OrderStatusType.OUT_FOR_PICKUP,
+                            OrderStatusType.REACHED_PICKUP,
+                            OrderStatusType.PICKED_UP,
+                            OrderStatusType.OUT_FOR_DELIVERY,
+                            OrderStatusType.REACHED_DELIVERY);
+                    if (eligibleStatuses.contains(order.getStatus())) {
+                        Customer customer = customerService.findById(order.getCustomerId());
+                        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+                        List<String> parameters = CommonUtils.buildStringList(
+                                customer.getName(),
+                                orderId,
+                                restaurant.getRestaurantName(),
+                                restaurant.getSupportContact(),
+                                restaurant.getRestaurantName());
+                        notificationService.sendNotification(
+                                customer.getMobile(), Constants.META_ORDER_DELAY_ALERT_TEMPLATE, parameters);
+                        log.info("Sent Order delay alert for {}", orderId);
+                    }
+                }
+            }
+            if (expiredKey.startsWith("order:") && expiredKey.endsWith(":payment")) {
+                String orderId = expiredKey.split(":")[1];
+                log.info("Received Payment Paid Order Expiry from Redis for {}", orderId);
+                Order order = orderService.findById(orderId);
+                if (order != null) {
+                    if (order.getStatus().equals(OrderStatusType.PAYMENT_PENDING)) {
+                        Payment payment = paymentService.findByOrderId(orderId);
+                        String paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
+                        if (paymentStatus.equalsIgnoreCase("captured") || paymentStatus.equalsIgnoreCase("paid")) {
+                            orderService.updateOrderStatus(order.getId(), OrderStatusType.PAID);
+                            payment.setStatus(paymentStatus);
+                            paymentService.save(payment);
+                            orderEventPublisher.publishProcessOrderEvent(order);
+                            log.info("Order processed via expiry for {}", orderId);
+                        }
+                    }
+                }
+            }
+            if (expiredKey.startsWith("order:") && expiredKey.endsWith(":fulfill")) {
+                String orderId = expiredKey.split(":")[1];
+                log.info("Received Order Fulfill Expiry from Redis for {}", orderId);
+                Order order = orderService.findById(orderId);
+                if (order != null) {
+                    if (order.getStatus().equals(OrderStatusType.ACCEPTED)
+                            || order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
+                        Delivery delivery = deliveryService.findByOrderId(order.getId());
+                        String fulfillType = stringRedisTemplate.opsForValue().get("fulfill");
+                        try {
+                            deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
+                        } catch (DeliveryException e) {
+                            log.error("Exception occurred on redis expiry delivery fulfill");
+                            orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
+                        }
+                        log.info("Order is fulfilled on redis expiry for {}", orderId);
+                    }
+                }
+            }
+            if (expiredKey.startsWith("order:") && expiredKey.endsWith(":delivery")) {
+                String orderId = expiredKey.split(":")[1];
+                log.info("Received Order Delivery Check Expiry from Redis for {}", orderId);
+                Order order = orderService.findById(orderId);
+                if (order != null) {
+                    if (order.getStatus().equals(OrderStatusType.ACCEPTED)) {
+                        Customer customer = customerService.findById(order.getCustomerId());
+                        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+                        Delivery delivery = deliveryService.findByOrderId(orderId);
+                        if (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
+                            List<String> parameters = CommonUtils.buildStringList(
+                                    orderId,
+                                    restaurant.getRestaurantName(),
+                                    order.getStatus(),
+                                    customer.getName(),
+                                    customer.getMobile(),
+                                    "-",
+                                    "-");
+                            notificationService.sendInternalGroupNotification(
+                                    Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
+                            oneSignalAlertService.notifyDeliveryDelay(
+                                    orderId,
+                                    restaurant.getRestaurantName(),
+                                    order.getStatus(),
+                                    customer.getName(),
+                                    customer.getMobile());
+                            log.info("Sent delivery delay alert for {}", orderId);
+                        }
+                    }
+                }
+            }
+        } catch (PaymentException e) {
+            log.error("Payment Exception Occurred in OrderListener {}", e.getMessage());
+        }
+    }
 }

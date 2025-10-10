@@ -13,14 +13,9 @@ public class WebClientConfig {
         int bufferSize = 16 * 1024 * 1024;
 
         ExchangeStrategies strategies = ExchangeStrategies.builder()
-                .codecs(configurer -> configurer
-                        .defaultCodecs()
-                        .maxInMemorySize(bufferSize))
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(bufferSize))
                 .build();
 
-        return builder
-                .exchangeStrategies(strategies)
-                .build();
+        return builder.exchangeStrategies(strategies).build();
     }
 }
-

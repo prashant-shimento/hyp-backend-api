@@ -1,12 +1,10 @@
 package com.hyp.dto;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
-
 import com.hyp.model.DeliveryOrderStatus;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -33,7 +31,6 @@ public class DeliveryDto extends BaseDto {
     private String fulfillmentType;
     private LocalDateTime fulfillmentAt;
     private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
-
 
     @Data
     @NoArgsConstructor

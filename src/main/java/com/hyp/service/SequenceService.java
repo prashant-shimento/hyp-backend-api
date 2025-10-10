@@ -1,18 +1,17 @@
 package com.hyp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.hyp.entity.Sequence;
 import com.hyp.repository.SequenceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SequenceService {
 
-	@Autowired
-	SequenceRepository sequenceRespository;
-	
-	public String generateSequence(String sequenceName) {
+    @Autowired
+    SequenceRepository sequenceRespository;
+
+    public String generateSequence(String sequenceName) {
         Sequence sequence = sequenceRespository.findById(sequenceName).orElse(null);
         if (sequence == null) {
             sequence = new Sequence();

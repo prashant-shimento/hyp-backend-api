@@ -5,6 +5,6 @@ import io.temporal.workflow.WorkflowMethod;
 
 @WorkflowInterface
 public interface OrderTrackWorkFlow {
-	@WorkflowMethod
-	public void handleOrderTrack(String orderId);
+    @WorkflowMethod
+    public void handleOrderTrack(String orderId);
 }

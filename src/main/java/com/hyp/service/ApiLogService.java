@@ -1,11 +1,7 @@
 package com.hyp.service;
 
+import com.hyp.entity.ApiLog;
 import org.springframework.stereotype.Service;
 
-import com.hyp.entity.ApiLog;
-
 @Service
-public class ApiLogService extends BaseServiceImpl<ApiLog, String> {
-
-}
-
+public class ApiLogService extends BaseServiceImpl<ApiLog, String> {}

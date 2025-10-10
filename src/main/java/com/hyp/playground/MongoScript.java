@@ -1,28 +1,27 @@
 package com.hyp.playground;
 
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
-
-import org.bson.Document;
 import java.util.ArrayList;
 import java.util.List;
+import org.bson.Document;
 
 public class MongoScript {
 
     public static void main(String[] args) {
-        try (MongoClient mongoClient = MongoClients.create("mongodb+srv://apiuser:IggL9Oyj26ehmp83@production.n3ybxpg.mongodb.net")) {
+        try (MongoClient mongoClient =
+                MongoClients.create("mongodb+srv://apiuser:IggL9Oyj26ehmp83@production.n3ybxpg.mongodb.net")) {
             MongoDatabase database = mongoClient.getDatabase("hyp_backend_db");
             MongoCollection<Document> itemCollection = database.getCollection("items");
             MongoCollection<Document> variationsCollection = database.getCollection("variations");
 
-         // Step 1: Find items with price "0"
-            List<Document> itemsToUpdate = itemCollection.find(
-                    Filters.eq("price", "0")
-            ).into(new ArrayList<>());
+            // Step 1: Find items with price "0"
+            List<Document> itemsToUpdate =
+                    itemCollection.find(Filters.eq("price", "0")).into(new ArrayList<>());
 
             System.out.println("Items to update: " + itemsToUpdate.size());
 
@@ -34,9 +33,9 @@ public class MongoScript {
                 List<Object> variationIds = (List<Object>) item.get("variation");
                 if (variationIds != null && !variationIds.isEmpty()) {
                     // Step 3: Find the least price from the variations collection
-                    List<Document> variations = variationsCollection.find(
-                            Filters.in("_id", variationIds)
-                    ).into(new ArrayList<>());
+                    List<Document> variations = variationsCollection
+                            .find(Filters.in("_id", variationIds))
+                            .into(new ArrayList<>());
 
                     double leastPrice = Double.MAX_VALUE;
                     for (Document variation : variations) {
@@ -56,9 +55,7 @@ public class MongoScript {
                     // Step 4: Update the item's price if a valid least price was found
                     if (leastPrice != Double.MAX_VALUE) {
                         itemCollection.updateOne(
-                                Filters.eq("_id", itemId),
-                                Updates.set("price", String.valueOf(leastPrice))
-                        );
+                                Filters.eq("_id", itemId), Updates.set("price", String.valueOf(leastPrice)));
                         System.out.println("Updated item with id " + itemId + " to price " + leastPrice);
                     } else {
                         System.out.println("No valid price found for variations of item with id " + itemId);

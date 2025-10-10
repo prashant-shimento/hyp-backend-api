@@ -2,18 +2,16 @@ package com.hyp.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Getter
 @Setter
@@ -23,22 +21,22 @@ import lombok.ToString;
 @Document
 public abstract class BaseEntity implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-	@Id
-	private String id;
+    @Id
+    private String id;
 
-	@Field("created_at")
-	@CreatedDate
-	private LocalDateTime createdAt = LocalDateTime.now();
+    @Field("created_at")
+    @CreatedDate
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-	@Field("updated_at")
-	@LastModifiedDate
-	private LocalDateTime updatedAt;
+    @Field("updated_at")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
-	@Field("restaurant_id")
-	private String restaurantId;
-	
-	@Field("is_deleted")
-	private boolean isDeleted = false;
+    @Field("restaurant_id")
+    private String restaurantId;
+
+    @Field("is_deleted")
+    private boolean isDeleted = false;
 }

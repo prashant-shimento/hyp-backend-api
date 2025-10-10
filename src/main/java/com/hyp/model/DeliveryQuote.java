@@ -1,97 +1,100 @@
 package com.hyp.model;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.List;
 import lombok.Data;
 
 @Data
 public class DeliveryQuote {
-	private QuoteData data;
+    private QuoteData data;
 
-	@Data
-	public static class QuoteData {
-		private List<Distance> distance;
-		private List<DeliveryNetworks> items;
-	}
+    @Data
+    public static class QuoteData {
+        private List<Distance> distance;
+        private List<DeliveryNetworks> items;
+    }
 
-	@Data
-	public static class Distance {
-		private String ref;
-		private double distance;
-	}
+    @Data
+    public static class Distance {
+        private String ref;
+        private double distance;
+    }
 
-	@Data
-	public static class DeliveryNetworks {
-		@JsonProperty("network_id")
-		private int networkId;
+    @Data
+    public static class DeliveryNetworks {
+        @JsonProperty("network_id")
+        private int networkId;
 
-		@JsonProperty("network_name")
-		private String networkName;
+        @JsonProperty("network_name")
+        private String networkName;
 
-		private String service;
+        private String service;
 
-		@JsonProperty("pickup_now")
-		private boolean pickupNow;
-		
-		private boolean manifest;
+        @JsonProperty("pickup_now")
+        private boolean pickupNow;
 
-		private Quote quote;
+        private boolean manifest;
 
-		private String error;
-		
-		private String token;
-	}
+        private Quote quote;
 
-	@Data
-	public static class Quote {
-		private double price;
-		@JsonProperty("price_breakup")
-		private QuotePriceBreakup priceBreakup;
-		private Eta eta;
-	}
+        private String error;
 
-	@Data
-	public static class QuotePriceBreakup {
-		@JsonProperty("base_delivery_charge")
-		private double baseDeliveryCharge;
+        private String token;
+    }
 
-		@JsonProperty("total_gst_amount")
-		private double totalGstAmount;
+    @Data
+    public static class Quote {
+        private double price;
 
-		private double surge;
+        @JsonProperty("price_breakup")
+        private QuotePriceBreakup priceBreakup;
 
-		@JsonProperty("additional_charges")
-		private List<AdditionalCharge> additionalCharges;
+        private Eta eta;
+    }
 
-		private List<QuoteItem> items;
-	}
+    @Data
+    public static class QuotePriceBreakup {
+        @JsonProperty("base_delivery_charge")
+        private double baseDeliveryCharge;
 
-	@Data
-	public static class QuoteItem {
-		private double amount;
-		private double tax;
-		private double total;
+        @JsonProperty("total_gst_amount")
+        private double totalGstAmount;
 
-		@JsonProperty("order_id")
-		private String orderId;
-	}
+        private double surge;
 
-	@Data
-	public static class Eta {
-		private String pickup;
-		@JsonProperty("pickup_min")
-		private String pickupMin;
-		private String drop;
-		@JsonProperty("drop_min")
-		private String dropMin;
-	}
-	
-	@Data
-	public static class AdditionalCharge {
-		private String type;
-		private String value;
-		private String details;
-	}
+        @JsonProperty("additional_charges")
+        private List<AdditionalCharge> additionalCharges;
+
+        private List<QuoteItem> items;
+    }
+
+    @Data
+    public static class QuoteItem {
+        private double amount;
+        private double tax;
+        private double total;
+
+        @JsonProperty("order_id")
+        private String orderId;
+    }
+
+    @Data
+    public static class Eta {
+        private String pickup;
+
+        @JsonProperty("pickup_min")
+        private String pickupMin;
+
+        private String drop;
+
+        @JsonProperty("drop_min")
+        private String dropMin;
+    }
+
+    @Data
+    public static class AdditionalCharge {
+        private String type;
+        private String value;
+        private String details;
+    }
 }

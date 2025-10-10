@@ -1,13 +1,22 @@
 package com.hyp.controller;
 
-import java.util.*;
-
+import com.hyp.dto.LoginDto;
+import com.hyp.dto.VerificationRequestDto;
+import com.hyp.entity.Customer;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.EntityNotFoundException;
+import com.hyp.response.Response;
+import com.hyp.service.AddressService;
+import com.hyp.service.CustomerService;
+import com.hyp.service.OtpService;
+import com.hyp.service.RedisService;
+import com.hyp.service.RestaurantService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,129 +26,117 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import com.hyp.constants.ErrorConstants;
-import com.hyp.dto.LoginDto;
-import com.hyp.dto.VerificationRequestDto;
-import com.hyp.entity.Customer;
-import com.hyp.response.Response;
-import com.hyp.service.AddressService;
-import com.hyp.service.CustomerService;
-import com.hyp.service.OtpService;
-import com.hyp.service.RedisService;
-import com.hyp.service.RestaurantService;
-
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @RestController
 @RequestMapping("/login")
 public class LoginController {
 
-	@Autowired
-	public CustomerService customerService;
+    @Autowired
+    public CustomerService customerService;
 
-	@Autowired
-	public RestaurantService restaurantService;
+    @Autowired
+    public RestaurantService restaurantService;
 
-	@Autowired
-	public AddressService addressService;
+    @Autowired
+    public AddressService addressService;
 
-	@Autowired
-	OtpService otpService;
+    @Autowired
+    OtpService otpService;
 
-	@Autowired
-	private Environment env;
+    @Autowired
+    private Environment env;
 
-	@Autowired
-	HttpServletRequest httpRequest;
-	
-	@Autowired
-	RedisService redisService;
+    @Autowired
+    HttpServletRequest httpRequest;
 
+    @Autowired
+    RedisService redisService;
 
-	@PostMapping("/otp")
-	public ResponseEntity<Response> userLogin(@RequestBody @Valid LoginDto loginDto) throws Exception {
-		Customer customer = Optional.ofNullable(customerService.findByMobile(loginDto.getMobile()))
-				.orElseGet(() -> customerService.save(Customer.builder().name(loginDto.getName()).mobile(loginDto.getMobile()).build()));
-		if (isInternalUser(customer.getMobile())) {
-			otpService.sendOtp(customer.getMobile());
-		}
-		return ResponseEntity.ok(new Response(null, false, "OTP Sent Successfully"));
-	}
+    @PostMapping("/otp")
+    public ResponseEntity<Response> userLogin(@RequestBody @Valid LoginDto loginDto) throws Exception {
+        Customer customer = Optional.ofNullable(customerService.findByMobile(loginDto.getMobile()))
+                .orElseGet(() -> customerService.save(Customer.builder()
+                        .name(loginDto.getName())
+                        .mobile(loginDto.getMobile())
+                        .build()));
+        if (isInternalUser(customer.getMobile())) {
+            otpService.sendOtp(customer.getMobile());
+        }
+        return ResponseEntity.ok(new Response(null, false, "OTP Sent Successfully"));
+    }
 
-	@PostMapping("/verify-otp")
-	public ResponseEntity<Response> otpVerify(@RequestBody @Valid VerificationRequestDto verificationRequest)
-			throws EntityNotFoundException, BadRequestException {
-		Customer customer = Optional.ofNullable(customerService.findByMobile(verificationRequest.getMobile()))
-				.orElseThrow(() -> {
-					otpService.clearOtp(verificationRequest.getMobile());
-					return new EntityNotFoundException("Login Mobile", verificationRequest.getMobile());
-				});
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Response> otpVerify(@RequestBody @Valid VerificationRequestDto verificationRequest)
+            throws EntityNotFoundException, BadRequestException {
+        Customer customer = Optional.ofNullable(customerService.findByMobile(verificationRequest.getMobile()))
+                .orElseThrow(() -> {
+                    otpService.clearOtp(verificationRequest.getMobile());
+                    return new EntityNotFoundException("Login Mobile", verificationRequest.getMobile());
+                });
 
-		if (!restaurantService.isExistsById(verificationRequest.getRestaurantId())) {
-			otpService.clearOtp(verificationRequest.getMobile());
-			throw new EntityNotFoundException("Restaurant", verificationRequest.getRestaurantId());
-		}
-		if (isInternalUser(verificationRequest.getMobile())) {
-			int storedOtp = otpService.getOtp(verificationRequest.getMobile());
-			log.info("storedOTP {} requestedOTP {}", storedOtp, verificationRequest.getOtp());
-			if (verificationRequest.getOtp() != storedOtp) {
-				throw new BadRequestException("Login", "OTP Verification failed");
-			}
-			otpService.clearOtp(verificationRequest.getMobile());
-		}
+        if (!restaurantService.isExistsById(verificationRequest.getRestaurantId())) {
+            otpService.clearOtp(verificationRequest.getMobile());
+            throw new EntityNotFoundException("Restaurant", verificationRequest.getRestaurantId());
+        }
+        if (isInternalUser(verificationRequest.getMobile())) {
+            int storedOtp = otpService.getOtp(verificationRequest.getMobile());
+            log.info("storedOTP {} requestedOTP {}", storedOtp, verificationRequest.getOtp());
+            if (verificationRequest.getOtp() != storedOtp) {
+                throw new BadRequestException("Login", "OTP Verification failed");
+            }
+            otpService.clearOtp(verificationRequest.getMobile());
+        }
 
-		customer.setVerified(true);
+        customer.setVerified(true);
 
-		if (customer.getRestaurants() == null) {
-			customer.setRestaurants(new HashSet<>());
-		}
-		customer.getRestaurants().add(verificationRequest.getRestaurantId());
+        if (customer.getRestaurants() == null) {
+            customer.setRestaurants(new HashSet<>());
+        }
+        customer.getRestaurants().add(verificationRequest.getRestaurantId());
 
-		customerService.save(customer);
-		return ResponseEntity
-				.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
-	}
+        customerService.save(customer);
+        return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
+    }
 
-	private boolean isInternalUser(String mobile) {
-		return !redisService.getInternalUsers().contains(mobile);
-	}
+    private boolean isInternalUser(String mobile) {
+        return !redisService.getInternalUsers().contains(mobile);
+    }
 
-	@PostMapping("/resend-otp/{mobile}")
-	public ResponseEntity<Response> resendOtp(@PathVariable String mobile) throws Exception {
-		if (isInternalUser(mobile)) {
-			otpService.clearOtp(mobile);
-			otpService.sendOtp(mobile);
-		}
-		return ResponseEntity.ok(new Response(null, false, "OTP Resent Successfully"));
-	}
+    @PostMapping("/resend-otp/{mobile}")
+    public ResponseEntity<Response> resendOtp(@PathVariable String mobile) throws Exception {
+        if (isInternalUser(mobile)) {
+            otpService.clearOtp(mobile);
+            otpService.sendOtp(mobile);
+        }
+        return ResponseEntity.ok(new Response(null, false, "OTP Resent Successfully"));
+    }
 
-	@GetMapping("/config")
-	public Map<String, Object> getConfig() {
-		Map<String, Object> configMap = new HashMap<String, Object>();
-		configMap.put("sms.url", env.getProperty("sms.url"));
-		configMap.put("sms.key", env.getProperty("sms.key"));
-		configMap.put("delivery.pidge.url", env.getProperty("delivery.pidge.url"));
-		configMap.put("delivery.pidge.username", env.getProperty("delivery.pidge.username"));
-		configMap.put("delivery.pidge.password", env.getProperty("delivery.pidge.password"));
-		configMap.put("delivery.pidge.token", env.getProperty("delivery.pidge.token"));
-		configMap.put("google.api.key", env.getProperty("google.api.key"));
-		configMap.put("pos.petpooja.url", env.getProperty("pos.petpooja.url"));
-		configMap.put("pos.petpooja.token", env.getProperty("pos.petpooja.token"));
-		configMap.put("pos.petpooja.secret", env.getProperty("pos.petpooja.secret"));
-		configMap.put("pos.petpooja.key", env.getProperty("pos.petpooja.key"));
-		configMap.put("razorpay.key", env.getProperty("razorpay.key"));
-		configMap.put("razorpay.secret", env.getProperty("razorpay.secret"));
-		configMap.put("app.domain", env.getProperty("app.domain"));
-		configMap.put("spring.data.mongodb.uri", env.getProperty("spring.data.mongodb.uri"));
-		String scheme = httpRequest.getScheme();
-		String baseUrl = ServletUriComponentsBuilder.fromRequestUri(httpRequest).replacePath(null).build()
-				.toUriString();
-		configMap.put("domain", httpRequest.getRequestURL().toString() + "======" + scheme + "======" + baseUrl);
-		configMap.put("internal.users.numbers", env.getProperty("internal.users.numbers"));
+    @GetMapping("/config")
+    public Map<String, Object> getConfig() {
+        Map<String, Object> configMap = new HashMap<String, Object>();
+        configMap.put("sms.url", env.getProperty("sms.url"));
+        configMap.put("sms.key", env.getProperty("sms.key"));
+        configMap.put("delivery.pidge.url", env.getProperty("delivery.pidge.url"));
+        configMap.put("delivery.pidge.username", env.getProperty("delivery.pidge.username"));
+        configMap.put("delivery.pidge.password", env.getProperty("delivery.pidge.password"));
+        configMap.put("delivery.pidge.token", env.getProperty("delivery.pidge.token"));
+        configMap.put("google.api.key", env.getProperty("google.api.key"));
+        configMap.put("pos.petpooja.url", env.getProperty("pos.petpooja.url"));
+        configMap.put("pos.petpooja.token", env.getProperty("pos.petpooja.token"));
+        configMap.put("pos.petpooja.secret", env.getProperty("pos.petpooja.secret"));
+        configMap.put("pos.petpooja.key", env.getProperty("pos.petpooja.key"));
+        configMap.put("razorpay.key", env.getProperty("razorpay.key"));
+        configMap.put("razorpay.secret", env.getProperty("razorpay.secret"));
+        configMap.put("app.domain", env.getProperty("app.domain"));
+        configMap.put("spring.data.mongodb.uri", env.getProperty("spring.data.mongodb.uri"));
+        String scheme = httpRequest.getScheme();
+        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(httpRequest)
+                .replacePath(null)
+                .build()
+                .toUriString();
+        configMap.put("domain", httpRequest.getRequestURL().toString() + "======" + scheme + "======" + baseUrl);
+        configMap.put("internal.users.numbers", env.getProperty("internal.users.numbers"));
 
-		return configMap;
-	}
-
+        return configMap;
+    }
 }

@@ -7,30 +7,29 @@ import lombok.NoArgsConstructor;
 @Getter
 public class DeliveryException extends Exception {
 
-	private String action;
+    private String action;
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+    /**
+     *
+     */
+    private static final long serialVersionUID = 1L;
 
-	public DeliveryException(String message) {
-		super(message);
-	}
+    public DeliveryException(String message) {
+        super(message);
+    }
 
-	public DeliveryException(String action, String message) {
-		super(message);
-		this.action = action;
-	}
+    public DeliveryException(String action, String message) {
+        super(message);
+        this.action = action;
+    }
 
-	public DeliveryException(String action, String message, Throwable cause) {
-		super(message, cause);
-		this.action = action;
-	}
+    public DeliveryException(String action, String message, Throwable cause) {
+        super(message, cause);
+        this.action = action;
+    }
 
-	public DeliveryException(String action, Throwable cause) {
-		super(cause);
-		this.action = action;
-	}
-
+    public DeliveryException(String action, Throwable cause) {
+        super(cause);
+        this.action = action;
+    }
 }

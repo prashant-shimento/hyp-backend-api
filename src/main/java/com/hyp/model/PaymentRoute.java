@@ -12,8 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @Builder
 public class PaymentRoute {
-	@Field("recipient_id")
-	private String recipientId;
-	@Field("recipient_type")
-	private PartnerType recipientType;
+    @Field("recipient_id")
+    private String recipientId;
+
+    @Field("recipient_type")
+    private PartnerType recipientType;
 }

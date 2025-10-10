@@ -7,14 +7,14 @@ import lombok.Setter;
 @Setter
 public class IntegratorException extends RuntimeException {
 
-	private static final long serialVersionUID = 1L;
-	
-	private String vendorName;
-	private String apiName;
+    private static final long serialVersionUID = 1L;
 
-	public IntegratorException(String vendorName, String apiName, String message) {
-		super(message);
-		this.vendorName = vendorName;
-		this.apiName = apiName;
-	}
+    private String vendorName;
+    private String apiName;
+
+    public IntegratorException(String vendorName, String apiName, String message) {
+        super(message);
+        this.vendorName = vendorName;
+        this.apiName = apiName;
+    }
 }

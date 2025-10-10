@@ -1,10 +1,8 @@
 package com.hyp.request;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,13 +15,17 @@ import lombok.NoArgsConstructor;
 @Builder
 public class DeliveryFulfillRequest {
 
-	private List<String> ids;
-	private String service;
-	@JsonProperty("pickup_now")
-	private Boolean pickUpNow;
-	@JsonProperty("network_id")
-	private Integer networkId;
-	private String token;
-	@JsonProperty("smart_allocation_id")
-	private Integer smartId;
+    private List<String> ids;
+    private String service;
+
+    @JsonProperty("pickup_now")
+    private Boolean pickUpNow;
+
+    @JsonProperty("network_id")
+    private Integer networkId;
+
+    private String token;
+
+    @JsonProperty("smart_allocation_id")
+    private Integer smartId;
 }

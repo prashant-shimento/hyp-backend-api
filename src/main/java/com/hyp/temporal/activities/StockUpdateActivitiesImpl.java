@@ -1,11 +1,10 @@
 package com.hyp.temporal.activities;
 
 import com.hyp.service.*;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -29,6 +28,5 @@ public class StockUpdateActivitiesImpl implements StockUpdateActivities {
             default:
                 throw new IllegalArgumentException("Unsupported item type: " + type);
         }
-
     }
 }

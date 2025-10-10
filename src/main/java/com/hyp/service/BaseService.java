@@ -1,47 +1,45 @@
 package com.hyp.service;
 
 import java.util.List;
-
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 @Service
 public interface BaseService<T, ID> {
-	
-	T findById(ID id);
-	
-	List<T> findByIds(List<ID> ids);
 
-	List<T> findAll();
+    T findById(ID id);
 
-	T save(T entity);
+    List<T> findByIds(List<ID> ids);
 
-	List<T> saveAll(List<T> entities);
-	
-	List<T> saveAll(List<T> entities, String rid);
+    List<T> findAll();
 
-	T update(T entity);
+    T save(T entity);
 
-	void deleteById(ID id);
-	
-	void softDeleteById(ID id);
-	
-	void softDeleteByRestaurant(Class<T> entityClass, ID id);
+    List<T> saveAll(List<T> entities);
+
+    List<T> saveAll(List<T> entities, String rid);
+
+    T update(T entity);
+
+    void deleteById(ID id);
+
+    void softDeleteById(ID id);
+
+    void softDeleteByRestaurant(Class<T> entityClass, ID id);
 
     void deleteAll(Class<T> entityClass);
 
     void softDeleteAll(List<T> entities);
-	
-	public boolean isExistsById(ID id);
-	
+
+    public boolean isExistsById(ID id);
+
     public T findByField(Class<T> entityClass, String fieldName, Object value);
-    
+
     public List<T> findByQuery(Class<T> entityClass, Query query);
-    
+
     public List<T> findByQueryWithReferences(Class<T> entityClass, Query query);
 
-	T findByIdWithReference(ID id, Class<T> entityClass);
+    T findByIdWithReference(ID id, Class<T> entityClass);
 
-	List<T> findByRestaurant(Class<T> entityClass, Object value);
-
+    List<T> findByRestaurant(Class<T> entityClass, Object value);
 }

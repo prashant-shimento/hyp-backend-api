@@ -12,7 +12,8 @@ import org.json.JSONObject;
 
 public class RiderLocationFetcher {
 
-    private static final String API_URL = "https://api.pidge.in/v1.0/store/tracking/rider-location?id=1743862703891REAAM6R8";
+    private static final String API_URL =
+            "https://api.pidge.in/v1.0/store/tracking/rider-location?id=1743862703891REAAM6R8";
     private static double lastLatitude;
     private static double lastLongitude;
 

@@ -4,23 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.dto.CustomerDto;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.model.CustomerInvoice;
-import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
-import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.event.PdfDocumentEvent;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
-import org.bson.Document;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -30,18 +25,21 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import org.bson.Document;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Component(CustomerInvoiceGenerator.REPORT_NAME)
-public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
+public class CustomerInvoiceGenerator implements ReportPdfGenerator {
 
-    final static String REPORT_NAME = "CUSTOMER_INVOICE";
+    static final String REPORT_NAME = "CUSTOMER_INVOICE";
 
     private static final DateTimeFormatter OUTPUT_FORMATTER = DateTimeFormatter.ofPattern("dd MMM, yyyy");
 
-    private final static String TOP_IMAGE_RESOURCE = "images/top_invoice.png";
-    private final static String BOTTOM_IMAGE_RESOURCE = "images/bottom_invoice.png";
-    private final static String BOLD_FONT_RESOURCE = "fonts/noto-bold.ttf";
-    private final static String REGULAR_FONT_RESOURCE = "fonts/noto-regular.ttf";
+    private static final String TOP_IMAGE_RESOURCE = "images/top_invoice.png";
+    private static final String BOTTOM_IMAGE_RESOURCE = "images/bottom_invoice.png";
+    private static final String BOLD_FONT_RESOURCE = "fonts/noto-bold.ttf";
+    private static final String REGULAR_FONT_RESOURCE = "fonts/noto-regular.ttf";
 
     @Autowired
     private BucketService bucketService;
@@ -65,47 +63,46 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(outputStream);
         PdfDocument pdf = new PdfDocument(writer);
-        pdf.addEventHandler(PdfDocumentEvent.START_PAGE,
-                new BannerHandler(ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE)),
+        pdf.addEventHandler(
+                PdfDocumentEvent.START_PAGE,
+                new BannerHandler(
+                        ImageDataFactory.create(getResourceBytes(classLoader, TOP_IMAGE_RESOURCE)),
                         ImageDataFactory.create(getResourceBytes(classLoader, BOTTOM_IMAGE_RESOURCE))));
         pdf.addNewPage();
 
         com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
         doc.setMargins(160, 36, 100, 36);
 
-        PdfFont bold = PdfFontFactory.createFont(getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-        PdfFont regular = PdfFontFactory.createFont(getResourceBytes(classLoader, REGULAR_FONT_RESOURCE),
-                PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+        PdfFont bold = PdfFontFactory.createFont(
+                getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
+        PdfFont regular = PdfFontFactory.createFont(
+                getResourceBytes(classLoader, REGULAR_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
 
+        Table mainInfoTable =
+                new Table(1).useAllAvailableWidth().setMarginTop(0).setMarginBottom(30);
 
-        Table mainInfoTable = new Table(1)
-                .useAllAvailableWidth()
-                .setMarginTop(0)
-                .setMarginBottom(30);
+        Table invoiceTable = new Table(1).setWidth(UnitValue.createPercentValue(100));
 
-        Table invoiceTable = new Table(1)
-                .setWidth(UnitValue.createPercentValue(100));
-
-        String status = invoice.getStatus().equalsIgnoreCase(OrderStatusType.PAID.name()) ||
-                invoice.getStatus().equalsIgnoreCase(OrderStatusType.DELIVERED.name()) ?
-                "PAID" : "UNPAID";
+        String status = invoice.getStatus().equalsIgnoreCase(OrderStatusType.PAID.name())
+                        || invoice.getStatus().equalsIgnoreCase(OrderStatusType.DELIVERED.name())
+                ? "PAID"
+                : "UNPAID";
         String formattedOrderDate = formatOrderDate(invoice.getOrderTime());
         Cell invoiceCell = new Cell()
                 .setBorder(Border.NO_BORDER)
                 .setTextAlignment(TextAlignment.RIGHT)
                 .add(createCell(status, bold, TextAlignment.RIGHT, false))
-                .add(createLabelValueCell("Invoice No:", invoice.getInvoiceNumber(), bold, regular, TextAlignment.RIGHT))
+                .add(createLabelValueCell(
+                        "Invoice No:", invoice.getInvoiceNumber(), bold, regular, TextAlignment.RIGHT))
                 .add(createLabelValueCell("Invoice Date:", formattedOrderDate, bold, regular, TextAlignment.RIGHT));
 
         invoiceTable.addCell(invoiceCell);
 
-        Cell invoiceRowWrapper = new Cell()
-                .setBorder(Border.NO_BORDER)
-                .add(invoiceTable);
+        Cell invoiceRowWrapper = new Cell().setBorder(Border.NO_BORDER).add(invoiceTable);
 
         mainInfoTable.addCell(invoiceRowWrapper);
 
-        Table detailTable = new Table(UnitValue.createPercentArray(new float[]{50, 50}))
+        Table detailTable = new Table(UnitValue.createPercentArray(new float[] {50, 50}))
                 .useAllAvailableWidth()
                 .setMarginTop(10);
 
@@ -129,32 +126,37 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
                 .setBorder(Border.NO_BORDER)
                 .add(createCell("On Behalf Of:", bold, TextAlignment.LEFT, false))
                 .add(createLabelValueCell("Restaurant Name:", restaurant.getName(), bold, regular, TextAlignment.LEFT))
-                .add(createLabelValueCell("Restaurant Contact:", restaurant.getContact(), bold, regular, TextAlignment.LEFT))
+                .add(createLabelValueCell(
+                        "Restaurant Contact:", restaurant.getContact(), bold, regular, TextAlignment.LEFT))
                 .add(createCell("Restaurant Address:", bold, TextAlignment.LEFT, false))
                 .add(createCell(restaurant.getAddress(), regular, TextAlignment.LEFT, false));
 
         detailTable.addCell(customerColumn);
         detailTable.addCell(restaurantColumn);
 
-        Cell detailsRowWrapper = new Cell()
-                .setBorder(Border.NO_BORDER)
-                .add(detailTable);
+        Cell detailsRowWrapper = new Cell().setBorder(Border.NO_BORDER).add(detailTable);
 
         mainInfoTable.addCell(detailsRowWrapper);
 
         doc.add(mainInfoTable);
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{70, 30}))
-                .useAllAvailableWidth();
+        Table table = new Table(UnitValue.createPercentArray(new float[] {70, 30})).useAllAvailableWidth();
 
         addRow(table, "Particular", "INR", bold, bold, ColorConstants.LIGHT_GRAY, true);
 
-        invoice.getItems().forEach( orderItem -> {
-            addRow(table, orderItem.getName() + " x " + orderItem.getQuantity(), String.valueOf(orderItem.getPrice()), regular, regular, null, false);
+        invoice.getItems().forEach(orderItem -> {
+            addRow(
+                    table,
+                    orderItem.getName() + " x " + orderItem.getQuantity(),
+                    String.valueOf(orderItem.getPrice()),
+                    regular,
+                    regular,
+                    null,
+                    false);
         });
 
-        addRow(table, "Total", String.valueOf(invoice.getTotalAmount()), bold, regular, null,false);
-        addRow(table, "Discount","- " + invoice.getDiscountAmount() , bold, regular, null, false);
+        addRow(table, "Total", String.valueOf(invoice.getTotalAmount()), bold, regular, null, false);
+        addRow(table, "Discount", "- " + invoice.getDiscountAmount(), bold, regular, null, false);
         addRow(table, "CGST (2.5%)", String.valueOf(invoice.getCgstAmount()), bold, regular, null, false);
         addRow(table, "SGST (2.5%)", String.valueOf(invoice.getSgstAmount()), bold, regular, null, false);
         addRow(table, "Delivery Charge", String.valueOf(invoice.getDeliveryCharge()), bold, regular, null, false);
@@ -166,38 +168,48 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
 
         String fileName = REPORT_NAME + "-" + System.currentTimeMillis() + ".pdf";
         String filePath = REPORT_NAME + "/" + invoice.getCustomer().getId() + "/" + invoice.getInvoiceNumber() + "/";
-        return bucketService.uploadFileFromStream(outputStream, fileName, filePath,"application/pdf");
+        return bucketService.uploadFileFromStream(outputStream, fileName, filePath, "application/pdf");
     }
-    private static void addRow(Table table, String key, String value, PdfFont keyFont, PdfFont valueFont,
-                               com.itextpdf.kernel.colors.Color ignored, boolean header) {
+
+    private static void addRow(
+            Table table,
+            String key,
+            String value,
+            PdfFont keyFont,
+            PdfFont valueFont,
+            com.itextpdf.kernel.colors.Color ignored,
+            boolean header) {
 
         Paragraph p1 = new Paragraph(key)
                 .setFont(keyFont)
                 .setFontSize(header ? 12 : 11)
-                .setMargin(0).setPadding(0);
+                .setMargin(0)
+                .setPadding(0);
         Paragraph p2 = new Paragraph(value)
                 .setFont(valueFont)
                 .setFontSize(header ? 12 : 11)
                 .setTextAlignment(TextAlignment.RIGHT)
-                .setMargin(0).setPadding(0);
+                .setMargin(0)
+                .setPadding(0);
 
         p1.setMultipliedLeading(1.0f); // normal
         p2.setMultipliedLeading(1.0f); // slightly tighter text block
 
-        Cell cell1 = new Cell().add(p1)
+        Cell cell1 = new Cell()
+                .add(p1)
                 .setPadding(1)
                 .setBorderTop(new SolidBorder(ColorConstants.GRAY, 0.75f))
                 .setBorderBottom(new SolidBorder(ColorConstants.GRAY, 0.75f))
                 .setBorderLeft(Border.NO_BORDER)
                 .setBorderRight(Border.NO_BORDER);
 
-        Cell cell2 = new Cell().add(p2)
+        Cell cell2 = new Cell()
+                .add(p2)
                 .setPadding(1)
                 .setBorderTop(new SolidBorder(ColorConstants.GRAY, 0.75f))
                 .setBorderBottom(new SolidBorder(ColorConstants.GRAY, 0.75f))
                 .setBorderLeft(Border.NO_BORDER)
                 .setBorderRight(Border.NO_BORDER);
-
 
         table.addCell(cell1);
         table.addCell(cell2);
@@ -217,7 +229,8 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
                 .setMargin(0);
     }
 
-    private static Cell createLabelValueCell(String label, String value, PdfFont boldFont, PdfFont regularFont, TextAlignment alignment) {
+    private static Cell createLabelValueCell(
+            String label, String value, PdfFont boldFont, PdfFont regularFont, TextAlignment alignment) {
         Paragraph p = new Paragraph()
                 .add(new Text(label).setFont(boldFont))
                 .add(new Text(" " + value).setFont(regularFont))
@@ -227,11 +240,7 @@ public class CustomerInvoiceGenerator implements  ReportPdfGenerator{
                 .setPadding(0)
                 .setMultipliedLeading(1f);
 
-        return new Cell()
-                .add(p)
-                .setBorder(Border.NO_BORDER)
-                .setPadding(0)
-                .setMargin(0);
+        return new Cell().add(p).setBorder(Border.NO_BORDER).setPadding(0).setMargin(0);
     }
 
     public static String formatOrderDate(String orderTimeStr) {

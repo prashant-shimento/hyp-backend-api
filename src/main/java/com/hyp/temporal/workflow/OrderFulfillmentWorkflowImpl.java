@@ -9,18 +9,17 @@ import com.hyp.exception.DeliveryException;
 import com.hyp.temporal.activities.OrderFulfillmentActivities;
 import io.temporal.activity.ActivityOptions;
 import io.temporal.workflow.Workflow;
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Duration;
-
 @Slf4j
-public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow{
+public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow {
 
-    private final OrderFulfillmentActivities activities =
-            Workflow.newActivityStub(OrderFulfillmentActivities.class,
-                    ActivityOptions.newBuilder()
-                            .setStartToCloseTimeout(Duration.ofMinutes(2))
-                            .build());
+    private final OrderFulfillmentActivities activities = Workflow.newActivityStub(
+            OrderFulfillmentActivities.class,
+            ActivityOptions.newBuilder()
+                    .setStartToCloseTimeout(Duration.ofMinutes(2))
+                    .build());
 
     @Override
     public void handleOrderFulfillment(String orderId, int fulfillmentDelay) {
@@ -32,7 +31,8 @@ public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow{
             return;
         }
 
-        if (!(order.getStatus() == OrderStatusType.ACCEPTED || order.getStatus() == OrderStatusType.READY_FOR_DELIVERY)) {
+        if (!(order.getStatus() == OrderStatusType.ACCEPTED
+                || order.getStatus() == OrderStatusType.READY_FOR_DELIVERY)) {
             log.info("Skipping fulfillment. Order {} is in status {}", orderId, order.getStatus());
             return;
         }

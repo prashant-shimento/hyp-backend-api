@@ -7,9 +7,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public abstract class BaseDto {
 
-	private String id;
-	private String createdAt;
-	private String updatedAt;
-	private String restaurantId;
-	private boolean isDeleted;
+    private String id;
+    private String createdAt;
+    private String updatedAt;
+    private String restaurantId;
+    private boolean isDeleted;
 }

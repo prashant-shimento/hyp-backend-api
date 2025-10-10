@@ -1,18 +1,21 @@
 package com.hyp.onesignalnotification;
 
-import java.time.Instant;
-
-import org.springframework.stereotype.Service;
-
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.OrderStatusType;
+import java.time.Instant;
+import org.springframework.stereotype.Service;
 
 @Service
 public class OneSignalNotificationTemplates {
 
-	public String buildNewOrderNotificationMessage(String customerName, String customerMobile, String orderId,
-			OrderStatusType orderStatus, String restaurantName) {
-		return String.format("""
+    public String buildNewOrderNotificationMessage(
+            String customerName,
+            String customerMobile,
+            String orderId,
+            OrderStatusType orderStatus,
+            String restaurantName) {
+        return String.format(
+                """
 				📢  New Order Placed
 
 					Hi Team,
@@ -27,11 +30,13 @@ public class OneSignalNotificationTemplates {
 					🍽️ Restaurant Name: %s
 
 					Please take the necessary steps to ensure smooth processing.
-					""", customerName, customerMobile, orderId, orderStatus, restaurantName);
-	}
+					""",
+                customerName, customerMobile, orderId, orderStatus, restaurantName);
+    }
 
-	public String buildErrorResponseAlertMessage(String orderId, String errorMessage, String platform) {
-		return String.format("""
+    public String buildErrorResponseAlertMessage(String orderId, String errorMessage, String platform) {
+        return String.format(
+                """
 				💡 Hi Team,
 
 				🚨 Error Response Alert 🚨
@@ -40,13 +45,20 @@ public class OneSignalNotificationTemplates {
 				🔴 Platform: %s
 
 				⚠️ Action Required: Please address this issue promptly
-				""", orderId, errorMessage, platform);
-	}
+				""",
+                orderId, errorMessage, platform);
+    }
 
-	public String buildDeliveryDelayNotificationMessage(String orderId, String restaurantName, OrderStatusType status,
-			String customerName, String mobile, String string, String string2) {
-		return String.format(
-				"""
+    public String buildDeliveryDelayNotificationMessage(
+            String orderId,
+            String restaurantName,
+            OrderStatusType status,
+            String customerName,
+            String mobile,
+            String string,
+            String string2) {
+        return String.format(
+                """
 						📢 Delivery Delay - Action Required 📢
 
 						We’ve encountered an delay with the delivery of the following order. Kindly review the details below and take immediate action to resolve the matter:
@@ -61,11 +73,12 @@ public class OneSignalNotificationTemplates {
 
 						Please address this issue as soon as possible to avoid any further inconvenience to the customer. Your prompt attention to resolving this matter is highly appreciated. Thank you for your cooperation!
 						""",
-				orderId, restaurantName, status, customerName, mobile, "-", "-");
-	}
+                orderId, restaurantName, status, customerName, mobile, "-", "-");
+    }
 
-	public String buildMenuPushNotificationMessage(String restaurantname, String restaurantid, String menusharingcode) {
-		return String.format("""
+    public String buildMenuPushNotificationMessage(String restaurantname, String restaurantid, String menusharingcode) {
+        return String.format(
+                """
 				📢 Menu Push Notification 📢
 
 				The menu for the restaurant %s (ID: %s) has been successfully pushed. 🎉
@@ -74,14 +87,20 @@ public class OneSignalNotificationTemplates {
 				🍽️ Name: %s
 				🏷️ ID: %s
 				🔗 Menu Sharing Code: %s
-				""", restaurantname, restaurantid, restaurantname, restaurantid, menusharingcode);
-	}
+				""",
+                restaurantname, restaurantid, restaurantname, restaurantid, menusharingcode);
+    }
 
-	public String buildRiderNotMovingAlertMessage(String orderId, String restaurantName,
-			DeliveryFulfillStatusType orderStatus, String customerName, String customerMobile, String riderName,
-			String riderMobile) {
-		return String.format(
-				"""
+    public String buildRiderNotMovingAlertMessage(
+            String orderId,
+            String restaurantName,
+            DeliveryFulfillStatusType orderStatus,
+            String customerName,
+            String customerMobile,
+            String riderName,
+            String riderMobile) {
+        return String.format(
+                """
 						📢 Rider Not Moving - Action Required 📢
 
 						We’ve noticed that the assigned delivery person has not moved for a while. Kindly review the details below and take immediate action:
@@ -98,12 +117,17 @@ public class OneSignalNotificationTemplates {
 
 						Thank you for your cooperation!
 						""",
-				orderId, restaurantName, orderStatus, customerName, customerMobile, riderName, riderMobile);
-	}
+                orderId, restaurantName, orderStatus, customerName, customerMobile, riderName, riderMobile);
+    }
 
-	public String buildOrderDelayApologyMessage(String customerName, String orderId, String restaurantName1,
-			String supportContact, String restaurantName2) {
-		return String.format("""
+    public String buildOrderDelayApologyMessage(
+            String customerName,
+            String orderId,
+            String restaurantName1,
+            String supportContact,
+            String restaurantName2) {
+        return String.format(
+                """
 				Hi %s,
 
 				We’re really sorry! Your order # %s from %s is taking a bit longer than expected.
@@ -113,13 +137,18 @@ public class OneSignalNotificationTemplates {
 				📞 %s
 
 				Thanks for your patience and for ordering with %s. We truly appreciate it! 🙏
-				""", customerName, orderId, restaurantName1, supportContact, restaurantName2);
-	}
+				""",
+                customerName, orderId, restaurantName1, supportContact, restaurantName2);
+    }
 
-	public String buildOrderTrackAlertMessage(String orderId, String restaurantName, String currentStatus,
-			long minutesSinceLastStatus, String expectedStatus) {
-		return String.format(
-				"""
+    public String buildOrderTrackAlertMessage(
+            String orderId,
+            String restaurantName,
+            String currentStatus,
+            long minutesSinceLastStatus,
+            String expectedStatus) {
+        return String.format(
+                """
 						🚨 Order Alert
 
 						🆔 Order ID: %s
@@ -130,16 +159,22 @@ public class OneSignalNotificationTemplates {
 
 						⚡ Action Required: Order is stuck at '%s'. Please take necessary action to move it towards '%s' immediately.
 						""",
-				orderId, restaurantName, currentStatus, minutesSinceLastStatus, expectedStatus, currentStatus,
-				expectedStatus);
-	}
+                orderId,
+                restaurantName,
+                currentStatus,
+                minutesSinceLastStatus,
+                expectedStatus,
+                currentStatus,
+                expectedStatus);
+    }
 
-	public String buildFraudRiderAlertMessage(String riderContact, String riderName) {
-		String name = (riderName == null || riderName.isBlank()) ? "Unknown" : riderName;
-		String contact = (riderContact == null || riderContact.isBlank()) ? "Unknown" : riderContact;
-		String detectedAt = Instant.now().toString();
+    public String buildFraudRiderAlertMessage(String riderContact, String riderName) {
+        String name = (riderName == null || riderName.isBlank()) ? "Unknown" : riderName;
+        String contact = (riderContact == null || riderContact.isBlank()) ? "Unknown" : riderContact;
+        String detectedAt = Instant.now().toString();
 
-		return String.format("""
+        return String.format(
+                """
 				🚨 Rider Alert
 
 				👤 Rider: %s
@@ -154,6 +189,7 @@ public class OneSignalNotificationTemplates {
 				• Escalate to Ops/Security for investigation.
 
 				⚡ Action Required: Review the rider immediately and take appropriate action.
-				""", name, contact, detectedAt);
-	}
+				""",
+                name, contact, detectedAt);
+    }
 }

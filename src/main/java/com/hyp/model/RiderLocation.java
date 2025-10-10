@@ -7,6 +7,5 @@ import lombok.Data;
 @Builder
 public class RiderLocation {
 
-	private Location data;
-	
+    private Location data;
 }

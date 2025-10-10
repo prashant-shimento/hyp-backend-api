@@ -1,10 +1,9 @@
 package com.hyp.repository;
 
+import com.hyp.entity.Report;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.Report;
-
 public interface ReportRepository extends MongoRepository<Report, String> {
-	
-	Report findByName(String name);
+
+    Report findByName(String name);
 }

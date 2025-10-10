@@ -2,13 +2,12 @@ package com.hyp.exception;
 
 public class OrderNotFoundException extends Exception {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+    /**
+     *
+     */
+    private static final long serialVersionUID = 1L;
 
-	public OrderNotFoundException(String message) {
-		super(message);
-	}
-
+    public OrderNotFoundException(String message) {
+        super(message);
+    }
 }

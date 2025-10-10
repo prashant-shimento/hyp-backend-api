@@ -1,9 +1,6 @@
 package com.hyp.repository;
 
+import com.hyp.entity.CustomerTestimonial;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.CustomerTestimonial;
-
-public interface CustomerTestimonialRepository extends MongoRepository<CustomerTestimonial, String> {
-
-}
+public interface CustomerTestimonialRepository extends MongoRepository<CustomerTestimonial, String> {}

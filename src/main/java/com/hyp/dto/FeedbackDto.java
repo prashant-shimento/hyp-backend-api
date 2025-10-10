@@ -13,9 +13,8 @@ import lombok.ToString;
 @NoArgsConstructor
 public class FeedbackDto extends BaseDto {
 
-	private String mobileNumber;
-	private String lastFeedbackAt;
-	private String lastFeedback;
-	private Integer hasBeenNotified;
-
+    private String mobileNumber;
+    private String lastFeedbackAt;
+    private String lastFeedback;
+    private Integer hasBeenNotified;
 }

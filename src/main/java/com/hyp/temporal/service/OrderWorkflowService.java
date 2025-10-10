@@ -1,18 +1,11 @@
 package com.hyp.temporal.service;
 
-import com.hyp.temporal.activities.OrderFulfillmentActivitiesImpl;
-import com.hyp.temporal.activities.OrderPaymentActivitiesImpl;
 import com.hyp.temporal.workflow.OrderFulfillmentWorkflow;
-import com.hyp.temporal.workflow.OrderFulfillmentWorkflowImpl;
 import com.hyp.temporal.workflow.OrderPaymentWorkflow;
-import com.hyp.temporal.workflow.OrderPaymentWorkflowImpl;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
-import io.temporal.worker.Worker;
-import io.temporal.worker.WorkerFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -29,8 +22,7 @@ public class OrderWorkflowService {
                 WorkflowOptions.newBuilder()
                         .setWorkflowId("order-payment-" + orderId)
                         .setTaskQueue(ORDER_TASK_QUEUE)
-                        .build()
-        );
+                        .build());
         WorkflowClient.start(workflow::handleOrderPayment, orderId);
     }
 
@@ -40,9 +32,7 @@ public class OrderWorkflowService {
                 WorkflowOptions.newBuilder()
                         .setWorkflowId("order-fulfillment-" + orderId)
                         .setTaskQueue(ORDER_TASK_QUEUE)
-                        .build()
-        );
+                        .build());
         WorkflowClient.start(workflow::handleOrderFulfillment, orderId, fulfillmentDelay);
     }
-
 }

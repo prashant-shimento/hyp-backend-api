@@ -1,7 +1,6 @@
 package com.hyp.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,12 +8,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PosBaseRequest {
 
-	@JsonProperty("app_key")
-	private String appKey;
+    @JsonProperty("app_key")
+    private String appKey;
 
-	@JsonProperty("app_secret")
-	private String appSecret;
+    @JsonProperty("app_secret")
+    private String appSecret;
 
-	@JsonProperty("access_token")
-	private String accessToken;
+    @JsonProperty("access_token")
+    private String accessToken;
 }

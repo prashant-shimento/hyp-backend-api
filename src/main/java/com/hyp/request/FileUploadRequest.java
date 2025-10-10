@@ -7,8 +7,7 @@ import lombok.Data;
 @Builder
 public class FileUploadRequest {
 
-	String fileUrl;
-	String folderName;
-	String fileName;
-
+    String fileUrl;
+    String folderName;
+    String fileName;
 }

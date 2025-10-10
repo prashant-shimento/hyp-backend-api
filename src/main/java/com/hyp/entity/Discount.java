@@ -1,13 +1,12 @@
 package com.hyp.entity;
 
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Getter
 @Setter
@@ -18,22 +17,22 @@ import lombok.ToString;
 public class Discount extends BaseEntity {
 
     private static final long serialVersionUID = 1L;
-    
-	@Field("discount_name")
+
+    @Field("discount_name")
     private String discountName;
 
     @Field("discount_type")
     private String discountType;
-    
+
     @Field("bogo_buy_qty")
     private String bogoBuyQty;
-    
+
     @Field("bogo_get_qty")
     private String bogoGetQty;
-    
+
     @Field("bogo_type")
     private String bogoType;
-    
+
     @Field("bogo_applicable_on_purchase")
     private String bogoApplicableOnPurchase;
 
@@ -58,10 +57,9 @@ public class Discount extends BaseEntity {
     @Field("bogo_applicable_on_purchase_item")
     private String bogoApplicableOnPurchaseItem;
 
-
     @Field("discount")
     private String discount;
-    
+
     @Field("discount_order")
     private String discountOrder;
 
@@ -107,4 +105,3 @@ public class Discount extends BaseEntity {
     @Field("discount_max_limit")
     private String discountMaxLimit;
 }
-

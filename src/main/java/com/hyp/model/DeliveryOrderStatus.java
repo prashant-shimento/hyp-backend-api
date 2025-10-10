@@ -1,11 +1,8 @@
 package com.hyp.model;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyp.enums.DeliveryFulfillStatusType;
-
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -65,7 +62,6 @@ public class DeliveryOrderStatus {
 
         @JsonProperty("fulfillment_histories")
         private List<FulfillmentHistory> fulfillmentHistory;
-
     }
 
     @Data
@@ -78,7 +74,6 @@ public class DeliveryOrderStatus {
 
         @JsonProperty("user")
         private User user;
-
     }
 
     @Data
@@ -88,7 +83,6 @@ public class DeliveryOrderStatus {
 
         @JsonProperty("type")
         private int type;
-
     }
 
     @Data
@@ -109,7 +103,6 @@ public class DeliveryOrderStatus {
 
         @JsonProperty("smart_allocation_id")
         private int smartAllocationId;
-
     }
 
     @Data
@@ -127,11 +120,12 @@ public class DeliveryOrderStatus {
         private Rider rider;
         private LogisticsInfo drop;
         private Mtg mtg;
+
         @JsonProperty("track_code")
         private String trackCode;
+
         @JsonProperty("delivery_charge")
         private double deliveryCharge;
-
     }
 
     @Data
@@ -143,13 +137,15 @@ public class DeliveryOrderStatus {
         private Rider rider;
         private LogisticsInfo drop;
         private Mtg mtg;
+
         @JsonProperty("track_code")
         private String trackCode;
+
         @JsonProperty("delivery_charge")
         private double deliveryCharge;
+
         @JsonProperty("cancellation_info")
         private CancellationInfo cancellationInfo;
-
     }
 
     @Data
@@ -159,14 +155,15 @@ public class DeliveryOrderStatus {
 
         @JsonProperty("mobile")
         private String mobile;
-
     }
 
     @Data
     public static class Channel {
         private String name;
+
         @JsonProperty("order_id")
         private String orderId;
+
         private String id;
     }
 
@@ -204,12 +201,16 @@ public class DeliveryOrderStatus {
     public static class Mtg {
         @JsonProperty("trip_id")
         private int tripId;
+
         @JsonProperty("group_id")
         private int groupId;
+
         @JsonProperty("rider_id")
         private int riderId;
+
         @JsonProperty("bundle_id")
         private int bundleId;
+
         @JsonProperty("sequence_number")
         private int sequenceNumber;
     }
@@ -221,5 +222,4 @@ public class DeliveryOrderStatus {
         private String timestamp;
         private List<Object> proof;
     }
-
 }

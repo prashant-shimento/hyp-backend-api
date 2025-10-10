@@ -11,11 +11,12 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.hyp.entity.AddonGroup;
+import com.hyp.repository.AddonGroupRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,116 +28,116 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import com.hyp.entity.AddonGroup;
-import com.hyp.repository.AddonGroupRepository;
-
 @ExtendWith(MockitoExtension.class)
 public class AddonGroupServiceTest {
 
-	@Mock
-	private AddonGroupRepository addonGroupRepository;
-	@Mock
-	private MongoTemplate mongoTemplate;
-	@InjectMocks
-	private BaseServiceImpl<AddonGroup, String> baseService = new BaseServiceImpl<AddonGroup, String>() {
-	};
-	AddonGroupService addonGroupService;
-	List<AddonGroup> mockAddonGroups;
-	AddonGroup addonGroup;
+    @Mock
+    private AddonGroupRepository addonGroupRepository;
 
-	@BeforeEach
-	void setUp() {
-		addonGroupService = new AddonGroupService();
-		ReflectionTestUtils.setField(addonGroupService, "addonGroupRepository", addonGroupRepository);
-		ReflectionTestUtils.setField(addonGroupService, "mongoTemplate", mongoTemplate);
+    @Mock
+    private MongoTemplate mongoTemplate;
 
-		mockAddonGroups = new ArrayList<>();
-		addonGroup = new AddonGroup();
-		addonGroup.setId("123");
-		addonGroup.setAddonGroupName("Toppings");
-		addonGroup.setActive("true");
-		addonGroup.setAddonGroupRank("1");
-		addonGroup.setAddonGroupItems(Arrays.asList("Extra Cheese", "Pepperoni"));
-		addonGroup.setAddonItemSelectionMax("2");
-		addonGroup.setAddonItemSelectionMin("1");
-		mockAddonGroups.add(addonGroup);
-	}
+    @InjectMocks
+    private BaseServiceImpl<AddonGroup, String> baseService = new BaseServiceImpl<AddonGroup, String>() {};
 
-	@Test
-	void getAddonGroupsItemsById_Success() {
-		String addonGroupId = "123";
+    AddonGroupService addonGroupService;
+    List<AddonGroup> mockAddonGroups;
+    AddonGroup addonGroup;
 
-		@SuppressWarnings("unchecked")
-		AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
-		when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
+    @BeforeEach
+    void setUp() {
+        addonGroupService = new AddonGroupService();
+        ReflectionTestUtils.setField(addonGroupService, "addonGroupRepository", addonGroupRepository);
+        ReflectionTestUtils.setField(addonGroupService, "mongoTemplate", mongoTemplate);
 
-		when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
-				.thenReturn(mockResults);
+        mockAddonGroups = new ArrayList<>();
+        addonGroup = new AddonGroup();
+        addonGroup.setId("123");
+        addonGroup.setAddonGroupName("Toppings");
+        addonGroup.setActive("true");
+        addonGroup.setAddonGroupRank("1");
+        addonGroup.setAddonGroupItems(Arrays.asList("Extra Cheese", "Pepperoni"));
+        addonGroup.setAddonItemSelectionMax("2");
+        addonGroup.setAddonItemSelectionMin("1");
+        mockAddonGroups.add(addonGroup);
+    }
 
-		List<AddonGroup> result = addonGroupService.getAddonGroupsAndItemsById(addonGroupId);
+    @Test
+    void getAddonGroupsItemsById_Success() {
+        String addonGroupId = "123";
 
-		assertThat(result).isNotNull().hasSize(1);
-		assertThat(result.get(0).getId()).isEqualTo(addonGroupId);
-		assertThat(result.get(0).getAddonGroupName()).isEqualTo("Toppings");
+        @SuppressWarnings("unchecked")
+        AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
+        when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
 
-		verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
-	}
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
+                .thenReturn(mockResults);
 
-	@Test
-	void getAddonGroupsItemsById_NotFound() {
-		String addonGroupId = "iuytyui";
+        List<AddonGroup> result = addonGroupService.getAddonGroupsAndItemsById(addonGroupId);
 
-		@SuppressWarnings("unchecked")
-		AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
-		when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
+        assertThat(result).isNotNull().hasSize(1);
+        assertThat(result.get(0).getId()).isEqualTo(addonGroupId);
+        assertThat(result.get(0).getAddonGroupName()).isEqualTo("Toppings");
 
-		when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
-				.thenReturn(mockResults);
+        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
+    }
 
-		List<AddonGroup> result = addonGroupService.getAddonGroupsAndItemsById(addonGroupId);
+    @Test
+    void getAddonGroupsItemsById_NotFound() {
+        String addonGroupId = "iuytyui";
 
-		assertNotEquals(result, result.get(0).getId());
+        @SuppressWarnings("unchecked")
+        AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
+        when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
 
-		verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
-	}
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
+                .thenReturn(mockResults);
 
-	@Test
-	void getAddonGroupsItems_Success() {
+        List<AddonGroup> result = addonGroupService.getAddonGroupsAndItemsById(addonGroupId);
 
-		@SuppressWarnings("unchecked")
-		AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
-		when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
+        assertNotEquals(result, result.get(0).getId());
 
-		when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
-				.thenReturn(mockResults);
+        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
+    }
 
-		List<AddonGroup> result = addonGroupService.getAllAddonGroupsAndItems();
+    @Test
+    void getAddonGroupsItems_Success() {
 
-		assertThat(result).isNotNull().hasSize(1);
-		assertThat(result.get(0).getAddonGroupName()).isEqualTo("Toppings");
+        @SuppressWarnings("unchecked")
+        AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
+        when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
 
-		verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
-	}
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
+                .thenReturn(mockResults);
 
-	@Test
-	void getAddonGroupsItems_NotFound() {
-		String ExpectedAddonGroupId = "iuytyui";
-		@SuppressWarnings("unchecked")
-		AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
-		when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
+        List<AddonGroup> result = addonGroupService.getAllAddonGroupsAndItems();
 
-		when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
-				.thenReturn(mockResults);
+        assertThat(result).isNotNull().hasSize(1);
+        assertThat(result.get(0).getAddonGroupName()).isEqualTo("Toppings");
 
-		String actualAddonGroupId = addonGroupService.getAllAddonGroupsAndItems().get(0).getId();
+        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
+    }
 
-		assertNotEquals(ExpectedAddonGroupId, actualAddonGroupId);
+    @Test
+    void getAddonGroupsItems_NotFound() {
+        String ExpectedAddonGroupId = "iuytyui";
+        @SuppressWarnings("unchecked")
+        AggregationResults<AddonGroup> mockResults = mock(AggregationResults.class);
+        when(mockResults.getMappedResults()).thenReturn(mockAddonGroups);
 
-		verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
-	}
+        when(mongoTemplate.aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class)))
+                .thenReturn(mockResults);
 
-	// CRUD Operation
-	@Test
+        String actualAddonGroupId =
+                addonGroupService.getAllAddonGroupsAndItems().get(0).getId();
+
+        assertNotEquals(ExpectedAddonGroupId, actualAddonGroupId);
+
+        verify(mongoTemplate).aggregate(any(Aggregation.class), eq("addon_groups"), eq(AddonGroup.class));
+    }
+
+    // CRUD Operation
+    @Test
     void findAddonGroupById_Success() {
         when(addonGroupRepository.findById("123")).thenReturn(Optional.of(addonGroup));
 
@@ -147,7 +148,7 @@ public class AddonGroupServiceTest {
         verify(addonGroupRepository, times(1)).findById("123");
     }
 
-	@Test
+    @Test
     void findAddonGroupById_NotFound() {
         when(addonGroupRepository.findById("456")).thenReturn(Optional.empty());
 
@@ -157,7 +158,7 @@ public class AddonGroupServiceTest {
         verify(addonGroupRepository, times(1)).findById("456");
     }
 
-	@Test
+    @Test
     void addAddonGroup_Success() {
         when(addonGroupRepository.save(addonGroup)).thenReturn(addonGroup);
 
@@ -169,7 +170,7 @@ public class AddonGroupServiceTest {
         verify(addonGroupRepository, times(1)).save(addonGroup);
     }
 
-	@Test
+    @Test
     void findAllAddonGroups_Success() {
         when(addonGroupRepository.findAll()).thenReturn(mockAddonGroups);
 
@@ -181,7 +182,7 @@ public class AddonGroupServiceTest {
         verify(addonGroupRepository, times(1)).findAll();
     }
 
-	@Test
+    @Test
     void updateAddonGroup_Success() {
         when(addonGroupRepository.save(addonGroup)).thenReturn(addonGroup);
 
@@ -192,12 +193,12 @@ public class AddonGroupServiceTest {
         verify(addonGroupRepository, times(1)).save(addonGroup);
     }
 
-	@Test
-	void deleteAddonGroup_Success() {
-		doNothing().when(addonGroupRepository).deleteById("123");
+    @Test
+    void deleteAddonGroup_Success() {
+        doNothing().when(addonGroupRepository).deleteById("123");
 
-		baseService.deleteById("123");
+        baseService.deleteById("123");
 
-		verify(addonGroupRepository, times(1)).deleteById("123");
-	}
+        verify(addonGroupRepository, times(1)).deleteById("123");
+    }
 }

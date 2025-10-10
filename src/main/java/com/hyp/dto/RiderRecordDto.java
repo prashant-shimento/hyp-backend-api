@@ -1,10 +1,8 @@
 package com.hyp.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,10 +13,9 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RiderRecordDto {
 
-	private String id;
-	private String riderName;
-	private String riderContact;
-	private Integer fraudCount;
-	private List<String> channels = new ArrayList<>();
-
+    private String id;
+    private String riderName;
+    private String riderContact;
+    private Integer fraudCount;
+    private List<String> channels = new ArrayList<>();
 }

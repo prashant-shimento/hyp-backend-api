@@ -1,9 +1,7 @@
 package com.hyp.model;
 
-import java.util.List;
-
 import com.hyp.dto.AddressDto;
-
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,6 +9,6 @@ import lombok.Data;
 @Builder
 public class PlaceData {
 
-	private AddressDto address;
-	private List<String> restaurants;
+    private AddressDto address;
+    private List<String> restaurants;
 }

@@ -1,8 +1,6 @@
 package com.hyp.repository;
 
+import com.hyp.entity.Offer;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.Offer;
-
-public interface OfferRepository extends MongoRepository<Offer, String> {
-}
+public interface OfferRepository extends MongoRepository<Offer, String> {}

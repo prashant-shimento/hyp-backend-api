@@ -1,8 +1,6 @@
 package com.hyp.dto;
 
-
 import com.hyp.model.Location;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -14,32 +12,31 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AddressDto extends BaseDto {
 
-	@NotNull(message = "Customer ID is mandatory")
-	private String customerId;
+    @NotNull(message = "Customer ID is mandatory")
+    private String customerId;
 
-	@NotBlank(message = "Address type is mandatory")
-	private String addressType;
+    @NotBlank(message = "Address type is mandatory")
+    private String addressType;
 
-	@NotBlank(message = "Address line one is mandatory")
-	private String addressOne;
+    @NotBlank(message = "Address line one is mandatory")
+    private String addressOne;
 
-	private String addressTwo;
+    private String addressTwo;
 
-	private String landmark;
+    private String landmark;
 
-	@NotBlank(message = "City is mandatory")
-	private String city;
+    @NotBlank(message = "City is mandatory")
+    private String city;
 
-	@NotBlank(message = "State is mandatory")
-	private String state;
+    @NotBlank(message = "State is mandatory")
+    private String state;
 
-	@NotBlank(message = "Country is mandatory")
-	private String country;
+    @NotBlank(message = "Country is mandatory")
+    private String country;
 
-	@NotBlank(message = "Pincode is mandatory")
-	private String pincode;
+    @NotBlank(message = "Pincode is mandatory")
+    private String pincode;
 
-	@NotNull(message = "Location is mandatory")
-	private Location location;
-
+    @NotNull(message = "Location is mandatory")
+    private Location location;
 }

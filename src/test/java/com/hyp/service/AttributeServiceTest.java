@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.hyp.entity.Attribute;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,29 +17,26 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.Attribute;
-
 @ExtendWith(MockitoExtension.class)
 public class AttributeServiceTest {
 
-	@Mock
-	private MongoRepository<Attribute, String> attributeRepository;
+    @Mock
+    private MongoRepository<Attribute, String> attributeRepository;
 
-	@InjectMocks
-	private BaseServiceImpl<Attribute, String> attributeService = new BaseServiceImpl<>() {
-	};
+    @InjectMocks
+    private BaseServiceImpl<Attribute, String> attributeService = new BaseServiceImpl<>() {};
 
-	private Attribute attribute;
+    private Attribute attribute;
 
-	@BeforeEach
-	void setUp() {
-		attribute = new Attribute();
-		attribute.setId("123");
-		attribute.setAttribute("Attribute");
-		attribute.setActive("True");
-	}
+    @BeforeEach
+    void setUp() {
+        attribute = new Attribute();
+        attribute.setId("123");
+        attribute.setAttribute("Attribute");
+        attribute.setActive("True");
+    }
 
-	@Test
+    @Test
     void addAttribute_Success() {
         when(attributeRepository.save(attribute)).thenReturn(attribute);
 
@@ -51,7 +49,7 @@ public class AttributeServiceTest {
         verify(attributeRepository, times(1)).save(attribute);
     }
 
-	@Test
+    @Test
     void attributeById_Success() {
         when(attributeRepository.findById("123")).thenReturn(java.util.Optional.of(attribute));
 
@@ -62,7 +60,7 @@ public class AttributeServiceTest {
         verify(attributeRepository, times(1)).findById("123");
     }
 
-	@Test
+    @Test
     void attributeById_NotFound() {
         when(attributeRepository.findById("456")).thenReturn(java.util.Optional.empty());
 
@@ -72,19 +70,19 @@ public class AttributeServiceTest {
         verify(attributeRepository, times(1)).findById("456");
     }
 
-	@Test
-	void findAllAttribute_Success() {
-		java.util.List<Attribute> mockAttributes = java.util.Arrays.asList(attribute, attribute);
-		when(attributeRepository.findAll()).thenReturn(mockAttributes);
+    @Test
+    void findAllAttribute_Success() {
+        java.util.List<Attribute> mockAttributes = java.util.Arrays.asList(attribute, attribute);
+        when(attributeRepository.findAll()).thenReturn(mockAttributes);
 
-		java.util.List<Attribute> attributes = attributeService.findAll();
+        java.util.List<Attribute> attributes = attributeService.findAll();
 
-		assertNotNull(attributes);
-		assertEquals(2, attributes.size());
-		verify(attributeRepository, times(1)).findAll();
-	}
+        assertNotNull(attributes);
+        assertEquals(2, attributes.size());
+        verify(attributeRepository, times(1)).findAll();
+    }
 
-	@Test
+    @Test
     void updateAttribute_Success() {
         when(attributeRepository.save(attribute)).thenReturn(attribute);
 
@@ -95,10 +93,10 @@ public class AttributeServiceTest {
         verify(attributeRepository, times(1)).save(attribute);
     }
 
-	@Test
-	void deleteAttribute_Success() {
-		doNothing().when(attributeRepository).deleteById("123");
-		attributeService.deleteById("123");
-		verify(attributeRepository, times(1)).deleteById("123");
-	}
+    @Test
+    void deleteAttribute_Success() {
+        doNothing().when(attributeRepository).deleteById("123");
+        attributeService.deleteById("123");
+        verify(attributeRepository, times(1)).deleteById("123");
+    }
 }

@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class PidgeLoginRequest {
-	private String username;
-	private String password;
+    private String username;
+    private String password;
 }

@@ -3,9 +3,7 @@ package com.hyp.temporal.service;
 import com.hyp.temporal.workflow.RestaurantWorkflow;
 import com.hyp.util.CommonUtils;
 import io.temporal.client.WorkflowClient;
-import io.temporal.client.WorkflowNotFoundException;
 import io.temporal.client.WorkflowOptions;
-import io.temporal.client.WorkflowStub;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,8 +22,7 @@ public class RestaurantWorkflowService {
                 WorkflowOptions.newBuilder()
                         .setWorkflowId("restaurant-status-update-" + CommonUtils.generateWorkflowId(restaurantId))
                         .setTaskQueue(RESTAURANT_TASK_QUEUE)
-                        .build()
-        );
+                        .build());
         WorkflowClient.start(workflow::handleRestaurantStatus, restaurantId, delay);
     }
 }

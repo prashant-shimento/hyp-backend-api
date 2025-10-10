@@ -1,9 +1,6 @@
 package com.hyp.repository;
 
+import com.hyp.entity.Attribute;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import com.hyp.entity.Attribute;
-
-public interface AttributeRepository extends MongoRepository<Attribute, String> {
-
-}
+public interface AttributeRepository extends MongoRepository<Attribute, String> {}

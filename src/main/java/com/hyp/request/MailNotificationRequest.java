@@ -1,7 +1,6 @@
 package com.hyp.request;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,5 +12,4 @@ import lombok.NoArgsConstructor;
 public class MailNotificationRequest {
     private String subject;
     private String message;
-
 }

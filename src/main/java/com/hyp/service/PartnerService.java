@@ -1,5 +1,8 @@
 package com.hyp.service;
 
+import com.hyp.entity.Partner;
+import com.hyp.enums.PartnerType;
+import com.hyp.repository.PartnerRepository;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -12,114 +15,120 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.hyp.entity.Partner;
-import com.hyp.enums.PartnerType;
-import com.hyp.repository.PartnerRepository;
-
-import lombok.extern.slf4j.Slf4j;
-
 @Service
 @Slf4j
 public class PartnerService extends BaseServiceImpl<Partner, String> {
 
-	@Autowired
-	PartnerRepository partnerRepository;
-	@Autowired
-	BucketService bucketService;
+    @Autowired
+    PartnerRepository partnerRepository;
 
-	private final ExecutorService uploadExecutor = Executors.newFixedThreadPool(8);
+    @Autowired
+    BucketService bucketService;
 
-	public List<Partner> findByPartnerType(PartnerType type) {
-		return partnerRepository.findByType(type);
-	}
+    private final ExecutorService uploadExecutor = Executors.newFixedThreadPool(8);
 
-	public Partner findPartnersByRestaurantId(String restaurantId, PartnerType type) {
-		return partnerRepository.findByRestaurantsContainingAndType(restaurantId, type);
-	}
+    public List<Partner> findByPartnerType(PartnerType type) {
+        return partnerRepository.findByType(type);
+    }
 
-	public void uploadAndSavePartnerImages(String partnerId, MultiValueMap<String, MultipartFile> filesByField) {
+    public Partner findPartnersByRestaurantId(String restaurantId, PartnerType type) {
+        return partnerRepository.findByRestaurantsContainingAndType(restaurantId, type);
+    }
 
-		Partner partner = partnerRepository.findById(partnerId)
-				.orElseThrow(() -> new IllegalArgumentException("Partner not found: " + partnerId));
+    public void uploadAndSavePartnerImages(String partnerId, MultiValueMap<String, MultipartFile> filesByField) {
 
-		String partnerFolderName = partner.getName().trim().toLowerCase().replaceAll("\\s+", "-");
-		String basePath = "onboarding-assets/partner/" + partnerFolderName + "/";
+        Partner partner = partnerRepository
+                .findById(partnerId)
+                .orElseThrow(() -> new IllegalArgumentException("Partner not found: " + partnerId));
 
-		ConcurrentMap<String, List<String>> uploadedImageUrls = new ConcurrentHashMap<>();
-		List<CompletableFuture<Void>> asyncUploadTasks = new ArrayList<>();
+        String partnerFolderName = partner.getName().trim().toLowerCase().replaceAll("\\s+", "-");
+        String basePath = "onboarding-assets/partner/" + partnerFolderName + "/";
 
-		filesByField.forEach((fieldName, files) -> {
-			if (files == null || files.isEmpty())
-				return;
+        ConcurrentMap<String, List<String>> uploadedImageUrls = new ConcurrentHashMap<>();
+        List<CompletableFuture<Void>> asyncUploadTasks = new ArrayList<>();
 
-			for (MultipartFile file : files) {
-				if (file == null || file.isEmpty())
-					continue;
+        filesByField.forEach((fieldName, files) -> {
+            if (files == null || files.isEmpty()) return;
 
-				CompletableFuture<Void> uploadTask = CompletableFuture.runAsync(() -> {
-					try (InputStream inputStream = file.getInputStream();
-							ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) continue;
 
-						inputStream.transferTo(outputStream);
+                CompletableFuture<Void> uploadTask = CompletableFuture.runAsync(
+                        () -> {
+                            try (InputStream inputStream = file.getInputStream();
+                                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
 
-						String fileName = Path.of(file.getOriginalFilename()).getFileName().toString();
-						String folderPath = basePath + fieldName + "/";
+                                inputStream.transferTo(outputStream);
 
-						try {
-							boolean deleted = bucketService.deleteFileBeforeUpload(fileName, folderPath);
-							if (deleted) {
-								log.info("Deleted existing file before upload: {}/{}", folderPath, fileName);
-							} else {
-								log.debug("No existing file found to delete for: {}/{}", folderPath, fileName);
-							}
-						} catch (Exception ex) {
-							log.warn("Failed to delete existing file before upload for {}/{}: {}", folderPath, fileName,
-									ex.getMessage(), ex);
-						}
+                                String fileName = Path.of(file.getOriginalFilename())
+                                        .getFileName()
+                                        .toString();
+                                String folderPath = basePath + fieldName + "/";
 
-						String uploadedUrl = bucketService.uploadFileFromStream(outputStream, fileName, folderPath,
-								file.getContentType());
+                                try {
+                                    boolean deleted = bucketService.deleteFileBeforeUpload(fileName, folderPath);
+                                    if (deleted) {
+                                        log.info("Deleted existing file before upload: {}/{}", folderPath, fileName);
+                                    } else {
+                                        log.debug("No existing file found to delete for: {}/{}", folderPath, fileName);
+                                    }
+                                } catch (Exception ex) {
+                                    log.warn(
+                                            "Failed to delete existing file before upload for {}/{}: {}",
+                                            folderPath,
+                                            fileName,
+                                            ex.getMessage(),
+                                            ex);
+                                }
 
-						if (uploadedUrl != null) {
-							uploadedImageUrls
-									.computeIfAbsent(fieldName, k -> Collections.synchronizedList(new ArrayList<>()))
-									.add(uploadedUrl);
-							log.info("Uploaded {} -> {}", file.getOriginalFilename(), uploadedUrl);
-						} else {
-							log.warn("Upload returned null for file: {}", file.getOriginalFilename());
-						}
+                                String uploadedUrl = bucketService.uploadFileFromStream(
+                                        outputStream, fileName, folderPath, file.getContentType());
 
-					} catch (Exception e) {
-						log.error("Upload failed for field='{}' file='{}': {}", fieldName, file.getOriginalFilename(),
-								e.getMessage(), e);
-					}
-				}, uploadExecutor);
+                                if (uploadedUrl != null) {
+                                    uploadedImageUrls
+                                            .computeIfAbsent(
+                                                    fieldName, k -> Collections.synchronizedList(new ArrayList<>()))
+                                            .add(uploadedUrl);
+                                    log.info("Uploaded {} -> {}", file.getOriginalFilename(), uploadedUrl);
+                                } else {
+                                    log.warn("Upload returned null for file: {}", file.getOriginalFilename());
+                                }
 
-				asyncUploadTasks.add(uploadTask);
-			}
-		});
+                            } catch (Exception e) {
+                                log.error(
+                                        "Upload failed for field='{}' file='{}': {}",
+                                        fieldName,
+                                        file.getOriginalFilename(),
+                                        e.getMessage(),
+                                        e);
+                            }
+                        },
+                        uploadExecutor);
 
-		CompletableFuture.allOf(asyncUploadTasks.toArray(new CompletableFuture[0])).join();
+                asyncUploadTasks.add(uploadTask);
+            }
+        });
 
-		uploadedImageUrls.forEach((fieldName, urls) -> {
-			if (urls.isEmpty())
-				return;
-			switch (fieldName) {
-			case "logo" -> partner.setLogoUrl(urls.get(0));
-			case "headerImageUrls" -> partner.setHeaderImageUrls(String.join(",", urls));
-			case "galleryImageUrl" -> partner.setGalleryImageUrl(urls);
-			default -> log.info("No mapping found for field '{}'", fieldName);
-			}
-		});
+        CompletableFuture.allOf(asyncUploadTasks.toArray(new CompletableFuture[0]))
+                .join();
 
-		partner.setUpdatedAt(LocalDateTime.now());
-		partnerRepository.save(partner);
-	}
+        uploadedImageUrls.forEach((fieldName, urls) -> {
+            if (urls.isEmpty()) return;
+            switch (fieldName) {
+                case "logo" -> partner.setLogoUrl(urls.get(0));
+                case "headerImageUrls" -> partner.setHeaderImageUrls(String.join(",", urls));
+                case "galleryImageUrl" -> partner.setGalleryImageUrl(urls);
+                default -> log.info("No mapping found for field '{}'", fieldName);
+            }
+        });
 
+        partner.setUpdatedAt(LocalDateTime.now());
+        partnerRepository.save(partner);
+    }
 }

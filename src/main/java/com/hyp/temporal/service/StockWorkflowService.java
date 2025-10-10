@@ -7,10 +7,7 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -27,9 +24,7 @@ public class StockWorkflowService {
                 WorkflowOptions.newBuilder()
                         .setWorkflowId("stock-update-" + workflowId)
                         .setTaskQueue(STOCK_TASK_QUEUE)
-                        .build()
-        );
-        WorkflowClient.start(workflow::handleStockUpdate,stockRequest, delay, workflowId);
+                        .build());
+        WorkflowClient.start(workflow::handleStockUpdate, stockRequest, delay, workflowId);
     }
-
 }
