@@ -5,7 +5,9 @@ import com.hyp.enums.CaseStatusType;
 import com.hyp.enums.OrderPlateform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -140,6 +142,15 @@ public class Order {
 
     @Field("order_plateform")
     private OrderPlateform orderPlateform;
+
+    @Field("preorder_date")
+    private LocalDate preorderDate;
+
+    @Field("preorder_time")
+    private LocalTime preorderTime;
+
+    @Field("advanced_order")
+    private String advancedOrder;
 
     @Data
     @NoArgsConstructor

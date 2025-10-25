@@ -1,15 +1,20 @@
 package com.hyp.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.hyp.enums.OrderPlateform;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Data;
@@ -81,6 +86,16 @@ public class OrderDto extends BaseDto {
 
     @PositiveOrZero(message = "Service charge tax amount must be positive")
     private Double scTaxAmount;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @FutureOrPresent(message = "Preorder date must be today or in the future")
+    private LocalDate preorderDate;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm:ss")
+    private LocalTime preorderTime;
+
+    @Pattern(regexp = "^[YyNn]$", message = "Advanced order must be either 'Y' or 'N'")
+    private String advancedOrder;
 
     @Valid
     private List<OrderDiscount> orderDiscount;

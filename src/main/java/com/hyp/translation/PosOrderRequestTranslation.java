@@ -196,15 +196,19 @@ public class PosOrderRequestTranslation {
         OrderDetails orderDetails = new OrderDetails();
         orderDetails.setOrderId(order.getId());
         orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
-        orderDetails.setPreOrderDate(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        orderDetails.setPreOrderTime(order.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
         orderDetails.setServiceCharge(CommonUtils.emptyIfNullOrZeroToString(order.getServiceCharge()));
         orderDetails.setScTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getScTaxAmount()));
         orderDetails.setDcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getDcTaxAmount()));
         orderDetails.setPackingCharges(CommonUtils.emptyIfNullOrZeroToString(order.getPackagingCharge()));
         orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
         orderDetails.setOrderType(OrderType.fromCode(order.getOrderType()).toString());
-        orderDetails.setAdvancedOrder("N");
+        if ("Y".equalsIgnoreCase(order.getAdvancedOrder())) {
+            orderDetails.setAdvancedOrder("Y");
+            orderDetails.setPreOrderDate(order.getPreorderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            orderDetails.setPreOrderTime(order.getPreorderTime().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+        } else {
+            orderDetails.setAdvancedOrder("N");
+        }
         orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
         orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));
         orderDetails.setTaxTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTaxAmount()));
