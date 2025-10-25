@@ -267,12 +267,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
                 order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
                 order = update(order);
-                try {
-                    log.info("Starting OrderTrack workflow for order {}", order.getId());
-                    orderTrackWorkFlowService.startOrderTrackWorkflow(order.getId());
-                } catch (Exception e) {
-                    log.error("Failed to start OrderTrack workflow for order {}", order.getId(), e);
-                }
                 int fulfillmentDelay =
                         Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(2);
 

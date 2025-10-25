@@ -188,6 +188,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     || delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
                 handleFulfillmentStatus(delivery, deliveryOrderData, order);
             }
+            delivery.setFulfillmentHistory(deliveryOrderData.getFulfillmentHistory());
             save(delivery);
         } catch (Exception e) {
             handleDeliveryError("processDeliveryCallback", delivery, e);
@@ -253,7 +254,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         }
         try {
             if (DeliveryFulfillStatusType.OUT_FOR_PICKUP.equals(fullFillStatus)) {
-                if (delivery == null || delivery.getFulfillment() == null) {
+                if (delivery.getFulfillment() == null) {
                     log.debug("Delivery or fulfillment is null; skipping rider fraud check.");
                 } else {
                     Rider rider = delivery.getFulfillment().getRider();
@@ -267,13 +268,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             }
         } catch (Exception e) {
             log.error("Failed while checking/alerting fraud rider", e);
-        }
-
-        try {
-            log.info("Starting OrderTrack workflow for order {}", order.getId());
-            orderTrackWorkflowService.startOrderTrackWorkflow(order.getId());
-        } catch (Exception e) {
-            log.error("Failed to start OrderTrack workflow for order {}", order.getId(), e);
         }
     }
 
