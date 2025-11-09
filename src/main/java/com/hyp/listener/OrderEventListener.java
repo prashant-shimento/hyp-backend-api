@@ -18,16 +18,10 @@ import com.hyp.event.OrderStatusChangeEvent;
 import com.hyp.exception.OneSignalException;
 import com.hyp.request.OneSignalNotificationAlias;
 import com.hyp.request.OneSignalNotificationRequest;
-import com.hyp.service.CustomerService;
-import com.hyp.service.DeliveryService;
-import com.hyp.service.NotificationService;
-import com.hyp.service.PartnerService;
-import com.hyp.service.PaymentService;
-import com.hyp.service.RedisService;
-import com.hyp.service.RestaurantService;
-import com.hyp.service.UserService;
+import com.hyp.service.*;
 import com.hyp.util.CommonUtils;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,26 +67,41 @@ public class OrderEventListener {
     @Autowired
     RedisService redisService;
 
-    //	@Value("${onesignal.app.id}")
-    //	private String appId;
+    @Autowired
+    OrderService orderService;
 
     @Value("${onesignal.partner.app.id}")
-    private String partberAppId;
+    private String partnerAppId;
 
     @Async
     @EventListener
     public void handleProcessOrder(OrderEvent event) {
         log.info("Order Event listener handleProcessOrder");
         Order order = event.getOrder();
+        log.info("Order Type {}", order.getOrderType());
+        if (OrderType.fromCode(order.getOrderType()) == OrderType.H && !order.isPreOrder()) {
+            orderEventPublisher.publishDeliveryOrderEvent(order);
+        }
         if (restaurantService
                 .findById(order.getRestaurantId())
                 .getPosPartner()
                 .equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
             orderEventPublisher.publishPosOrderEvent(order);
         }
-        log.info("Order Type {}", order.getOrderType());
-        if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
-            orderEventPublisher.publishDeliveryOrderEvent(order);
+        if (order.isPreOrder()) {
+            LocalDateTime preOrderTime = order.getPreOrderDateTime();
+            LocalDateTime preOrderUTC = CommonUtils.convertISTtoUTC(preOrderTime);
+            LocalDateTime fulfillmentUTC = preOrderUTC.minusHours(1);
+            long ttlSeconds = CommonUtils.calculateTTLInSeconds(fulfillmentUTC);
+            if (ttlSeconds <= 0) {
+                ttlSeconds = 1;
+            }
+            int scheduledDelayInMins = Math.toIntExact((ttlSeconds + 59) / 60);
+            orderService.startPreOrderWorkflow(order.getId(), scheduledDelayInMins);
+
+            String redisDelayKey = "order:" + order.getId() + ":delay";
+            redisService.setRedisData(redisDelayKey, OrderStatusType.PAID, ttlSeconds);
+            return;
         }
         String delayAlertTime =
                 redisService.getRedisData(Constants.REDIS_KEY_DELAY_ALERT_TIME).orElse("45");
@@ -161,7 +170,7 @@ public class OrderEventListener {
                             .includeAliases(OneSignalNotificationAlias.builder()
                                     .externalId(List.of(user.getId()))
                                     .build())
-                            .appId(partberAppId)
+                            .appId(partnerAppId)
                             .templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
                             .customData(customDataMap)
                             .build();

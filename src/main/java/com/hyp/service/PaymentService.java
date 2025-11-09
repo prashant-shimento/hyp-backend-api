@@ -27,10 +27,7 @@ import com.razorpay.Utils;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -73,14 +70,15 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     @Autowired
     private OrderEventPublisher orderEventPublisher;
 
-    public Payment createPaymentOrder(String orderId, double amount) throws PaymentException {
+    public Payment createPaymentOrder(com.hyp.entity.Order order) throws PaymentException {
         try {
-            com.hyp.entity.Order order = orderService.findById(orderId);
             if (order == null || !OrderStatusType.CREATED.equals(order.getStatus())) {
                 throw new IllegalStateException(
                         "Order is in Invalid Status: " + (order != null ? order.getStatus() : "null"));
             }
 
+            String orderId = order.getId();
+            double amount = order.getGrandTotalAmount();
             Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
             RazorpayClient razorpayClient = getRazorpayClient(orderId);
 
@@ -418,7 +416,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             throws PaymentException {
         if ("paid".equalsIgnoreCase(paymentStatus)) {
             processSuccessPayment(order, payment, paymentStatus);
-            startOrderTrackWorkflow(order.getId());
+            if (!order.isPreOrder()) {
+                startOrderTrackWorkflow(order.getId());
+            }
         }
     }
 

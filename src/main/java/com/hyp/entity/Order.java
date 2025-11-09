@@ -2,12 +2,10 @@ package com.hyp.entity;
 
 import com.hyp.annotation.GenerateId;
 import com.hyp.enums.CaseStatusType;
-import com.hyp.enums.OrderPlateform;
+import com.hyp.enums.OrderPlatform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -140,17 +138,14 @@ public class Order {
     @Field("platform_fee")
     private Double platformFee;
 
-    @Field("order_plateform")
-    private OrderPlateform orderPlateform;
+    @Field("order_platform")
+    private OrderPlatform orderPlatform;
 
-    @Field("preorder_date")
-    private LocalDate preorderDate;
+    @Field("pre_order_datetime")
+    private LocalDateTime preOrderDateTime;
 
-    @Field("preorder_time")
-    private LocalTime preorderTime;
-
-    @Field("advanced_order")
-    private String advancedOrder;
+    @Field("pre_order")
+    private boolean preOrder;
 
     @Data
     @NoArgsConstructor

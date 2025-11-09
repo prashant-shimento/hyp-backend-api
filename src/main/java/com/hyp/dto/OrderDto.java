@@ -1,28 +1,24 @@
 package com.hyp.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.hyp.enums.OrderPlateform;
+import com.hyp.enums.OrderPlatform;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 
-@Data
-@EqualsAndHashCode(callSuper = false)
+import lombok.*;
+
+@Setter
+@Getter
+@AllArgsConstructor
+@Builder
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
 public class OrderDto extends BaseDto {
@@ -87,15 +83,9 @@ public class OrderDto extends BaseDto {
     @PositiveOrZero(message = "Service charge tax amount must be positive")
     private Double scTaxAmount;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    @FutureOrPresent(message = "Preorder date must be today or in the future")
-    private LocalDate preorderDate;
+    private LocalDateTime preOrderDateTime;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm:ss")
-    private LocalTime preorderTime;
-
-    @Pattern(regexp = "^[YyNn]$", message = "Advanced order must be either 'Y' or 'N'")
-    private String advancedOrder;
+    private boolean preOrder;
 
     @Valid
     private List<OrderDiscount> orderDiscount;
@@ -110,7 +100,7 @@ public class OrderDto extends BaseDto {
     private List<OrderLog> orderLogs = new ArrayList<>();
     private OrderCase orderCase;
     private Double platformFee;
-    private OrderPlateform orderPlateform;
+    private OrderPlatform orderPlatform;
 
     @Data
     @NoArgsConstructor

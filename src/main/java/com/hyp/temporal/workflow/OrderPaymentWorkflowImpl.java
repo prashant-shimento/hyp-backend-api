@@ -26,7 +26,7 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
     @Override
     public void handleOrderPayment(String orderId) {
         log.info("Workflow started: handleOrderPayment for orderId={}", orderId);
-        final int maxAttempts = 15;
+        final int maxAttempts = 45;
         boolean paid = false;
         int paidAtMinute = -1;
 

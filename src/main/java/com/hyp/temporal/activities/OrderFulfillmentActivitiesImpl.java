@@ -88,4 +88,10 @@ public class OrderFulfillmentActivitiesImpl implements OrderFulfillmentActivitie
                 orderId, restaurant.getRestaurantName(), order.getStatus(), customer.getName(), customer.getMobile());
         log.info("Sent fulfillment delay alert for {}", orderId);
     }
+
+    @Override
+    public Delivery createDelivery(Order order) {
+        deliveryService.processDeliveryOrder(order);
+        return deliveryService.findByOrderId(order.getId());
+    }
 }

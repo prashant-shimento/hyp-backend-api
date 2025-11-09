@@ -39,6 +39,7 @@ import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.service.PartnerService;
 import com.hyp.util.CommonUtils;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -202,12 +203,14 @@ public class PosOrderRequestTranslation {
         orderDetails.setPackingCharges(CommonUtils.emptyIfNullOrZeroToString(order.getPackagingCharge()));
         orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
         orderDetails.setOrderType(OrderType.fromCode(order.getOrderType()).toString());
-        if ("Y".equalsIgnoreCase(order.getAdvancedOrder())) {
+        orderDetails.setAdvancedOrder("N");
+        if (order.isPreOrder()) {
             orderDetails.setAdvancedOrder("Y");
-            orderDetails.setPreOrderDate(order.getPreorderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-            orderDetails.setPreOrderTime(order.getPreorderTime().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
-        } else {
-            orderDetails.setAdvancedOrder("N");
+            LocalDateTime preOrderDateTime = order.getPreOrderDateTime();
+            String dateStr = preOrderDateTime.toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            orderDetails.setPreOrderDate(dateStr);
+            String timeStr = preOrderDateTime.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+            orderDetails.setPreOrderTime(timeStr);
         }
         orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
         orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));

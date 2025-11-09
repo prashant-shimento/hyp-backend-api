@@ -23,45 +23,59 @@ public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow {
 
     @Override
     public void handleOrderFulfillment(String orderId, int fulfillmentDelay) {
-        log.info("Waiting for {} minutes before fulfilling order {}", fulfillmentDelay, orderId);
-        Workflow.sleep(Duration.ofMinutes(fulfillmentDelay));
-        Order order = activities.fetchOrder(orderId);
-        if (order == null) {
-            log.warn("Order not found for ID: {}", orderId);
-            return;
-        }
-
-        if (!(order.getStatus() == OrderStatusType.ACCEPTED
-                || order.getStatus() == OrderStatusType.READY_FOR_DELIVERY)) {
-            log.info("Skipping fulfillment. Order {} is in status {}", orderId, order.getStatus());
-            return;
-        }
-
-        Delivery delivery = activities.fetchDelivery(orderId);
-        if (delivery == null) {
-            log.warn("Delivery not found for order ID: {}", orderId);
-            return;
-        }
-
-        String fulfillType = activities.getFulfillmentMode();
         try {
-            activities.fulfillDelivery(delivery, Constants.SYSTEM, fulfillType);
-            log.info("Order {} successfully fulfilled using '{}' mode.", orderId, fulfillType);
-        } catch (DeliveryException e) {
-            log.error("Error fulfilling order {}: {}", orderId, e.getMessage(), e);
-            activities.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
+            int delayMinutes = Math.max(0, fulfillmentDelay);
+            log.info("Waiting for {} minutes before fulfilling order {}", delayMinutes, orderId);
+            if (delayMinutes > 0) {
+                Workflow.sleep(Duration.ofMinutes(delayMinutes));
+            }
+
+            Order order = activities.fetchOrder(orderId);
+            if (order == null) {
+                log.warn("Order not found for ID: {}", orderId);
+                return;
+            }
+
+            if (!(order.getStatus() == OrderStatusType.ACCEPTED
+                    || order.getStatus() == OrderStatusType.READY_FOR_DELIVERY)) {
+                log.info("Skipping fulfillment. Order {} is in status {}", orderId, order.getStatus());
+                return;
+            }
+
+            Delivery delivery = activities.fetchDelivery(orderId);
+            if (delivery == null && order.isPreOrder()) {
+                log.info("No existing delivery for pre-order {}. Creating delivery.", orderId);
+                delivery = activities.createDelivery(order);
+            }
+
+            if (delivery == null) {
+                log.warn("Delivery not found for order ID: {}", orderId);
+                return;
+            }
+
+            String fulfillType = activities.getFulfillmentMode();
+            try {
+                activities.fulfillDelivery(delivery, Constants.SYSTEM, fulfillType);
+                log.info("Order {} successfully fulfilled using '{}' mode.", orderId, fulfillType);
+            } catch (DeliveryException e) {
+                log.error("Error fulfilling order {}: {}", orderId, e.getMessage(), e);
+                activities.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
+            }
+
+            Workflow.sleep(Duration.ofMinutes(2));
+
+            Delivery updatedDelivery = activities.fetchDelivery(orderId);
+            if (updatedDelivery != null && updatedDelivery.getStatus() == DeliveryOrderStatusType.FULFILLED) {
+                log.info("Order {} fulfillment confirmed.", orderId);
+                return;
+            }
+
+            log.warn("Order {} delivery still pending after 2 minutes. Sending alert.", orderId);
+            activities.sendAlert(orderId);
+
+        } catch (Exception e) {
+            log.error("Workflow failed for order {}", orderId, e);
+            throw e;
         }
-
-        log.info("Waiting 2 minutes to verify delivery status for order {}", orderId);
-        Workflow.sleep(Duration.ofMinutes(2));
-
-        Delivery updatedDelivery = activities.fetchDelivery(orderId);
-        if (updatedDelivery != null && updatedDelivery.getStatus() == DeliveryOrderStatusType.FULFILLED) {
-            log.info("Order {} fulfillment confirmed.", orderId);
-            return;
-        }
-
-        log.warn("Order {} delivery still pending after 2 minutes. Sending alert.", orderId);
-        activities.sendAlert(orderId);
     }
 }

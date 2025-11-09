@@ -35,4 +35,14 @@ public class OrderWorkflowService {
                         .build());
         WorkflowClient.start(workflow::handleOrderFulfillment, orderId, fulfillmentDelay);
     }
+
+    public void startPreOrderWorkflow(String orderId, int scheduledDelay) {
+        OrderFulfillmentWorkflow workflow = workflowClient.newWorkflowStub(
+                OrderFulfillmentWorkflow.class,
+                WorkflowOptions.newBuilder()
+                        .setWorkflowId("pre-order-fulfillment-" + orderId)
+                        .setTaskQueue(ORDER_TASK_QUEUE)
+                        .build());
+        WorkflowClient.start(workflow::handleOrderFulfillment, orderId, scheduledDelay);
+    }
 }

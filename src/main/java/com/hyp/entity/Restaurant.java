@@ -4,6 +4,7 @@ import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
+import com.hyp.model.PreOrder;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -132,8 +133,6 @@ public class Restaurant {
     @CreatedDate
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    ;
-
     @Field("updated_at")
     @LastModifiedDate
     private LocalDateTime updatedAt;
@@ -194,6 +193,9 @@ public class Restaurant {
 
     @Field("restaurant_alt_Contact")
     private String restaurantAltContact;
+
+    @Field("pre_order")
+    private PreOrder preOrder;
 
     @Getter
     @Setter

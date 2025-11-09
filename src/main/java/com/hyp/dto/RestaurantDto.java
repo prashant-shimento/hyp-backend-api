@@ -7,6 +7,7 @@ import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
+import com.hyp.model.PreOrder;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -70,4 +71,5 @@ public class RestaurantDto extends BaseDto {
     private String embedMapUrl;
     private String googleAnalytics;
     private String restaurantAltContact;
+    private PreOrder preOrder;
 }

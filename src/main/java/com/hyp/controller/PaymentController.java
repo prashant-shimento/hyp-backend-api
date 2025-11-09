@@ -51,7 +51,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
         if (order == null) {
             throw new Exception("Order not found " + orderId);
         }
-        Payment payment = paymentService.createPaymentOrder(order.getId(), order.getGrandTotalAmount());
+        Payment payment = paymentService.createPaymentOrder(order);
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(payment))
                 .error(false)

@@ -1,5 +1,7 @@
 package com.hyp.service;
 
+import static com.hyp.util.ValidationUtils.isWithinDeliveryHours;
+
 import com.hyp.constants.Constants;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
@@ -17,6 +19,8 @@ import com.hyp.enums.PaymentType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
+import com.hyp.exception.ValidationException;
+import com.hyp.model.PreOrder;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.temporal.service.OrderTrackWorkflowService;
@@ -24,9 +28,8 @@ import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
-import com.hyp.util.ValidationUtils;
 import com.mongodb.client.result.UpdateResult;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -117,13 +120,27 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (!restaurant.isServiceable()) {
             throw new Exception("Restaurant is not serviceable");
         }
-        if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
+        if (!isWithinDeliveryHours(restaurant.getDeliveryHours())) {
             throw new Exception("Order cannot be processed: Outside delivery hours.");
         }
         if (!restaurant.isActive()) {
             throw new Exception("Restaurant is not active");
         }
+        boolean isPreOrder = orderDto.isPreOrder();
+        PreOrder preOrder = restaurant.getPreOrder();
+        if (isPreOrder && orderDto.getPreOrderDateTime() == null) {
+            throw new Exception("Pre-order date time is mandatory.");
+        }
+        if (isPreOrder && preOrder == null) {
+            throw new Exception("Pre-order is not configured for the restaurant.");
+        }
+        if (isPreOrder && !preOrder.isPreOrderEnabled()) {
+            throw new Exception("Pre-order is not enabled for the restaurant.");
+        }
 
+        if (isPreOrder) {
+            validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrder, restaurant.getDeliveryHours());
+        }
         Customer customer = Optional.ofNullable(customerService.findById(orderDto.getCustomerId()))
                 .orElseThrow(
                         () -> new EntityNotFoundException(Customer.class.getSimpleName(), orderDto.getCustomerId()));
@@ -156,7 +173,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
         }
 
-        if (!ValidationUtils.isWithinDeliveryHours(restaurant.getDeliveryHours())) {
+        if (!isWithinDeliveryHours(restaurant.getDeliveryHours())) {
             throw new Exception("Order cannot be processed: Outside delivery hours.");
         }
 
@@ -199,21 +216,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         }
 
         Order order = orderTranslation.getEntity(orderDto);
-
-        // Using String "Y"/"N" for advancedOrder (case-insensitive)
-        if ("Y".equalsIgnoreCase(orderDto.getAdvancedOrder())) {
-            if (orderDto.getPreorderDate() == null || orderDto.getPreorderTime() == null) {
-                throw new Exception("Preorder date/time are required for advanced orders");
-            }
-
-            LocalDateTime preorder = LocalDateTime.of(orderDto.getPreorderDate(), orderDto.getPreorderTime());
-            if (preorder.isBefore(LocalDateTime.now())) {
-                throw new Exception("Preorder date and time must be now or in the future");
-            }
-
-            order.setPreorderDate(orderDto.getPreorderDate());
-            order.setPreorderTime(orderDto.getPreorderTime());
-        }
         order.setStatus(OrderStatusType.CREATED);
         order.setOrderTime(LocalDateTime.now());
         order.setCreatedAt(LocalDateTime.now());
@@ -263,7 +265,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
 
             order.setStatus(newOrderStatus);
-            if (newOrderStatus == OrderStatusType.ACCEPTED) {
+            if (newOrderStatus == OrderStatusType.ACCEPTED && !order.isPreOrder()) {
                 order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
                 order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
                 order = update(order);
@@ -329,10 +331,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         orderWorkflowService.startOrderFulfillmentWorkflow(orderId, fulfillmentDelay);
     }
 
-    // public void startOrderTrackingWorkflow(String orderId) {
-    // orderTrackWorkFlowService.startOrderPaymentWorkflow(orderId);
-    // }
-
     public boolean updateStatus(String orderId, OrderStatusType newStatus) {
         List<OrderStatusType> allowedStatuses = Arrays.asList(
                 OrderStatusType.PAYMENT_PENDING,
@@ -354,5 +352,62 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             log.info("Order {} not updated; already processed or in final state.", orderId);
             return false;
         }
+    }
+
+    public void validatePreOrderTime(
+            LocalDateTime preOrderDateTime, PreOrder preOrderConfig, List<Restaurant.DeliveryHours> deliveryHours)
+            throws ValidationException {
+
+        ZoneId istZone = ZoneId.of("Asia/Kolkata");
+        ZoneId utcZone = ZoneOffset.UTC;
+
+        ZonedDateTime preOrderIST = preOrderDateTime.atZone(istZone);
+        ZonedDateTime preOrderUTC = preOrderIST.withZoneSameInstant(utcZone);
+
+        ZonedDateTime nowUTC = ZonedDateTime.now(utcZone);
+
+        if (!preOrderUTC.isAfter(nowUTC)) {
+            throw new ValidationException("Preorder time must be in the future.");
+        }
+
+        String unit = Optional.ofNullable(preOrderConfig.getTimeUnit()).orElse("minutes");
+
+        Duration minLead = unit.equalsIgnoreCase("minutes")
+                ? Duration.ofMinutes(preOrderConfig.getMinDuration())
+                : Duration.ofHours(preOrderConfig.getMinDuration());
+
+        Duration maxLead = unit.equalsIgnoreCase("minutes")
+                ? Duration.ofMinutes(preOrderConfig.getMaxDuration())
+                : Duration.ofHours(preOrderConfig.getMaxDuration());
+
+        ZonedDateTime minAllowedUTC = nowUTC.plus(minLead);
+        ZonedDateTime maxAllowedUTC = nowUTC.plus(maxLead);
+
+        if (preOrderUTC.isBefore(minAllowedUTC)) {
+            throw new ValidationException("Preorder time must be at least " + preOrderConfig.getMinDuration()
+                    + " " + unit + " ahead of current time.");
+        }
+
+        if (preOrderUTC.isAfter(maxAllowedUTC)) {
+            throw new ValidationException(
+                    "Preorder time cannot be more than " + preOrderConfig.getMaxDuration() + " " + unit + " from now.");
+        }
+
+        LocalTime preOrderTimeIST = preOrderIST.toLocalTime();
+        if (!isWithinDeliveryHours(preOrderTimeIST, deliveryHours)) {
+            throw new ValidationException("Preorder time must be within restaurant delivery hours.");
+        }
+
+        ZonedDateTime fulfillmentIST = preOrderIST.minusHours(1);
+        LocalTime fulfillmentTimeIST = fulfillmentIST.toLocalTime();
+
+        if (!isWithinDeliveryHours(fulfillmentTimeIST, deliveryHours)) {
+            throw new ValidationException("Restaurant cannot prepare this preorder. Fulfillment time ("
+                    + fulfillmentTimeIST + " IST) is outside delivery hours.");
+        }
+    }
+
+    public void startPreOrderWorkflow(String orderId, int scheduledDelay) {
+        orderWorkflowService.startPreOrderWorkflow(orderId, scheduledDelay);
     }
 }

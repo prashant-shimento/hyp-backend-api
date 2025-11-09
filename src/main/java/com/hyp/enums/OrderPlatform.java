@@ -1,6 +1,6 @@
 package com.hyp.enums;
 
-public enum OrderPlateform {
+public enum OrderPlatform {
     Web,
     Android,
     IOS

@@ -41,4 +41,24 @@ public class ValidationUtils {
         }
         return false;
     }
+
+    public static boolean isWithinDeliveryHours(LocalTime orderTime, List<DeliveryHours> deliveryHours) {
+        if (deliveryHours == null || deliveryHours.isEmpty()) {
+            return true;
+        }
+
+        for (DeliveryHours window : deliveryHours) {
+            LocalTime from = LocalTime.parse(window.getFrom());
+            LocalTime to = LocalTime.parse(window.getTo());
+
+            if (from.equals(to)) {
+                return true;
+            }
+
+            if (!orderTime.isBefore(from) && !orderTime.isAfter(to)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

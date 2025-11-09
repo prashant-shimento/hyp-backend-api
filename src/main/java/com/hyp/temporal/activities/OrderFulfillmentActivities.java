@@ -19,4 +19,6 @@ public interface OrderFulfillmentActivities {
     void updateOrderStatus(String orderId, OrderStatusType status);
 
     void sendAlert(String orderId);
+
+    Delivery createDelivery(Order order);
 }
