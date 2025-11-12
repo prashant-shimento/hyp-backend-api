@@ -1,6 +1,5 @@
 package com.hyp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.client.PidgeClient;
 import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
@@ -27,7 +26,6 @@ import com.hyp.repository.RiderRecordRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
-import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.util.CommonUtils;
 import java.time.Duration;
@@ -38,8 +36,6 @@ import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -47,32 +43,11 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
-    @Value("${delivery.pidge.url}")
-    private String baseUrl;
-
-    @Value("${delivery.pidge.smart.id}")
-    private Integer smartId;
-
-    @Value("${delivery.pidge.username}")
-    private String pidgeUsername;
-
-    @Value("${delivery.pidge.password}")
-    private String pidgePassword;
-
     @Autowired
     DeliveryRepository deliveryRepository;
 
     @Autowired
     RestaurantService restaurantService;
-
-    @Autowired
-    ApiLogService apiRequestResponseLogService;
-
-    @Autowired
-    RetryTemplate retryTemplate;
-
-    @Autowired
-    ObjectMapper objectMapper;
 
     @Autowired
     PosService posService;
@@ -84,9 +59,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     PidgeClient pidgeClient;
 
     @Autowired
-    NotificationService notificationService;
-
-    @Autowired
     RedisService redisService;
 
     @Autowired
@@ -94,9 +66,6 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     @Autowired
     AddressService addressService;
-
-    @Autowired
-    OrderTrackWorkflowService orderTrackWorkflowService;
 
     @Autowired
     private OrderEventPublisher orderEventPublisher;

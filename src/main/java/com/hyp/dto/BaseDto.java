@@ -11,5 +11,6 @@ public abstract class BaseDto {
     private String createdAt;
     private String updatedAt;
     private String restaurantId;
+    private String partnerId;
     private boolean isDeleted;
 }

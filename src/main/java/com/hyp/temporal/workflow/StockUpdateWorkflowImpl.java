@@ -42,6 +42,7 @@ public class StockUpdateWorkflowImpl implements StockUpdateWorkflow {
                     restaurantId,
                     workflowId,
                     e);
+            throw Workflow.wrap(e);
         }
     }
 }

@@ -75,7 +75,7 @@ public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow {
 
         } catch (Exception e) {
             log.error("Workflow failed for order {}", orderId, e);
-            throw e;
+            throw Workflow.wrap(e);
         }
     }
 }

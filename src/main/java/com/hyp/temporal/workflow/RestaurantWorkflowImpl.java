@@ -24,6 +24,7 @@ public class RestaurantWorkflowImpl implements RestaurantWorkflow {
             log.info("Successfully turned on restaurant {} ", restaurantId);
         } catch (Exception e) {
             log.error("Failed to turned on restaurant {} ", restaurantId, e);
+            throw Workflow.wrap(e);
         }
     }
 }

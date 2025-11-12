@@ -7,10 +7,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
+@Slf4j
 public class QueryUtils {
 
     public static final Map<String, List<String>> ALLOWED_API_PARAMS = new HashMap<>();
@@ -28,7 +30,9 @@ public class QueryUtils {
         ALLOWED_API_PARAMS.put("Restaurant", Constants.RESTAURANT_API_PARAMS);
         ALLOWED_API_PARAMS.put("Payment", Constants.PAYMENT_API_PARAMS);
         ALLOWED_API_PARAMS.put("OrderType", Constants.ORDER_TYPE_API_PARAMS);
-        ALLOWED_API_PARAMS.put("CustomerTestimonial", Constants.CUSTOMER_TESTONOMIAL_PARAMS);
+        ALLOWED_API_PARAMS.put("CustomerTestimonial", Constants.CUSTOMER_TESTIMONIAL_PARAMS);
+        ALLOWED_API_PARAMS.put("Fee", Constants.FEE_API_PARAMS);
+        ALLOWED_API_PARAMS.put("Settlement", Constants.SETTLEMENT_API_PARAMS);
     }
 
     public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
@@ -144,7 +148,7 @@ public class QueryUtils {
     }
 
     public static List<String> getAllowedParameters(String className) {
-        return ALLOWED_API_PARAMS.getOrDefault(className, Arrays.asList("id"));
+        return ALLOWED_API_PARAMS.getOrDefault(className, List.of("id"));
     }
 
     private static Object parseValue(String fieldName, String value, String operator) {
@@ -179,7 +183,7 @@ public class QueryUtils {
                 try {
                     return Integer.parseInt(value);
                 } catch (NumberFormatException e) {
-                    e.printStackTrace();
+                    log.error("Exception occurred on parseValue {}", e.getMessage());
                     return null;
                 }
             default:

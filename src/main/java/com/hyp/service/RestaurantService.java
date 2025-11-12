@@ -10,7 +10,7 @@ public class RestaurantService extends BaseServiceImpl<Restaurant, String> {
     @Autowired
     RestaurantRepository restaurantRepository;
 
-    public Restaurant findByMenuSharingCode(String menusharingcode) {
-        return restaurantRepository.findByMenuSharingCode(menusharingcode);
+    public Restaurant findByMenuSharingCode(String menuSharingCode) {
+        return restaurantRepository.findByMenuSharingCode(menuSharingCode);
     }
 }

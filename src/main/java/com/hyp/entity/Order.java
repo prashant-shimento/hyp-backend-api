@@ -48,6 +48,9 @@ public class Order {
     @Field("tax_amount")
     private double taxAmount;
 
+    @Field("item_total_amount")
+    private double itemTotalAmount;
+
     @Field("total_amount")
     private double totalAmount;
 
@@ -146,6 +149,9 @@ public class Order {
 
     @Field("pre_order")
     private boolean preOrder;
+
+    @Field("partner_id")
+    private String partnerId;
 
     @Data
     @NoArgsConstructor

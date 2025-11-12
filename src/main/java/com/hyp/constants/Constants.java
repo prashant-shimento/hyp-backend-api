@@ -13,15 +13,10 @@ public interface Constants {
     String RAZOR_PAY = "RAZOR_PAY";
     int VENDOR_HANDLE_DELIVERY = 0;
     int RESTAURANT_HANDLE_DELIVERY = 1;
-    String GST_VENDOR_LIABLE = "vendor";
     String GST_RESTAURANT_LIABLE = "restaurant";
     String PET_POOJA = "PET_POOJA";
-    String PIDGE = "PIDGE";
     String SYSTEM = "SYSTEM";
     String API = "API";
-    String SMART = "SMART";
-    String ON_CANCEL = "ON_CANCEL";
-    String SELF = "SELF";
 
     List<String> CUSTOMER_API_PARAMS = Arrays.asList("id", "name", "mobile", "restaurants", "createdAt");
     List<String> ORDER_API_PARAMS = Arrays.asList(
@@ -50,9 +45,12 @@ public interface Constants {
     List<String> PAYMENT_API_PARAMS =
             Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider", "status", "amount", "paymentId");
     List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
-    List<String> CUSTOMER_TESTONOMIAL_PARAMS = Arrays.asList("partnerId");
+    List<String> CUSTOMER_TESTIMONIAL_PARAMS = List.of("partnerId");
     List<String> FILE_EXTENSIONS = Arrays.asList(".jpg", ".png", ".jpeg");
     List<String> BOOLEAN_API_PARAMS = Arrays.asList("active", "serviceable");
+    List<String> FEE_API_PARAMS = Arrays.asList("id", "partnerId", "restaurantId", "active");
+    List<String> SETTLEMENT_API_PARAMS =
+            Arrays.asList("id", "partnerId", "restaurantId", "orderId", "createdAt", "updatedAt", "settlementStatus");
 
     static Map<String, String> getContentTypes() {
         Map<String, String> contentTypes = new HashMap<>();
@@ -64,7 +62,6 @@ public interface Constants {
     }
 
     String META_WHATSAPP = "whatsapp";
-    String META_RECIPIENT_TYPE = "";
     String TEMPLATE = "template";
     String META_ORDER_CONFIRMED_TEMPLATE = "order_confirmation";
     String META_ORDER_PICKEDUP_TEMPLATE = "order_pickedup";
@@ -78,7 +75,6 @@ public interface Constants {
     String META_ORDER_DELIVERED_THEATRE_TEMPLATE = "theatre_order_delivered";
     String META_GENERIC_ALERT_TEMPLATE = "generic_alert";
     String META_MENU_PUSH_ALERT_TEMPLATE = "menu_push_alert";
-    String META_STOCK_UPDATE_ALERT_TEMPLATE = "stock_update_alert";
     String META_RIDER_DELAY_ALERT_TEMPLATE = "rider_not_moving";
     String META_ORDER_DELAY_ALERT_TEMPLATE = "order_delay_customer_alert";
     String META_REFUND_TEMPLATE = "order_refund_alert";
@@ -95,19 +91,14 @@ public interface Constants {
     String REDIS_KEY_DELIVERY_DELAY = "deliveryDelay";
     String REDIS_KEY_RIDER_LOCATION_DELAY = "riderDelay";
 
-    String DEFAULT_LOGO = "https://storage.googleapis.com/hyp-app-bucket/default-logo.png";
-
-    public static final String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS";
-
-    String WELCOME_MESSAGE = "Welcome to *Rasyumm*, View Our Digital Menu";
-    String FACEBOOK_MESSAGE =
-            "*Rasyumm*:Thank you for visiting our restaurant! We value your feedback. Please rate your experience between 1 and 5";
+    String SUPPORTED_DATE_FORMATS = "yyyy-MM-dd'T'HH:mm:ss.SSS";
 
     String KEY_FULFILL = "fulfill";
     String KEY_SMART = "smart";
     String PAYMENT_WORKFLOW_ENABLED = "payment_workflow_enabled";
     String FULFILLMENT_WORKFLOW_ENABLED = "fulfillment_workflow_enabled";
     String STOCK_WORKFLOW_ENABLED = "stock_workflow_enabled";
+    Double PLATFORM_DELIVERY_SHARE = 50.0;
 
     Set<OrderStatusType> CANCELABLE_STATUSES = EnumSet.of(
             OrderStatusType.ACCEPTED,

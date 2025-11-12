@@ -1,5 +1,6 @@
 package com.hyp.service;
 
+import com.hyp.exception.EntityNotFoundException;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.colors.ColorConstants;
@@ -24,7 +25,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.bson.Document;
@@ -55,7 +55,10 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
 
     @Override
     public String generatePdf(List<Document> reportDoc) throws Exception {
-        Map<String, Object> reportData = reportDoc.isEmpty() ? new HashMap<>() : reportDoc.get(0);
+        if (reportDoc.isEmpty()) {
+            throw new EntityNotFoundException("Report", "No Data found");
+        }
+        Map<String, Object> reportData = reportDoc.get(0);
 
         ClassLoader classLoader = getClass().getClassLoader();
 
@@ -72,7 +75,6 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
         PdfFont bold = PdfFontFactory.createFont(
                 getResourceBytes(classLoader, BOLD_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
-        ;
         PdfFont regular = PdfFontFactory.createFont(
                 getResourceBytes(classLoader, REGULAR_FONT_RESOURCE), PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
 
@@ -88,12 +90,11 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         String formattedSettlementDate = formatSettlementDate();
 
         infoTable.addCell(createCell("Bill To:", bold, TextAlignment.LEFT, false));
-        infoTable.addCell(createLabelValueCell(
-                "Period:", formattedStartDate + " - " + formattedEndDate, bold, regular, TextAlignment.RIGHT));
-
-        infoTable.addCell(createCell((String) reportData.get("partner_name"), bold, TextAlignment.LEFT, false));
         infoTable.addCell(
-                createLabelValueCell("Settlement Date:", formattedSettlementDate, bold, regular, TextAlignment.RIGHT));
+                createLabelValueCell("Period:", formattedStartDate + " - " + formattedEndDate, bold, regular));
+
+        infoTable.addCell(createCell((String) reportData.get("partnerName"), bold, TextAlignment.LEFT, false));
+        infoTable.addCell(createLabelValueCell("Settlement Date:", formattedSettlementDate, bold, regular));
 
         doc.add(infoTable);
 
@@ -110,7 +111,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
 
         String fileName = REPORT_NAME + "-" + System.currentTimeMillis() + ".pdf";
         String filePath = REPORT_NAME + "/"
-                + ((String) reportData.get("partner_name")).trim().replaceAll("[^a-zA-Z0-9_-]", "_") + "/";
+                + ((String) reportData.get("partnerName")).trim().replaceAll("[^a-zA-Z0-9_-]", "_") + "/";
         return bucketService.uploadFileFromStream(outputStream, fileName, filePath, "application/pdf");
     }
 
@@ -126,7 +127,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
 
         Paragraph totalAmount = new Paragraph()
                 .add(new Text("Total Amount: ").setFont(bold))
-                .add(new Text("INR " + reportData.get("totalAmount")).setFont(regular))
+                .add(new Text("INR " + reportData.get("totalSettlement")).setFont(regular))
                 .setFontSize(11)
                 .setMarginTop(0)
                 .setMarginBottom(15)
@@ -138,20 +139,20 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
     }
 
     private static void addDynamicRows(Table table, Map<String, Object> reportData, PdfFont bold, PdfFont regular) {
-        addRow(table, "Item Total", String.valueOf(reportData.get("netBillValue")), regular, regular, null, false);
+        addRow(table, "Item Total", String.valueOf(reportData.get("itemTotal")), regular, regular, null, false);
         addRow(
                 table,
                 "Restaurant Discounts",
-                String.valueOf(reportData.get("totalDiscounts")),
+                String.valueOf(reportData.get("totalDiscount")),
                 regular,
                 regular,
                 ColorConstants.LIGHT_GRAY,
                 false);
-        addRow(table, "Taxes (GST)", String.valueOf(reportData.get("totalTaxes")), regular, regular, null, false);
+        addRow(table, "Taxes (GST)", String.valueOf(reportData.get("totalTax")), regular, regular, null, false);
         addRow(
                 table,
                 "Net Bill Value",
-                String.valueOf(reportData.get("netBillValue")),
+                String.valueOf(reportData.get("totalNetBill")),
                 bold,
                 bold,
                 ColorConstants.LIGHT_GRAY,
@@ -159,7 +160,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         addRow(
                 table,
                 "Platform Service Fee",
-                String.valueOf(reportData.get("platformFee")),
+                String.valueOf(reportData.get("totalPlatformFee")),
                 regular,
                 regular,
                 null,
@@ -167,7 +168,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         addRow(
                 table,
                 "Payment Gateway Charges (2%)",
-                String.valueOf(reportData.get("paymentGatewayCharges")),
+                String.valueOf(reportData.get("totalPaymentGatewayFee")),
                 regular,
                 regular,
                 null,
@@ -175,15 +176,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         addRow(
                 table,
                 "PetPooja API Charges (1%)",
-                String.valueOf(reportData.get("petPoojaApiCharges")),
-                regular,
-                regular,
-                null,
-                false);
-        addRow(
-                table,
-                "Delivery API Charges (Rs.5/Order)",
-                String.valueOf(reportData.get("deliveryApiCharges")),
+                String.valueOf(reportData.get("totalPosFee")),
                 regular,
                 regular,
                 null,
@@ -191,23 +184,15 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         addRow(
                 table,
                 "Total Service Fees",
-                String.valueOf(reportData.get("netServiceFee")),
+                String.valueOf(reportData.get("totalFees")),
                 bold,
                 bold,
                 ColorConstants.LIGHT_GRAY,
                 false);
         addRow(
                 table,
-                "Restaurant Shared Delivery Fee (30%)",
-                String.valueOf(reportData.get("restaurantSharedDeliveryFee")),
-                regular,
-                regular,
-                null,
-                false);
-        addRow(
-                table,
-                "Refund for customer complaints",
-                String.valueOf(reportData.get("totalRefunded")),
+                "Restaurant Delivery Share",
+                String.valueOf(reportData.get("totalMerchantDeliveryShare")),
                 regular,
                 regular,
                 null,
@@ -272,13 +257,12 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
                 .setMargin(0);
     }
 
-    private static Cell createLabelValueCell(
-            String label, String value, PdfFont boldFont, PdfFont regularFont, TextAlignment alignment) {
+    private static Cell createLabelValueCell(String label, String value, PdfFont boldFont, PdfFont regularFont) {
         Paragraph p = new Paragraph()
                 .add(new Text(label).setFont(boldFont))
                 .add(new Text(" " + value).setFont(regularFont))
                 .setFontSize(11)
-                .setTextAlignment(alignment)
+                .setTextAlignment(TextAlignment.RIGHT)
                 .setMargin(0)
                 .setPadding(0)
                 .setMultipliedLeading(1f);
@@ -306,7 +290,6 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
         try {
             Image bottomImage = new Image(bottomImageData);
             bottomImage.scaleToFit(pageWidth, 1000);
-            float bottomImageHeight = bottomImage.getImageScaledHeight();
             bottomImage.setFixedPosition(0, pageSize.getBottom());
 
             new Canvas(page, pageSize).add(bottomImage);

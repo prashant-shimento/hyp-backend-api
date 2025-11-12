@@ -36,4 +36,9 @@ public class OrderEventPublisher {
         DeliveryEvent event = new DeliveryEvent(this, delivery);
         applicationEventPublisher.publishEvent(event);
     }
+
+    public void publishSettlementEvent(Order order) {
+        SettlementEvent event = new SettlementEvent(this, order);
+        applicationEventPublisher.publishEvent(event);
+    }
 }

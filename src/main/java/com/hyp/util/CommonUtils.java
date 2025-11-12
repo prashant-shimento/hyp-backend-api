@@ -68,20 +68,12 @@ public class CommonUtils {
         return isoAmount / 100.0;
     }
 
-    public static int emptyIntToZero(String s) {
-        if (s.isEmpty()) {
-            return 0;
-        } else {
-            return Integer.parseInt(s);
-        }
-    }
-
     public static String emptyIfNullOrZeroToString(Object value) {
         if (value == null
                 || value == ""
                 || (value instanceof Number && ((Number) value).doubleValue() == 0.0)
-                || (value instanceof String && ((String) value).equals("0"))
-                || (value instanceof String && ((String) value).equals("0.00"))) {
+                || (value instanceof String && (value).equals("0"))
+                || (value instanceof String && (value).equals("0.00"))) {
             return "";
         }
         return value.toString();
@@ -177,5 +169,9 @@ public class CommonUtils {
             log.error("Failed to parse TurnOnTime '{}': {}", turnOnTime, e.getMessage(), e);
             return LocalDateTime.now().plusHours(2);
         }
+    }
+
+    public static double roundToTwoDecimal(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 }

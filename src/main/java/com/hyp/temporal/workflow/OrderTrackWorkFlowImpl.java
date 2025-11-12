@@ -20,22 +20,14 @@ public class OrderTrackWorkFlowImpl implements OrderTrackWorkFlow {
 
     private String nextExpectedFor(String currentStatus) {
         if (currentStatus == null) return "progress to next stage";
-        switch (currentStatus.trim().toUpperCase()) {
-            case "PAID":
-                return "ACCEPTED";
-            case "ACCEPTED":
-                return "SEARCHING_RIDER";
-            case "SEARCHING_RIDER":
-                return "OUT_FOR_PICKUP";
-            case "OUT_FOR_PICKUP":
-                return "OUT_FOR_DELIVERY";
-            case "OUT_FOR_DELIVERY":
-                return "DELIVERED";
-            case "DELIVERED":
-                return "DELIVERED";
-            default:
-                return "progress to the next expected status";
-        }
+        return switch (currentStatus.trim().toUpperCase()) {
+            case "PAID" -> "ACCEPTED";
+            case "ACCEPTED" -> "SEARCHING_RIDER";
+            case "SEARCHING_RIDER" -> "OUT_FOR_PICKUP";
+            case "OUT_FOR_PICKUP" -> "OUT_FOR_DELIVERY";
+            case "OUT_FOR_DELIVERY", "DELIVERED" -> "DELIVERED";
+            default -> "progress to the next expected status";
+        };
     }
 
     @Override
@@ -176,8 +168,8 @@ public class OrderTrackWorkFlowImpl implements OrderTrackWorkFlow {
             }
 
         } catch (Exception e) {
-            log.error("handleOrderTrackWithTimeout failed for orderId={}", orderId, e);
-            throw new RuntimeException("Order track failed for orderId=" + orderId, e);
+            log.error("Order track failed for orderId {}", orderId, e);
+            throw Workflow.wrap(e);
         }
     }
 }

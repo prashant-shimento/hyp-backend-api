@@ -6,6 +6,7 @@ import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.entity.Settlement;
 import com.hyp.enums.*;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.request.PosOrderUpdateRequest;
@@ -18,6 +19,7 @@ import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
 import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
+import com.hyp.service.SettlementService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -59,6 +61,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
     @Autowired
     PosOrderRequestTranslation posOrderRequestTranslation;
+
+    @Autowired
+    SettlementService settlementService;
 
     @PostMapping()
     public ResponseEntity<Response> create(@RequestBody @Valid OrderDto orderDto) {
@@ -168,5 +173,18 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(trackingUrl))
                 .build();
+    }
+
+    @PostMapping("/{orderId}/settlement")
+    public ResponseEntity<Response> orderSettlement(@PathVariable String orderId) throws EntityNotFoundException {
+        Order order = Optional.ofNullable(orderService.findById(orderId))
+                .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+        log.info("Computing Settlement for orderId {} via API", orderId);
+        Settlement settlement = settlementService.processSettlement(order);
+        return ResponseEntity.ok(Response.builder()
+                .data(Collections.singletonList(settlement))
+                .error(false)
+                .message("Order Settlement Consumed Successfully")
+                .build());
     }
 }

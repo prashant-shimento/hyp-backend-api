@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 import lombok.*;
 
 @Setter
@@ -101,6 +100,7 @@ public class OrderDto extends BaseDto {
     private OrderCase orderCase;
     private Double platformFee;
     private OrderPlatform orderPlatform;
+    private double itemTotalAmount;
 
     @Data
     @NoArgsConstructor
