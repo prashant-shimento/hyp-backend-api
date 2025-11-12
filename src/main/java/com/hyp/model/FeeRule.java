@@ -27,7 +27,7 @@ public class FeeRule {
     private Double thresholdValue;
     private Double minValue;
     private Double maxValue;
-    private boolean active;
+    private boolean active = true;
 
     @AssertTrue(message = "Value is mandatory for FIXED or PERCENTAGE type and cannot be 0")
     private boolean isValueValid() {

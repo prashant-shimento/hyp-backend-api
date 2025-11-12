@@ -133,7 +133,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         Fee feeConfig = feeService.findByRestaurantId(restaurantId);
 
         if (feeConfig == null) {
-            log.warn("Fee configuration missing for restaurant {}", restaurantId);
+            log.error("Fee configuration missing for restaurant {}", restaurantId);
             throw new RuntimeException("Fee configuration not available for restaurant " + restaurantId);
         }
 

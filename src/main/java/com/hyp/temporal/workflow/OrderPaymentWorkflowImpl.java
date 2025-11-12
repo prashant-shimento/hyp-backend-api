@@ -28,7 +28,7 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
         log.info("Workflow started: handleOrderPayment for orderId={}", orderId);
         try {
             final int maxAttempts = 45;
-            boolean paid = false;
+            boolean paidWithinTime = false;
             int paidAtMinute = -1;
 
             for (int minute = 1; minute <= maxAttempts; minute++) {
@@ -37,11 +37,17 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
                 String currentOrderStatus = activities.fetchOrderStatus(orderId);
                 OrderStatusType currentStatus = OrderStatusType.valueOf(currentOrderStatus.toUpperCase());
 
-                if (currentStatus == OrderStatusType.PAID) {
-                    paid = true;
-                    paidAtMinute = minute;
-                    log.info("Order {} marked as PAID at {}th minute", orderId, minute);
-                    break;
+                if (currentStatus == OrderStatusType.PAID
+                        || currentStatus == OrderStatusType.CANCELLED) {
+
+                    if (currentStatus == OrderStatusType.PAID) {
+                        paidWithinTime = true;
+                        paidAtMinute = minute;
+                        log.info("Order {} marked as PAID at {}th minute. Completing workflow.", orderId, minute);
+                    } else {
+                        log.info("Order {} already in final state: {}. Stopping workflow.", orderId, currentStatus);
+                    }
+                    return;
                 }
 
                 String paymentStatus = activities.fetchPaymentStatus(orderId);
@@ -50,9 +56,7 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
 
             String finalStatus = activities.fetchOrderStatus(orderId);
 
-            if (paid) {
-                log.info("Order {} paid within {} minutes (at {}). No refund.", orderId, maxAttempts, paidAtMinute);
-            } else if (OrderStatusType.PAID.name().equalsIgnoreCase(finalStatus)) {
+            if (OrderStatusType.PAID.name().equalsIgnoreCase(finalStatus)) {
                 log.warn("Order {} paid AFTER {} minutes. Initiating refund.", orderId, maxAttempts);
                 activities.initiateRefund(orderId, true);
             } else if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(finalStatus)) {

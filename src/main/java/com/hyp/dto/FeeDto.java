@@ -15,7 +15,7 @@ import lombok.*;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class FeeDto extends BaseDto {
 
-    private boolean active;
+    private boolean active = true;
 
     @NotBlank(message = "Partner is required")
     private String partnerId;
