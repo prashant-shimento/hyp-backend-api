@@ -204,6 +204,9 @@ public class PosOrderRequestTranslation {
         orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
         orderDetails.setOrderType(OrderType.fromCode(order.getOrderType()).toString());
         orderDetails.setAdvancedOrder("N");
+        orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        orderDetails.setPreOrderDate(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        orderDetails.setPreOrderTime(order.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
         if (order.isPreOrder()) {
             orderDetails.setAdvancedOrder("Y");
             LocalDateTime preOrderDateTime = order.getPreOrderDateTime();
@@ -220,7 +223,6 @@ public class PosOrderRequestTranslation {
         }
         orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
         orderDetails.setDescription(order.getDescription());
-        orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         orderDetails.setEnableDelivery(
                 restaurant.getDeliveryPartner() == DeliveryPartner.SELF
                         ? Constants.RESTAURANT_HANDLE_DELIVERY
