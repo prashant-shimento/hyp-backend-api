@@ -4,18 +4,13 @@ import static com.hyp.enums.FeeComponent.PLATFORM_FEE;
 
 import com.hyp.constants.Constants;
 import com.hyp.entity.*;
-import com.hyp.enums.FeeComponent;
-import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.*;
 import com.hyp.enums.OrderType;
-import com.hyp.enums.SettlementStatus;
 import com.hyp.model.FeeRule;
 import com.hyp.repository.SettlementRepository;
 import com.hyp.request.SettlementRequest;
 import com.hyp.util.CommonUtils;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +37,9 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
     @Autowired
     OrderService orderService;
 
+    @Autowired
+    PartnerService partnerService;
+
     public Settlement findByOrderId(String orderId) {
         return settlementRepository.findByOrderId(orderId);
     }
@@ -58,16 +56,40 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         CompletableFuture.runAsync(
                 () -> {
                     try {
+
+                        Restaurant restaurant = restaurantService.findById(request.getRestaurantId());
+                        if (restaurant == null) {
+                            log.error("Restaurant not found: {}", request.getRestaurantId());
+                            return;
+                        }
+
+                        Fee feeConfig = feeService.findByRestaurantId(request.getRestaurantId());
+                        if (feeConfig == null || feeConfig.isDeleted() || !feeConfig.isActive()) {
+                            log.error(
+                                    "Fee configuration missing or inactive for restaurant {}",
+                                    request.getRestaurantId());
+                            return;
+                        }
+
+                        Partner partner =
+                                partnerService.findPartnersByRestaurantId(restaurant.getId(), PartnerType.RESTAURANT);
+
                         List<Order> orders = orderService.findByRestaurantIdAndCreatedAt(
                                 request.getRestaurantId(),
                                 OrderStatusType.DELIVERED,
                                 request.getStartDate(),
                                 request.getEndDate());
 
+                        if (orders.isEmpty()) {
+                            log.info(
+                                    "No delivered orders found for restaurant {} in the date range",
+                                    request.getRestaurantId());
+                            return;
+                        }
                         // Process orders sequentially or parallel
                         orders.forEach(order -> {
                             try {
-                                processSettlement(order);
+                                computeSettlement(order, restaurant, feeConfig, partner);
                             } catch (Exception e) {
                                 log.error(
                                         "Failed to process settlement for order {}: {}", order.getId(), e.getMessage());
@@ -90,28 +112,58 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
     public Settlement processSettlement(Order order) {
         String orderId = order.getId();
         String restaurantId = order.getRestaurantId();
-
+        Partner partner = null;
         log.info("Starting settlement computation for orderId={}, restaurantId={}", orderId, restaurantId);
 
         Restaurant restaurant = restaurantService.findById(restaurantId);
+        if (order.getPartnerId() == null) {
+            if (restaurant.getRestaurantPartner() != null) {
+                partner = new Partner();
+                partner.setId(restaurant.getRestaurantPartner());
+            } else {
+                partner = partnerService.findPartnersByRestaurantId(restaurantId, PartnerType.RESTAURANT);
+            }
+        }
+
+        Fee feeConfig = feeService.findByRestaurantId(restaurantId);
+
+        if (feeConfig == null) {
+            log.error("Fee configuration missing for restaurant {}", restaurantId);
+            throw new RuntimeException("Fee configuration not available for restaurant " + restaurantId);
+        }
+        return computeSettlement(order, restaurant, feeConfig, partner);
+    }
+
+    private Settlement computeSettlement(Order order, Restaurant restaurant, Fee feeConfig, Partner partner) {
+        String orderId = order.getId();
+        String restaurantId = order.getRestaurantId();
+        String partnerId = order.getPartnerId();
+
+        // Determine partner
+        if (partnerId == null && partner != null) {
+            partnerId = partner.getId();
+        }
+
+        // Fetch existing settlement
         Settlement settlement = this.findByOrderId(orderId);
         if (settlement == null) {
             settlement = new Settlement();
             settlement.setOrderId(orderId);
             settlement.setRestaurantId(restaurantId);
-            log.info("Creating new Settlement for orderId={}", orderId);
+            settlement.setPartnerId(partnerId);
+            log.info("Creating new Settlement for orderId {}", orderId);
         }
+
+        // Compute item total
         double itemTotal = order.getItemTotalAmount();
         if (itemTotal == 0) {
             itemTotal = order.getOrderItems().stream()
-                    .mapToDouble(orderItem -> {
-                        double addonTotal = 0;
-                        if (orderItem.getOrderAddonItems() != null) {
-                            addonTotal = orderItem.getOrderAddonItems().stream()
-                                    .mapToDouble(addon -> addon.getPrice() * addon.getQuantity())
-                                    .sum();
-                        }
-                        return (orderItem.getPrice() * orderItem.getQuantity()) + addonTotal;
+                    .mapToDouble(item -> {
+                        double addonTotal =
+                                Optional.ofNullable(item.getOrderAddonItems()).orElse(Collections.emptyList()).stream()
+                                        .mapToDouble(a -> a.getPrice() * a.getQuantity())
+                                        .sum();
+                        return (item.getPrice() * item.getQuantity()) + addonTotal;
                     })
                     .sum();
         }
@@ -121,6 +173,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         double bill = itemTotal - discount;
         double netBill = bill + tax;
 
+        // Compute delivery charge
         double deliveryCharge = 0;
         if (OrderType.H == OrderType.fromCode(order.getOrderType())) {
             Delivery delivery = deliveryService.findByOrderId(orderId);
@@ -128,18 +181,10 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
                 deliveryCharge = delivery.getFulfillment().getDeliveryCharge();
             }
         }
-        settlement.setDeliveryCharge(deliveryCharge);
 
-        Fee feeConfig = feeService.findByRestaurantId(restaurantId);
-
-        if (feeConfig == null) {
-            log.error("Fee configuration missing for restaurant {}", restaurantId);
-            throw new RuntimeException("Fee configuration not available for restaurant " + restaurantId);
-        }
-
+        // Compute fees
         Map<FeeComponent, Double> appliedFees = new EnumMap<>(FeeComponent.class);
-
-        if (feeConfig.isActive() && !feeConfig.isDeleted() && feeConfig.getFeeRules() != null) {
+        if (feeConfig.getFeeRules() != null) {
             for (FeeRule feeRule : feeConfig.getFeeRules()) {
                 if (!feeRule.isActive()) continue;
                 double feeAmount = getFeeAmount(feeRule, bill, netBill);
@@ -149,22 +194,22 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
 
         double totalFees =
                 appliedFees.values().stream().mapToDouble(Double::doubleValue).sum();
+
+        // Delivery share
         double platformDeliveryShare = deliveryCharge
-                * (restaurant.getPlatformDeliveryShare() != null
-                        ? restaurant.getPlatformDeliveryShare()
-                        : Constants.PLATFORM_DELIVERY_SHARE)
+                * Optional.ofNullable(restaurant.getPlatformDeliveryShare()).orElse(Constants.PLATFORM_DELIVERY_SHARE)
                 / 100.0;
         double merchantDeliveryShare = getMerchantDeliveryShare(restaurant, netBill, platformDeliveryShare);
+
         double totalSettlement = netBill + totalFees + merchantDeliveryShare;
 
-        settlement.setOrderId(orderId);
+        // Populate settlement
         settlement.setItemTotal(CommonUtils.roundToTwoDecimal(itemTotal));
         settlement.setDiscount(discount);
         settlement.setTax(tax);
         settlement.setBill(bill);
         settlement.setNetBill(netBill);
-        settlement.setPlatformFee(
-                CommonUtils.roundToTwoDecimal(appliedFees.getOrDefault(FeeComponent.PLATFORM_FEE, 0.0)));
+        settlement.setPlatformFee(CommonUtils.roundToTwoDecimal(appliedFees.getOrDefault(PLATFORM_FEE, 0.0)));
         settlement.setPosFee(CommonUtils.roundToTwoDecimal(appliedFees.getOrDefault(FeeComponent.POS_FEE, 0.0)));
         settlement.setPaymentGatewayFee(
                 CommonUtils.roundToTwoDecimal(appliedFees.getOrDefault(FeeComponent.PAYMENT_GATEWAY_FEE, 0.0)));
@@ -174,14 +219,10 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         settlement.setTotalSettlement(CommonUtils.roundToTwoDecimal(totalSettlement));
         settlement.setSettlementStatus(SettlementStatus.PENDING.name());
         settlement.setRestaurantId(restaurantId);
-        settlement.setPartnerId(
-                order.getPartnerId() != null
-                        ? order.getPartnerId()
-                        : Objects.requireNonNull(restaurant).getRestaurantPartner());
         settlement.setFeesApplied(feeConfig.getFeeRules());
+        settlement.setDeliveryCharge(deliveryCharge);
 
-        this.save(settlement);
-        log.info("Settlement created for order {} (restaurant {}): total {}", orderId, restaurantId, totalSettlement);
+        log.info("Settlement created for order {} restaurant {}: total {}", orderId, restaurantId, totalSettlement);
         return settlement;
     }
 
