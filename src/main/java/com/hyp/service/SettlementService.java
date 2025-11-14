@@ -221,7 +221,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         settlement.setRestaurantId(restaurantId);
         settlement.setFeesApplied(feeConfig.getFeeRules());
         settlement.setDeliveryCharge(deliveryCharge);
-
+        save(settlement);
         log.info("Settlement created for order {} restaurant {}: total {}", orderId, restaurantId, totalSettlement);
         return settlement;
     }
