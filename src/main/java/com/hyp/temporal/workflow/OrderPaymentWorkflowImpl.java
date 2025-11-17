@@ -37,8 +37,7 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
                 String currentOrderStatus = activities.fetchOrderStatus(orderId);
                 OrderStatusType currentStatus = OrderStatusType.valueOf(currentOrderStatus.toUpperCase());
 
-                if (currentStatus == OrderStatusType.PAID
-                        || currentStatus == OrderStatusType.CANCELLED) {
+                if (currentStatus == OrderStatusType.PAID || currentStatus == OrderStatusType.CANCELLED) {
 
                     if (currentStatus == OrderStatusType.PAID) {
                         paidWithinTime = true;

@@ -1,25 +1,22 @@
 package com.hyp.entity;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
 import com.hyp.model.PreOrder;
-
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Getter
 @Setter
@@ -29,192 +26,192 @@ import lombok.ToString;
 @Document(collection = "restaurants")
 public class Restaurant {
 
-	@Id
-	@Field("id")
-	private String id;
+    @Id
+    @Field("id")
+    private String id;
 
-	private boolean active;
+    private boolean active;
 
-	@Field("currency_html")
-	private String currencyHtml;
+    @Field("currency_html")
+    private String currencyHtml;
 
-	private String country;
+    private String country;
 
-	@Field("minimum_order_amount")
-	private String minimumOrderAmount;
+    @Field("minimum_order_amount")
+    private String minimumOrderAmount;
 
-	@Field("restaurant_name")
-	private String restaurantName;
+    @Field("restaurant_name")
+    private String restaurantName;
 
-	@Field("website_url")
-	private String websiteUrl;
+    @Field("website_url")
+    private String websiteUrl;
 
-	@Field("packaging_applicable_on")
-	private String packagingApplicableOn;
+    @Field("packaging_applicable_on")
+    private String packagingApplicableOn;
 
-	private String city;
+    private String city;
 
-	@Field("packaging_charge")
-	private String packagingCharge;
+    @Field("packaging_charge")
+    private String packagingCharge;
 
-	@Field("calculate_tax_on_delivery")
-	private Integer calculateTaxOnDelivery;
+    @Field("calculate_tax_on_delivery")
+    private Integer calculateTaxOnDelivery;
 
-	@Field("packaging_charge_type")
-	private String packagingChargeType;
+    @Field("packaging_charge_type")
+    private String packagingChargeType;
 
-	@Field("total_delivery_share")
-	private Double totalDeliveryShare;
+    @Field("total_delivery_share")
+    private Double totalDeliveryShare;
 
-	@Field("restaurant_delivery_share")
-	private Double restaurantDeliveryShare;
+    @Field("restaurant_delivery_share")
+    private Double restaurantDeliveryShare;
 
-	@Field("platform_delivery_share")
-	private Double platformDeliveryShare;
+    @Field("platform_delivery_share")
+    private Double platformDeliveryShare;
 
-	@Field("discount_percentage")
-	private Double discountPercentage;
+    @Field("discount_percentage")
+    private Double discountPercentage;
 
-	private String status;
+    private String status;
 
-	private String remarks;
+    private String remarks;
 
-	@Field("next_action")
-	private String nextAction;
+    @Field("next_action")
+    private String nextAction;
 
-	private String contact;
+    private String contact;
 
-	private String state;
+    private String state;
 
-	private String landmark;
+    private String landmark;
 
-	private String pincode;
+    private String pincode;
 
-	private Location location;
+    private Location location;
 
-	private List<String> images;
+    private List<String> images;
 
-	private String address;
+    private String address;
 
-	@Field("tax")
-	private RestaurantTax tax;
+    @Field("tax")
+    private RestaurantTax tax;
 
-	@Field("menu_sharing_code")
-	private String menuSharingCode;
+    @Field("menu_sharing_code")
+    private String menuSharingCode;
 
-	@Field("fssai")
-	private String fssai;
+    @Field("fssai")
+    private String fssai;
 
-	@Field("delivery_hours")
-	private List<DeliveryHours> deliveryHours;
+    @Field("delivery_hours")
+    private List<DeliveryHours> deliveryHours;
 
-	@Field("calculate_tax_on_packing")
-	private Integer calculateTaxOnPacking;
+    @Field("calculate_tax_on_packing")
+    private Integer calculateTaxOnPacking;
 
-	@Field("delivery_charge")
-	private String deliveryCharge;
+    @Field("delivery_charge")
+    private String deliveryCharge;
 
-	@Field("minimum_delivery_time")
-	private String minimumDeliveryTime;
+    @Field("minimum_delivery_time")
+    private String minimumDeliveryTime;
 
-	@Field("turn_on_time")
-	private LocalDateTime turnOnTime;
+    @Field("turn_on_time")
+    private LocalDateTime turnOnTime;
 
-	@Field("status_reason")
-	private String statusReason;
+    @Field("status_reason")
+    private String statusReason;
 
-	@Field("delivery_radius")
-	private Double deliveryRadius;
+    @Field("delivery_radius")
+    private Double deliveryRadius;
 
-	@Field("delivery_partner")
-	private DeliveryPartner deliveryPartner;
+    @Field("delivery_partner")
+    private DeliveryPartner deliveryPartner;
 
-	@Field("support_contact")
-	private String supportContact;
+    @Field("support_contact")
+    private String supportContact;
 
-	@Field("created_at")
-	@CreatedDate
-	private LocalDateTime createdAt = LocalDateTime.now();
+    @Field("created_at")
+    @CreatedDate
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-	@Field("updated_at")
-	@LastModifiedDate
-	private LocalDateTime updatedAt;
+    @Field("updated_at")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
-	@Field("screens")
-	private List<String> screens;
+    @Field("screens")
+    private List<String> screens;
 
-	@Field("logo_url")
-	private String logoUrl;
+    @Field("logo_url")
+    private String logoUrl;
 
-	@Field("email")
-	private String email;
+    @Field("email")
+    private String email;
 
-	@Field("restaurant_partner")
-	private String restaurantPartner;
+    @Field("restaurant_partner")
+    private String restaurantPartner;
 
-	@Field("pos_partner")
-	private String posPartner;
+    @Field("pos_partner")
+    private String posPartner;
 
-	@Field("payment_partner")
-	private String paymentPartner;
+    @Field("payment_partner")
+    private String paymentPartner;
 
-	@Field("instant_refund")
-	private boolean instantRefund;
+    @Field("instant_refund")
+    private boolean instantRefund;
 
-	@Field("fulfillment_delay")
-	private Integer fulfillmentDelay;
+    @Field("fulfillment_delay")
+    private Integer fulfillmentDelay;
 
-	@Field("serviceable")
-	private boolean serviceable;
+    @Field("serviceable")
+    private boolean serviceable;
 
-	@Field("serviceable_message")
-	private String serviceableMessage;
+    @Field("serviceable_message")
+    private String serviceableMessage;
 
-	@Field("platform_fee")
-	private List<PlatformFee> platformFee;
+    @Field("platform_fee")
+    private List<PlatformFee> platformFee;
 
-	@Field("delivery_fee")
-	private Double deliveryFee;
+    @Field("delivery_fee")
+    private Double deliveryFee;
 
-	@Field("is_payment_routing_enabled")
-	private boolean paymentRoutingEnabled;
+    @Field("is_payment_routing_enabled")
+    private boolean paymentRoutingEnabled;
 
-	@Field("payment_route_list")
-	private List<PaymentRoute> paymentRouteList;
+    @Field("payment_route_list")
+    private List<PaymentRoute> paymentRouteList;
 
-	@Field("show_custom_message")
-	private boolean showCustomMessage;
+    @Field("show_custom_message")
+    private boolean showCustomMessage;
 
-	@Field("custom_message")
-	private String customMessage;
+    @Field("custom_message")
+    private String customMessage;
 
-	@Field("embed_map_url")
-	private String embedMapUrl;
+    @Field("embed_map_url")
+    private String embedMapUrl;
 
-	@Field("restaurant_alt_Contact")
-	private String restaurantAltContact;
+    @Field("restaurant_alt_Contact")
+    private String restaurantAltContact;
 
-	@Field("pre_order_config")
-	private PreOrder preOrderConfig;
+    @Field("pre_order_config")
+    private PreOrder preOrderConfig;
 
-	@Field("delivery_offer")
-	private int deliveryOffer;
+    @Field("delivery_offer")
+    private int deliveryOffer;
 
-	@Getter
-	@Setter
-	@NoArgsConstructor
-	@AllArgsConstructor
-	public static class DeliveryHours {
-		private String from;
-		private String to;
-	}
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryHours {
+        private String from;
+        private String to;
+    }
 
-	@Getter
-	@Setter
-	@NoArgsConstructor
-	@AllArgsConstructor
-	public static class RestaurantTax {
-		private String dcTaxesId;
-		private String pcTaxesId;
-	}
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RestaurantTax {
+        private String dcTaxesId;
+        private String pcTaxesId;
+    }
 }
