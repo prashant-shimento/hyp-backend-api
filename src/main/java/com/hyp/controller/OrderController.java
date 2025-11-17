@@ -118,7 +118,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
                     }
                     if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
                         Delivery delivery = deliveryService.findByOrderId(orderId);
-                        deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                        if (delivery != null) {
+                            deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                        }
                     }
                     paymentService.createRefund(
                             order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(), "Cancellation");

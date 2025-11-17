@@ -113,7 +113,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
                     return Mono.fromRunnable(() -> save(delivery));
                 })
-                .block();
+                .subscribe();
     }
 
     public DeliveryQuote getDeliveryQuote(DeliveryQuoteRequest deliveryQuoteRequest) throws DeliveryException {

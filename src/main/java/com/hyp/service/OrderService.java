@@ -136,20 +136,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (!restaurant.isActive()) {
             throw new Exception("Restaurant is not active");
         }
-        boolean isPreOrder = orderDto.isPreOrder();
-        PreOrder preOrder = restaurant.getPreOrderConfig();
-        if (isPreOrder && orderDto.getPreOrderDateTime() == null) {
-            throw new Exception("Pre-order date time is mandatory.");
-        }
-        if (isPreOrder && preOrder == null) {
-            throw new Exception("Pre-order is not configured for the restaurant.");
-        }
-        if (isPreOrder && !preOrder.isPreOrderEnabled()) {
-            throw new Exception("Pre-order is not enabled for the restaurant.");
-        }
+        boolean isPreOrder = Boolean.TRUE.equals(orderDto.getPreOrder());
+        PreOrder preOrderConfig = getPreOrder(orderDto, restaurant, isPreOrder);
 
         if (isPreOrder) {
-            validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrder, restaurant.getDeliveryHours());
+            validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrderConfig, restaurant.getDeliveryHours());
         }
         Customer customer = Optional.ofNullable(customerService.findById(orderDto.getCustomerId()))
                 .orElseThrow(
@@ -260,31 +251,54 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         return order;
     }
 
+    private static PreOrder getPreOrder(OrderDto orderDto, Restaurant restaurant, boolean isPreOrder)
+            throws ValidationException {
+        PreOrder preOrderConfig = restaurant.getPreOrderConfig();
+
+        if (isPreOrder) {
+            if (orderDto.getPreOrderDateTime() == null) {
+                throw new ValidationException("Pre-order date time is mandatory.");
+            }
+            if (preOrderConfig == null) {
+                throw new ValidationException("Pre-order is not configured for the restaurant.");
+            }
+            if (!preOrderConfig.isPreOrderEnabled()) {
+                throw new ValidationException("Pre-order is not enabled for the restaurant.");
+            }
+        }
+        return preOrderConfig;
+    }
+
     public void processOrderCallback(PosCallbackRequest posCallbackRequest) {
 
+        String orderId = posCallbackRequest.getOrderId();
+        String restaurantId = posCallbackRequest.getRestaurantId();
         try {
-            Restaurant restaurant = restaurantService.findByMenuSharingCode(posCallbackRequest.getRestaurantId());
+            Restaurant restaurant = restaurantService.findByMenuSharingCode(restaurantId);
             if (restaurant == null) {
                 throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
             }
-            if (!this.isExistsById(posCallbackRequest.getOrderId())) {
-                throw new Exception("Order not found " + posCallbackRequest.getOrderId());
+            if (!this.isExistsById(orderId)) {
+                throw new Exception("Order not found " + orderId);
             }
-            Order order = this.findById(posCallbackRequest.getOrderId());
-            PaymentType paymentType = order.getPaymentType();
-            if (paymentType != PaymentType.COD) {
-                if (paymentService.findByOrderId(order.getId()) == null) {
-                    throw new Exception("Payment not completed" + posCallbackRequest.getOrderId());
+            Order order = this.findById(orderId);
+
+            if (order.getPaymentType() != PaymentType.COD) {
+                if (paymentService.findByOrderId(orderId) == null) {
+                    throw new Exception("Payment not completed" + orderId);
                 }
             }
 
             OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
+            updateOrderStatus(orderId, newOrderStatus);
 
-            order.setStatus(newOrderStatus);
+            order = this.findById(orderId);
+
             if (newOrderStatus == OrderStatusType.ACCEPTED && !order.isPreOrder()) {
                 order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
                 order.setMinPrepTime(posCallbackRequest.getMinPrepTime());
                 order = update(order);
+
                 int fulfillmentDelay =
                         Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(2);
 
@@ -304,16 +318,20 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                     return;
                 }
 
-                String fulfillmentMode =
-                        redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
                 Delivery delivery = deliveryService.findByOrderId(order.getId());
 
                 if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
                     log.warn("No PENDING delivery found for order {}. Skipping fulfillment.", order.getId());
                     return;
                 }
+
+                String fulfillmentMode =
+                        redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
                 deliveryService.processDeliveryOrderFulfill(delivery, Constants.PET_POOJA, fulfillmentMode);
-            } else if (newOrderStatus == OrderStatusType.CANCELLED) {
+                return;
+            }
+
+            if (newOrderStatus == OrderStatusType.CANCELLED) {
                 paymentService.createRefund(
                         order.getId(),
                         order.getGrandTotalAmount(),
@@ -326,7 +344,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                     deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
                 }
             }
-            updateOrderStatus(order.getId(), newOrderStatus);
         } catch (DeliveryException e) {
             throw new RuntimeException("Exception Occurred while createOrder in Delivery Service " + e.getMessage());
         } catch (Exception e) {
@@ -337,6 +354,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
         Order order = this.findById(orderId);
+        if (order.getStatus() == orderStatus) {
+            log.info("Order {} already in status {}, skipping update.", orderId, orderStatus);
+            return;
+        }
+
         order.setStatus(orderStatus);
         order.getOrderLogs().add(new Order.OrderLog(orderStatus.name()));
         save(order);
@@ -344,6 +366,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (OrderStatusType.DELIVERED.equals(order.getStatus())) {
             orderEventPublisher.publishSettlementEvent(order);
         }
+        log.info("Order {} status updated to {}", orderId, orderStatus);
     }
 
     public void startOrderFulfillmentWorkflow(String orderId, int fulfillmentDelay) {

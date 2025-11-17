@@ -84,7 +84,7 @@ public class OrderDto extends BaseDto {
 
     private LocalDateTime preOrderDateTime;
 
-    private boolean preOrder;
+    private Boolean preOrder;
 
     @Valid
     private List<OrderDiscount> orderDiscount;
