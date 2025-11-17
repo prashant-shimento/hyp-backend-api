@@ -3,7 +3,6 @@ package com.hyp.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hyp.entity.Restaurant;
 import com.hyp.enums.PartnerType;
 import com.hyp.model.ApiConfig;
 import jakarta.validation.constraints.NotBlank;
@@ -43,7 +42,7 @@ public class PartnerDto {
 
     private String createdAt;
     private String updatedAt;
-    private List<Restaurant> restaurantDetails;
+    private List<RestaurantDto> restaurantDetails;
 
     @NotNull(message = "LogoUrl is required")
     private String logoUrl;

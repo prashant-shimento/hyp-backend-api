@@ -116,15 +116,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         if (filteredQuotes.isEmpty()) {
             throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
         }
-        // 50% temp fix
-        DeliveryQuote.DeliveryNetworks chosenDeliveryOption = filteredQuotes.get();
-
-        double originalDeliveryPrice = chosenDeliveryOption.getQuote().getPrice();
-        double discountedDeliveryPrice = originalDeliveryPrice / 2;
-
-        chosenDeliveryOption.getQuote().setPrice(discountedDeliveryPrice);
         return ResponseEntity.ok(
-                new Response(Collections.singletonList(chosenDeliveryOption), false, "Delivery Quotes Fetched"));
+                new Response(Collections.singletonList(filteredQuotes.get()), false, "Delivery Quotes Fetched"));
     }
 
     @Hidden
