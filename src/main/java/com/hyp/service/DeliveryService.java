@@ -91,6 +91,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
             DeliveryOrderRequest deliveryOrderRequest =
                     DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant, address, customer, order);
+            log.info("Creating Delivery for OrderId {}", order.getId());
             createOrder(deliveryOrderRequest, order);
         } catch (DeliveryException e) {
             log.error(
@@ -113,7 +114,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
                     return Mono.fromRunnable(() -> save(delivery));
                 })
-                .subscribe();
+                .block();
     }
 
     public DeliveryQuote getDeliveryQuote(DeliveryQuoteRequest deliveryQuoteRequest) throws DeliveryException {
