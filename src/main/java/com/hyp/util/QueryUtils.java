@@ -36,8 +36,8 @@ public class QueryUtils {
     }
 
     public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
-        Integer limit = null;
-        Integer offset = null;
+        int limit = 10;
+        int offset = 0;
         Sort sort = null;
         String sortField = requestParam.get("sortField");
 
@@ -136,8 +136,8 @@ public class QueryUtils {
                 }
             }
         }
-        query.limit(limit != null ? limit : 10);
-        query.skip(offset != null ? offset * limit : 0);
+        query.limit(limit);
+        query.skip(Math.multiplyExact(offset, limit));
 
         return query;
     }
@@ -163,7 +163,7 @@ public class QueryUtils {
             }
             return CommonUtils.getISODate(value, Constants.SUPPORTED_DATE_FORMATS);
         }
-        if (Constants.BOOLEAN_API_PARAMS.contains(fieldName)) {
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
             return Boolean.parseBoolean(value);
         }
         switch (operator) {
