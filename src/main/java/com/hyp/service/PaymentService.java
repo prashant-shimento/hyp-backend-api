@@ -11,6 +11,7 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.RefundType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.PaymentException;
+import com.hyp.exception.ValidationException;
 import com.hyp.model.PaymentConfig;
 import com.hyp.model.PaymentRoute;
 import com.hyp.repository.PaymentRepository;
@@ -73,7 +74,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     public Payment createPaymentOrder(com.hyp.entity.Order order) throws PaymentException {
         try {
             if (order == null || !OrderStatusType.CREATED.equals(order.getStatus())) {
-                throw new IllegalStateException(
+                throw new ValidationException(
                         "Order is in Invalid Status: " + (order != null ? order.getStatus() : "null"));
             }
 

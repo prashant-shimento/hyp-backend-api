@@ -18,20 +18,25 @@ public class IdGenerationAspect {
 
     @Before("execution(* org.springframework.data.repository.CrudRepository.save(..)) && args(entity)")
     public void generateId(Object entity) throws IllegalAccessException {
-        Class<?> entityClass = entity.getClass();
-        for (Field field : entityClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(GenerateId.class)) {
-                field.setAccessible(true);
-                if (field.get(entity) == null) {
-                    GenerateId annotation = field.getAnnotation(GenerateId.class);
-                    String sequenceName = annotation.sequenceName();
-                    field.set(
-                            entity,
-                            !sequenceName.isEmpty()
-                                    ? sequenceService.generateSequence(sequenceName)
-                                    : CommonUtils.genId());
+        Class<?> clazz = entity.getClass();
+        while (clazz != null && clazz != Object.class) {
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.isAnnotationPresent(GenerateId.class)) {
+                    field.setAccessible(true);
+                    Object currentValue = field.get(entity);
+                    if (currentValue == null || (currentValue instanceof String && ((String) currentValue).isEmpty())) {
+                        GenerateId annotation = field.getAnnotation(GenerateId.class);
+                        String sequenceName = annotation.sequenceName();
+
+                        String generatedId = !sequenceName.isEmpty()
+                                ? sequenceService.generateSequence(sequenceName)
+                                : CommonUtils.genId();
+
+                        field.set(entity, generatedId);
+                    }
                 }
             }
+            clazz = clazz.getSuperclass(); // check parent class fields
         }
     }
 }

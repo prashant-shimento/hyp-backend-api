@@ -5,6 +5,7 @@ import com.hyp.response.Response;
 import com.hyp.service.BaseService;
 import com.hyp.service.BaseTranslationService;
 import com.hyp.util.QueryUtils;
+import com.hyp.validation.BaseValidator;
 import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +33,9 @@ public abstract class BaseController<DTO, T, ID> {
 
     @Autowired
     protected BaseTranslationService<DTO, T> translationService;
+
+    @Autowired(required = false)
+    protected BaseValidator<DTO> validator;
 
     protected Class<T> entity;
 
@@ -93,6 +97,10 @@ public abstract class BaseController<DTO, T, ID> {
     @PostMapping
     public ResponseEntity<Response> create(@RequestBody @Valid DTO dto) {
         try {
+
+            if (validator != null) {
+                validator.validate(dto);
+            }
             T entity = translationService.getEntity(dto);
             T savedEntity = service.save(entity);
             dto = translationService.getDto(savedEntity);

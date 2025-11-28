@@ -1,5 +1,7 @@
 package com.hyp.entity;
 
+import com.hyp.annotation.GenerateId;
+import jakarta.persistence.MappedSuperclass;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -10,7 +12,6 @@ import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Getter
@@ -18,12 +19,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@Document
+@MappedSuperclass
 public abstract class BaseEntity implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
     @Id
+    @Field("id")
+    @GenerateId()
     private String id;
 
     @Field("created_at")
