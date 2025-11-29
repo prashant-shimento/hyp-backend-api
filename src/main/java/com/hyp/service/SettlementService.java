@@ -201,7 +201,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
                 / 100.0;
         double merchantDeliveryShare = getMerchantDeliveryShare(restaurant, netBill, platformDeliveryShare);
 
-        double totalSettlement = netBill + totalFees + merchantDeliveryShare;
+        double totalSettlement = netBill - totalFees + merchantDeliveryShare;
 
         // Populate settlement
         settlement.setItemTotal(CommonUtils.roundToTwoDecimal(itemTotal));
@@ -221,6 +221,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         settlement.setRestaurantId(restaurantId);
         settlement.setFeesApplied(feeConfig.getFeeRules());
         settlement.setDeliveryCharge(deliveryCharge);
+        settlement.setOrderAt(order.getCreatedAt());
         save(settlement);
         log.info("Settlement created for order {} restaurant {}: total {}", orderId, restaurantId, totalSettlement);
         return settlement;
@@ -232,7 +233,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         return switch (feeRule.getType()) {
             case PERCENTAGE -> baseAmount * feeRule.getValue() / 100.0;
             case FIXED -> feeRule.getValue();
-            case THRESHOLD -> baseAmount > feeRule.getThresholdValue() ? feeRule.getMinValue() : feeRule.getMaxValue();
+            case THRESHOLD -> baseAmount > feeRule.getThresholdValue() ? feeRule.getMaxValue() : feeRule.getMinValue();
             default -> 0;
         };
     }

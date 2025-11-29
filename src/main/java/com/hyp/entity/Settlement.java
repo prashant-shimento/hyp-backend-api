@@ -89,4 +89,7 @@ public class Settlement {
 
     @Field("restaurant_id")
     private String restaurantId;
+
+    @Field("order_at")
+    private LocalDateTime orderAt;
 }
