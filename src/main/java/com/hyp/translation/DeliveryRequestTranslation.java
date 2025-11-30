@@ -79,7 +79,7 @@ public class DeliveryRequestTranslation {
         senderAddress.setLatitude(restaurant.getLocation().getLatitude());
         senderAddress.setLongitude(restaurant.getLocation().getLongitude());
         senderDetail.setAddress(senderAddress);
-        senderDetail.setMobile(restaurant.getContact());
+        senderDetail.setMobile("7801057583");
         senderDetail.setName(restaurant.getRestaurantName());
         orderRequest.setSenderDetail(senderDetail);
 
