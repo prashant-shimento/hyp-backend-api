@@ -169,8 +169,9 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         }
 
         double discount = order.getDiscountAmount();
-        double tax = order.getTaxAmount();
         double bill = itemTotal - discount;
+        //TODO: Need to modify this to calculate via Item Tax
+        double tax = (bill/100)*5;
         double netBill = bill + tax;
 
         // Compute delivery charge
@@ -187,7 +188,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         if (feeConfig.getFeeRules() != null) {
             for (FeeRule feeRule : feeConfig.getFeeRules()) {
                 if (!feeRule.isActive()) continue;
-                double feeAmount = getFeeAmount(feeRule, bill, netBill);
+                double feeAmount = getFeeAmount(feeRule, netBill);
                 appliedFees.put(feeRule.getFee(), feeAmount);
             }
         }
@@ -227,13 +228,12 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         return settlement;
     }
 
-    private static double getFeeAmount(FeeRule feeRule, double bill, double netBill) {
-        double baseAmount = PLATFORM_FEE.equals(feeRule.getFee()) ? bill : netBill;
+    private static double getFeeAmount(FeeRule feeRule,double netBill) {
 
         return switch (feeRule.getType()) {
-            case PERCENTAGE -> baseAmount * feeRule.getValue() / 100.0;
+            case PERCENTAGE -> netBill * feeRule.getValue() / 100.0;
             case FIXED -> feeRule.getValue();
-            case THRESHOLD -> baseAmount > feeRule.getThresholdValue() ? feeRule.getMaxValue() : feeRule.getMinValue();
+            case THRESHOLD -> netBill > feeRule.getThresholdValue() ? feeRule.getMaxValue() : feeRule.getMinValue();
             default -> 0;
         };
     }
