@@ -42,7 +42,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PosDataRequestTranslation {
 
-    public static PosData getPosData(PosDataRequest posDataRequest) {
+    public static PosData getPosData(PosDataRequest posDataRequest, List<Item> existingItem) {
         return PosData.builder()
                 .orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
                 .attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
@@ -54,7 +54,7 @@ public class PosDataRequestTranslation {
                         posDataRequest.getAddongroups(), posDataRequest.getItems()))
                 .variations(PosDataRequestTranslation.translateToVariationList(
                         posDataRequest.getVariations(), posDataRequest.getItems()))
-                .items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems()))
+                .items(PosDataRequestTranslation.translateToItemList(posDataRequest.getItems(), existingItem))
                 .build();
     }
 
@@ -478,10 +478,11 @@ public class PosDataRequestTranslation {
                         .collect(Collectors.toList());
     }
 
-    public static Item translateToItem(ItemRequest itemRequest) {
+    public static Item translateToItem(ItemRequest itemRequest, Item existingItem) {
         if (itemRequest == null) {
             return null;
         }
+
         Item item = new Item();
         item.setId(itemRequest.getItemid());
         item.setItemDescription(itemRequest.getItemdescription());
@@ -517,6 +518,14 @@ public class PosDataRequestTranslation {
         item.setItemOrderType(orderTypeIds);
 
         item.setAddon(getAddonIdList(itemRequest.getAddon()));
+        if (existingItem != null) {
+            item.setOfferEnabled(Boolean.TRUE.equals(existingItem.getOfferEnabled()));
+            item.setOfferType(existingItem.getOfferType());
+            item.setOfferValue(existingItem.getOfferValue());
+        } else {
+            item.setOfferEnabled(false);
+        }
+
         return item;
     }
 
@@ -534,10 +543,19 @@ public class PosDataRequestTranslation {
                         .collect(Collectors.toList());
     }
 
-    public static List<Item> translateToItemList(List<ItemRequest> itemRequestList) {
-        return itemRequestList.stream()
-                .map(PosDataRequestTranslation::translateToItem)
-                .collect(Collectors.toList());
+    public static List<Item> translateToItemList(List<ItemRequest> itemRequestList, List<Item> existingItems) {
+        List<Item> mergedItems = new ArrayList<>();
+        for (ItemRequest req : itemRequestList) {
+            Item existingItem = null;
+            if (existingItems != null) {
+                existingItem = existingItems.stream()
+                        .filter(item -> item.getId().equals(req.getItemid()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            mergedItems.add(translateToItem(req, existingItem));
+        }
+        return mergedItems;
     }
 
     private static String getPrice(ItemRequest itemRequest) {

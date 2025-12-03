@@ -103,7 +103,7 @@ public class Item extends BaseEntity {
     private transient List<AddonGroup> itemAddons;
 
     @Field("offer_enabled")
-    private boolean offerEnabled;
+    private Boolean offerEnabled;
 
     @Field("offer_type")
     private OfferType offerType;

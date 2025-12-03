@@ -21,6 +21,7 @@ import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.PosData;
 import com.hyp.request.FileUploadRequest;
 import com.hyp.request.PosDataRequest;
+import com.hyp.request.PosDataRequest.ItemRequest;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
@@ -40,6 +41,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -170,8 +172,12 @@ public class PosServiceImpl implements PosService {
             long restaurantSave = System.currentTimeMillis();
             restaurantService.save(restaurant);
             log.info("Time taken for restaurantSave: {} ms", System.currentTimeMillis() - restaurantSave);
+            List<String> requestItemIds = posDataRequest.getItems().stream()
+                    .map(ItemRequest::getItemid)
+                    .collect(Collectors.toList());
+            List<Item> existingItems = itemService.findAllByIdIn(requestItemIds);
             long posDataTranslation = System.currentTimeMillis();
-            PosData posData = PosDataRequestTranslation.getPosData(posDataRequest);
+            PosData posData = PosDataRequestTranslation.getPosData(posDataRequest, existingItems);
             log.info("Time taken for posDataTranslation: {} ms", System.currentTimeMillis() - posDataTranslation);
             saveEntities(restaurant, posData);
 

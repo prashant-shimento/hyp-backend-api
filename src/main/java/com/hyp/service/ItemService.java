@@ -10,7 +10,10 @@ import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -244,5 +247,12 @@ public class ItemService extends BaseServiceImpl<Item, String> {
             mongoTemplate.getCollection("items").bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
             log.info("Bulk write items completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
         }
+    }
+
+    public List<Item> findAllByIdIn(List<String> requestItemIds) {
+        if (requestItemIds == null || requestItemIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return itemRepository.findAllByIdIn(requestItemIds);
     }
 }

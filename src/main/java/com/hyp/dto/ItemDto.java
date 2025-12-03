@@ -58,7 +58,7 @@ public class ItemDto extends BaseDto {
     private String ignoreDiscounts;
     private String isRecommend;
     private String gstType;
-    private boolean offerEnabled;
+    private Boolean offerEnabled;
     private OfferType offerType;
     private Double offerValue;
 }
