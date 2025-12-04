@@ -88,7 +88,7 @@ public interface Constants {
     String META_REFUND_TEMPLATE = "order_refund_alert";
     String REFUND_REASON = "Token of Apology";
 
-    String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "95098113-03a2-4cf2-8454-3c4323da9f69";
+    String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "9d435490-203b-4062-9e4b-faea4fb786e5";
 
     String REDIS_KEY_PIDGE_TOKEN = "pidgeToken";
     String REDIS_KEY_FULFILL = "fulfill";

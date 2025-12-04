@@ -170,8 +170,8 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
 
         double discount = order.getDiscountAmount();
         double bill = itemTotal - discount;
-        //TODO: Need to modify this to calculate via Item Tax
-        double tax = (bill/100)*5;
+        // TODO: Need to modify this to calculate via Item Tax
+        double tax = (bill / 100) * 5;
         double netBill = bill + tax;
 
         // Compute delivery charge
@@ -228,7 +228,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         return settlement;
     }
 
-    private static double getFeeAmount(FeeRule feeRule,double netBill) {
+    private static double getFeeAmount(FeeRule feeRule, double netBill) {
 
         return switch (feeRule.getType()) {
             case PERCENTAGE -> netBill * feeRule.getValue() / 100.0;
