@@ -28,13 +28,10 @@ public class OneSignalClient {
     private String apiKey;
 
     @Value("${onesignal.partner.api.key}")
-    private String PartnerApiKey;
-
-    //	@Value("${onesignal.app.id}")
-    //	private String appId;
+    private String partnerApiKey;
 
     @Value("${onesignal.partner.app.id}")
-    private String partberAppId;
+    private String partnerAppId;
 
     private static final int MAX_RETRIES = 3;
     private static final Duration BACKOFF_DURATION = Duration.ofSeconds(2);
@@ -51,7 +48,7 @@ public class OneSignalClient {
     private WebClient getClientForPartner() {
         return WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Basic " + PartnerApiKey)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Basic " + partnerApiKey)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
@@ -63,10 +60,10 @@ public class OneSignalClient {
                 .doBeforeRetry(signal -> log.warn("Retrying OneSignal call, attempt {}", signal.totalRetries() + 1)));
     }
 
-    public Mono<Void> registerUser(String userId, String oneSignalId) throws OneSignalException {
-        String endpoint = baseUrl + "/apps/" + partberAppId + "/users/by/onesignal_id/" + oneSignalId + "/identity";
+    public Mono<Void> registerUser(String userId, String oneSignalId) {
+        String endpoint = baseUrl + "/apps/" + partnerAppId + "/users/by/onesignal_id/" + oneSignalId + "/identity";
 
-        log.info("registerUser endpoint " + endpoint);
+        log.info("registerUser endpoint {}", endpoint);
         IdentityRequest identityRequest = IdentityRequest.builder()
                 .identity(Identity.builder().externalId(userId).build())
                 .build();
@@ -82,21 +79,19 @@ public class OneSignalClient {
                 .doOnError(e -> log.error("Error in registerUser for user {}: {}", userId, e.getMessage(), e))
                 .onErrorMap(e -> {
                     log.error("Final failure after retries for user {}. Alerting about failure...", userId);
-                    OneSignalException oneSignalException =
-                            new OneSignalException("registerUser" + " " + userId, e.getMessage());
-                    return oneSignalException;
+                    return new OneSignalException("registerUser" + " " + userId, e.getMessage());
                 }));
     }
 
-    public Mono<Void> deleteUser(String userId, String oneSignalId) throws OneSignalException {
-        String endpoint = baseUrl + "/apps/" + partberAppId + "/users/by/onesignal_id/" + oneSignalId;
+    public Mono<Void> deleteUser(String userId, String oneSignalId) {
+        String endpoint = baseUrl + "/apps/" + partnerAppId + "/users/by/onesignal_id/" + oneSignalId;
 
         log.info("deleteUser endpoint {}", endpoint);
 
         return executeWithRetry(getClientForPartner()
                 .delete()
                 .uri(endpoint)
-                .header("Authorization", "Key " + PartnerApiKey)
+                .header("Authorization", "Key " + partnerApiKey)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
                 .onStatus(
@@ -143,7 +138,7 @@ public class OneSignalClient {
         }
     }
 
-    public void sendNotificationforPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
+    public void sendNotificationForPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
         String endpoint = "/notifications?c=push";
         LoggingUtils.logRequest("sendNotification", oneSignalNotificationRequest);
@@ -156,7 +151,7 @@ public class OneSignalClient {
                             .body(BodyInserters.fromValue(oneSignalNotificationRequest))
                             .retrieve()
                             .bodyToMono(Void.class))
-                    .doOnSuccess(unused -> log.info("OneSignal sendNotification completed successfully"))
+                    .doOnSuccess(unused -> log.info("OneSignal sendNotificationForPartner completed successfully"))
                     .onErrorMap(e -> {
                         log.error("Final failure after retries. Error: {}", e.getMessage(), e);
                         return new OneSignalException(

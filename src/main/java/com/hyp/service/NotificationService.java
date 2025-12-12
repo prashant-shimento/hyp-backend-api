@@ -268,7 +268,7 @@ public class NotificationService {
 
     public void sendOneSignalNotificationForPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
-        oneSignalClient.sendNotificationforPartner(oneSignalNotificationRequest);
+        oneSignalClient.sendNotificationForPartner(oneSignalNotificationRequest);
     }
 
     public void sendTestNotification(String restaurantId) {

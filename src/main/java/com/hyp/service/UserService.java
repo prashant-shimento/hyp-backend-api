@@ -29,7 +29,7 @@ public class UserService extends BaseServiceImpl<User, String> {
         oneSignalClient.registerUser(userId, oneSignalId).block();
     }
 
-    public void unregisterOneSignalUser(String userId, String oneSignalId) throws OneSignalException {
+    public void unregisterOneSignalUser(String userId, String oneSignalId) {
         oneSignalClient.deleteUser(userId, oneSignalId).block();
     }
 

@@ -51,6 +51,7 @@ jobs:
           REDIS_PORT: ${{ secrets.STAGING_REDIS_PORT }}
           REDIS_PASSWORD: ${{ secrets.STAGING_REDIS_PASSWORD }}
           ONE_SIGNAL_KEY: ${{ secrets.ONE_SIGNAL_KEY }}
+          ONE_SIGNAL_PARTNER_KEY: ${{ secrets.ONE_SIGNAL_PARTNER_KEY }}
           TEMPORAL_HOST: ${{ secrets.STAGING_TEMPORAL_HOST }}
           TEMPORAL_PORT: ${{ secrets.STAGING_TEMPORAL_PORT }}
 
@@ -85,6 +86,7 @@ jobs:
           echo "REDIS_PORT=${{ secrets.STAGING_REDIS_PORT }}" >> .env
           echo "REDIS_PASSWORD=${{ secrets.STAGING_REDIS_PASSWORD }}" >> .env
           echo "ONE_SIGNAL_KEY=${{ secrets.ONE_SIGNAL_KEY }}" >> .env
+          echo "ONE_SIGNAL_PARTNER_KEY=${{ secrets.ONE_SIGNAL_PARTNER_KEY }}" >> .env
           echo "TEMPORAL_HOST=${{ secrets.STAGING_TEMPORAL_HOST }}" >> .env
           echo "TEMPORAL_PORT=${{ secrets.STAGING_TEMPORAL_PORT }}" >> .env
 
