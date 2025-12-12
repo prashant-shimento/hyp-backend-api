@@ -57,7 +57,7 @@ public class OrderFulfillmentActivitiesImpl implements OrderFulfillmentActivitie
 
     @Override
     public String getFulfillmentMode() {
-        return String.valueOf(redisService.getRedisData(Constants.KEY_FULFILL));
+        return redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
     }
 
     @Override

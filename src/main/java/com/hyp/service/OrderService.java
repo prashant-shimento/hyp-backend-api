@@ -13,20 +13,16 @@ import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.DeliveryOrderStatusType;
-import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.OrderType;
-import com.hyp.enums.PartnerType;
-import com.hyp.enums.PaymentType;
+import com.hyp.enums.*;
 import com.hyp.event.OrderEventPublisher;
-import com.hyp.exception.DeliveryException;
-import com.hyp.exception.EntityNotFoundException;
-import com.hyp.exception.ValidationException;
+import com.hyp.exception.*;
 import com.hyp.model.PreOrder;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
+import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.translation.OrderTranslation;
+import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.mongodb.client.result.UpdateResult;
 import java.time.Duration;
@@ -45,6 +41,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -109,6 +106,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     @Autowired
     private OneSignalAlertService oneSignalAlertService;
+
+    @Autowired
+    PosOrderRequestTranslation posOrderRequestTranslation;
+
+    @Autowired
+    PosService posService;
 
     public Order create(OrderDto orderDto) throws Exception {
 
@@ -346,26 +349,39 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         } catch (DeliveryException e) {
             throw new RuntimeException("Exception Occurred while createOrder in Delivery Service " + e.getMessage());
         } catch (Exception e) {
-            this.updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
+            updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
             throw new RuntimeException("Exception Occurred while processCallback Order " + e.getMessage());
         }
     }
 
-    public void updateOrderStatus(String orderId, OrderStatusType orderStatus) {
-        Order order = this.findById(orderId);
-        if (order.getStatus() == orderStatus) {
-            log.info("Order {} already in status {}, skipping update.", orderId, orderStatus);
-            return;
+    @Transactional
+    public Order updateOrderStatus(String orderId, OrderStatusType newStatus) {
+
+        Order order = findById(orderId);
+        OrderStatusType oldStatus = order.getStatus();
+
+        if (oldStatus == newStatus) {
+            log.info("Order {} already in status {}, skipping update.", orderId, newStatus);
+            return order;
         }
 
-        order.setStatus(orderStatus);
-        order.getOrderLogs().add(new Order.OrderLog(orderStatus.name()));
+        order.setStatus(newStatus);
+        order.getOrderLogs().add(new Order.OrderLog(newStatus.name()));
+
         save(order);
-        orderEventPublisher.publishOrderStatusChangeEvent(order);
-        if (OrderStatusType.DELIVERED.equals(order.getStatus())) {
-            orderEventPublisher.publishSettlementEvent(order);
+
+        try {
+            orderEventPublisher.publishOrderStatusChangeEvent(order);
+
+            if (OrderStatusType.DELIVERED.equals(newStatus)) {
+                orderEventPublisher.publishSettlementEvent(order);
+            }
+        } catch (Exception e) {
+            log.error("Failed to publish event for order {} status {}: {}", orderId, newStatus, e.getMessage());
         }
-        log.info("Order {} status updated to {}", orderId, orderStatus);
+
+        log.info("Order {} status updated from {} -> {}", orderId, oldStatus, newStatus);
+        return order;
     }
 
     public void startOrderFulfillmentWorkflow(String orderId, int fulfillmentDelay) {
@@ -455,5 +471,74 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     public void startPreOrderWorkflow(String orderId, int scheduledDelay) {
         orderWorkflowService.startPreOrderWorkflow(orderId, scheduledDelay);
+    }
+
+    public Order update(String orderId, OrderDto orderDto) throws OrderNotFoundException {
+
+        try {
+            Order order = findById(orderId);
+            if (order == null) {
+                throw new OrderNotFoundException("Order not found " + orderId);
+            }
+            OrderStatusType oldStatus = order.getStatus();
+            OrderStatusType newStatus =
+                    OrderStatusType.valueOf(orderDto.getStatus().toUpperCase());
+            orderTranslation.updateEntityFromDto(orderDto, order);
+            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+
+            switch (newStatus) {
+                case ACCEPTED -> handleAccepted(order, restaurant);
+                case DELIVERED -> handleDelivered(order);
+                case CANCELLED -> handleCancelled(order, restaurant, oldStatus);
+            }
+
+            return updateOrderStatus(orderId, newStatus);
+        } catch (PosException | DeliveryException | PaymentException | RequestTranslationException e) {
+            log.error("Order {} update failed: {}", orderId, e.getMessage());
+            throw new RuntimeException("Order update failed");
+        }
+    }
+
+    private void handleAccepted(Order order, Restaurant restaurant) throws DeliveryException {
+        if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) return;
+
+        String fulfillMode =
+                redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
+        Delivery delivery = deliveryService.findByOrderId(order.getId());
+
+        if (delivery == null || delivery.getStatus() != DeliveryOrderStatusType.PENDING) return;
+
+        if (fulfillMode.equalsIgnoreCase("smart")) {
+            deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
+        } else {
+            deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
+        }
+    }
+
+    private void handleDelivered(Order order) {
+        Delivery delivery = deliveryService.findByOrderId(order.getId());
+        posService.updatePosRiderStatus(delivery, order);
+    }
+
+    private void handleCancelled(Order order, Restaurant restaurant, OrderStatusType oldStatus)
+            throws PosException, DeliveryException, PaymentException, RequestTranslationException {
+
+        if (!Constants.CANCELABLE_STATUSES.contains(oldStatus)) return;
+
+        if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
+            PosOrderUpdateRequest req =
+                    posOrderRequestTranslation.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
+            posService.updatePosOrder(req);
+        }
+
+        if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
+            Delivery delivery = deliveryService.findByOrderId(order.getId());
+            if (delivery != null) {
+                deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+            }
+        }
+
+        paymentService.createRefund(
+                order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(), "Cancellation");
     }
 }

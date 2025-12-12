@@ -1,6 +1,5 @@
 package com.hyp.controller;
 
-import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.Delivery;
@@ -9,7 +8,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.entity.Settlement;
 import com.hyp.enums.*;
 import com.hyp.exception.EntityNotFoundException;
-import com.hyp.request.PosOrderUpdateRequest;
+import com.hyp.exception.OrderNotFoundException;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.response.Response;
@@ -81,61 +80,12 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
     }
 
     @PatchMapping("/{orderId}")
-    public ResponseEntity<Response> update(@PathVariable String orderId, @RequestBody OrderDto orderDto) {
+    public ResponseEntity<Response> update(@PathVariable String orderId, @RequestBody OrderDto orderDto)
+            throws OrderNotFoundException {
         Response response;
-        try {
-            Order order = orderService.findById(orderId);
-            if (order == null) {
-                response = new Response(null, true, "Order not found " + orderId);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-            OrderStatusType orderStatus = order.getStatus();
-            orderTranslation.updateEntityFromDto(orderDto, order);
-            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-            if (OrderStatusType.ACCEPTED.name().equalsIgnoreCase(orderDto.getStatus())
-                    && restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
-                String fulFill =
-                        redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
-                Delivery delivery = deliveryService.findByOrderId(order.getId());
-                if (delivery != null && delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)) {
-                    if (fulFill.equalsIgnoreCase("smart")) {
-                        deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
-                    } else {
-                        deliveryService.processDeliveryStandardFulfill(delivery, Constants.PET_POOJA);
-                    }
-                }
-            }
-            if (OrderStatusType.DELIVERED.name().equalsIgnoreCase(orderDto.getStatus())) {
-                orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERED);
-                posService.updatePosRiderStatus(deliveryService.findByOrderId(orderId), order);
-            }
-            if (OrderStatusType.CANCELLED.name().equalsIgnoreCase(orderDto.getStatus())) {
-                if (Constants.CANCELABLE_STATUSES.contains(orderStatus)) {
-                    if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
-                        PosOrderUpdateRequest posOrderUpdateRequest =
-                                posOrderRequestTranslation.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
-                        posService.updatePosOrder(posOrderUpdateRequest);
-                    }
-                    if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
-                        Delivery delivery = deliveryService.findByOrderId(orderId);
-                        if (delivery != null) {
-                            deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
-                        }
-                    }
-                    paymentService.createRefund(
-                            order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(), "Cancellation");
-                }
-                orderService.updateOrderStatus(orderId, OrderStatusType.CANCELLED);
-            }
-            order = orderService.save(order);
-            orderService.updateOrderStatus(orderId, order.getStatus());
-            response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Exception occurred in update {}", e.getMessage());
-            response = new Response(null, true, ErrorConstants.INTERNAL_SERVER_ERROR);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        Order order = orderService.update(orderId, orderDto);
+        response = new Response(Collections.singletonList(orderTranslation.getDto(order)), false, "Order Updated");
+        return ResponseEntity.ok(response);
     }
 
     @Hidden
