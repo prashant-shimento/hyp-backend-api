@@ -43,14 +43,11 @@ public class BucketService {
 
             String fileUrl = FileUtils.trimFileUrl(fileUploadRequest.getFileUrl());
             log.info("FileUrl after parsing:{} ", fileUrl);
-            String contentType = FileUtils.getContentType(fileUrl);
-            if (contentType == null) {
-                log.warn("Unsupported file extension for file: {}", fileUrl);
-            }
+            String contentType = FileUtils.resolveContentType(fileUrl);
             String fileName = FileUtils.formatFileName(fileUploadRequest.getFileName());
             String folderName = fileUploadRequest.getFolderName();
             String folderPath = folderName.endsWith("/") ? folderName : folderName + "/";
-            String fullFilePath = folderPath + fileName + FileUtils.getFileExtension(contentType);
+            String fullFilePath = folderPath + fileName + FileUtils.safeFileExtension(contentType);
 
             byte[] fileBytes = FileUtils.downloadFileFromUrl(fileUploadRequest.getFileUrl());
             if (fileBytes == null) {

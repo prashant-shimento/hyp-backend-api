@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Menu Viewer — POS Editor (with Taxes)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+        :root {
+            --accent: #276ef1;
+            --muted: #6b7280;
+            --danger: #e74c3c;
+            --bg: #f6f8fb;
+            --pane: #fff;
+            --card-border: #e9eef8;
+            --success: #16a34a;
+        }
+        body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:18px; background:var(--bg); color:#1f2937; }
+        h1 { margin:0 0 12px 0; font-size:20px; }
+        .pane { background:var(--pane); padding:12px; border-radius:8px; box-shadow:0 1px 4px rgba(20,20,30,0.04); margin-bottom:14px; border:1px solid var(--card-border); }
+        textarea { width:100%; min-height:180px; font-family: monospace; padding:10px; box-sizing:border-box; border-radius:6px; border:1px solid #e3e6ea; resize: vertical; background:#fcfdff; }
+        .controls { display:flex; gap:8px; margin-top:10px; align-items:center; }
+        button { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; background:var(--accent); color:#fff; }
+        button.ghost { background:#fff; color:var(--accent); border:1px solid rgba(39,110,241,0.12); }
+        button.tiny { padding:6px 8px; font-size:13px; }
+        input[type="text"], input[type="number"] { width:100%; padding:6px 8px; border-radius:6px; border:1px solid #e3e6ea; box-sizing:border-box; }
+        .small { font-size:13px; color:var(--muted); }
+
+        .row { display:flex; gap:10px; }
+        .col { flex:1; }
+
+        .accordion { background:#f8fbff; padding:10px; border-radius:6px; cursor:pointer; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; border:1px solid #eef6ff; }
+        .panel { display:none; padding:12px 8px 0 8px; }
+
+        table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+        th, td { border:1px solid #f0f4ff; padding:8px; text-align:left; vertical-align:top; }
+        th { background:#fbfdff; width:180px; color:#374151; font-weight:600; }
+
+        .img-preview { height:80px; width:120px; object-fit:cover; border-radius:6px; border:1px solid #e6eef8; }
+        .inline-btn { padding:6px 8px; background:#eef2ff; border-radius:6px; border:1px solid #dbe7ff; cursor:pointer; color:var(--accent); }
+        .danger { background:#fff4f4; color:var(--danger); border:1px solid #ffd6d6; }
+        .muted { color:var(--muted); font-size:13px; }
+        .section-title { font-weight:700; margin-bottom:8px; font-size:15px; }
+
+        /* validation */
+        .invalid { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(231,76,60,0.06); }
+
+        /* spinner overlay */
+        .overlay { position:fixed; left:0; right:0; top:0; bottom:0; display:none; background:rgba(0,0,0,0.18); align-items:center; justify-content:center; z-index:9999; }
+        .spinner { background:#fff; padding:18px 22px; border-radius:10px; display:flex; gap:12px; align-items:center; box-shadow:0 6px 30px rgba(8,10,20,0.12); border:1px solid #e8eefc; }
+        .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); animation: pulse 1s infinite ease-in-out; }
+        .dot:nth-child(2){ animation-delay:0.12s; }
+        .dot:nth-child(3){ animation-delay:0.24s; }
+        @keyframes pulse { 0%{ transform:scale(.8); opacity:.6 } 50%{ transform:scale(1.15); opacity:1 } 100%{ transform:scale(.8); opacity:.6 } }
+
+        /* toast */
+        .toast { position:fixed; right:18px; bottom:18px; z-index:10000; min-width:220px; border-radius:10px; padding:12px 16px; display:none; box-shadow:0 8px 28px rgba(12,18,40,0.12); font-weight:600; color:white; }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.info { background: var(--accent); }
+
+        footer.controls { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; }
+        footer .left { display:flex; gap:10px; align-items:center; color:var(--muted); font-size:13px; }
+
+        @media (max-width:900px){
+            .row { flex-direction:column; }
+            th { width: 140px; }
+        }
+    </style>
+</head>
+<body>
+<h1>Menu Viewer — POS Editor (with Taxes)</h1>
+
+<div class="pane">
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+            <label class="small">ID Mode:</label>
+            <div class="muted small">Using <strong>External IDs</strong> by default.</div>
+        </div>
+        <div style="margin-left:auto" class="muted small">
+            Paste raw Swiggy JSON or load a sample then click Extract
+        </div>
+    </div>
+
+    <div style="margin-top:8px;">
+        <textarea id="rawJson"
+                  placeholder='Paste raw Swiggy JSON response here... (or press "Load sample")'></textarea>
+
+        <!-- moved checkbox HERE -->
+        <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
+            <input id="useInternalIdCheckbox" type="checkbox">
+            <label class="small" for="useInternalIdCheckbox">
+                Use internal IDs (toggle to enable)
+            </label>
+        </div>
+
+        <div class="controls">
+            <button id="btnExtract">Extract → Convert to POS</button>
+            <button id="btnLoadSample" class="ghost">Load sample</button>
+            <button id="btnReset" class="ghost">Reset</button>
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                <button id="btnExport" class="ghost tiny">Download POS JSON</button>
+                <button id="btnSave">Save to DB</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="extractMessage" class="muted small" style="margin-top:8px"></div>
+</div>
+
+<div id="viewerRoot"></div>
+
+<!-- spinner overlay -->
+<div id="overlay" class="overlay" aria-hidden="true">
+    <div class="spinner" role="status" aria-live="polite">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div id="overlayText" style="font-weight:600;color:#334155">Working…</div>
+    </div>
+</div>
+
+<!-- toast -->
+<div id="toast" class="toast"></div>
+
+
+<script>
+    /* --------------------------------------------------------------------------
+       Single-file Menu Viewer + Editor with tax management.
+
+       Changes:
+       - external IDs used by default
+       - single checkbox "Use internal IDs" in the bottom-left
+       - toast messages for success/error/info
+       -------------------------------------------------------------------------- */
+
+    function el(id){ return document.getElementById(id); }
+    function q(sel){ return document.querySelector(sel); }
+    function qAll(sel){ return Array.from(document.querySelectorAll(sel)); }
+
+    function showOverlay(text){
+        el('overlayText').textContent = (text || 'Working…');
+        el('overlay').style.display = 'flex';
+    }
+    function hideOverlay(){ el('overlay').style.display = 'none'; }
+
+    function showToast(message, type){
+        const t = el('toast');
+        t.textContent = message;
+        t.className = 'toast ' + (type || 'info');
+        t.style.display = 'block';
+        // auto hide after 3.5s
+        clearTimeout(t._timeout);
+        t._timeout = setTimeout(()=>{ t.style.display = 'none'; }, 3500);
+    }
+
+    function escapeHtml(s){
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replaceAll('&','&amp;')
+            .replaceAll('<','&lt;')
+            .replaceAll('>','&gt;')
+            .replaceAll('"','&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function placeholder(){
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="100%" height="100%" fill="#fafafa"/><text x="50%" y="50%" text-anchor="middle" fill="#cbd5e1" dy=".3em">No image</text></svg>');
+    }
+
+    function loadImagePreview(url, imgEl){
+        if (!imgEl) return;
+        if (!url) { imgEl.src = placeholder(); return; }
+        const tmp = new Image();
+        tmp.onload = ()=> imgEl.src = url;
+        tmp.onerror = ()=> imgEl.src = placeholder();
+        tmp.src = url;
+    }
+
+    // default sample
+    function samplePosData(){
+        const cg = 't_cgst_' + Date.now();
+        const sg = 't_sgst_' + Date.now();
+        return {
+            success: "1",
+            taxes: [
+                { taxid: cg, taxname: "CGST", tax: "2.5", active: "1" },
+                { taxid: sg, taxname: "SGST", tax: "2.5", active: "1" }
+            ],
+            restaurants:[{ restaurantid:'639490', active:'1', details:{
+                    restaurantname:'Sample Rest', address:'1 Sample St', city:'Hyderabad',
+                    latitude:'17.4', longitude:'78.3', menusharingcode:'MS123', currency_html:'₹',
+                    images:['https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto,w_300,h_300,c_fit/FOOD_CATALOG/IMAGES/CMS/2025/11/19/2ec43a5c.jpg'],
+                    pc_taxes_id:'', dc_taxes_id:'',
+                    deliveryhoursfrom1:'10:00', deliveryhoursto1:'22:00', deliveryhoursfrom2:'', deliveryhoursto2:''
+                }}],
+            categories: [{ categoryid:'c_1', active:'1', categoryname:'Recommended', category_image_url:'' }],
+            items: [{
+                itemid:'i_1001', itemname:'Chicken Tikka', itemdescription:'Delicious', item_categoryid:'c_1', price:'339.00', in_stock:'1', active:'1', item_image_url:'',
+                variation: [{ id:'v1', name:'8 Pcs', price:'339.00', groupname:'Default', active:'1', status:'1' }],
+                addon: [{ addongroupid:'ag1', addongroup_name:'Add-Ons', addon_item_selection_max:'4', addon_item_selection_min:'0', addongroupitems:[{addonitemid:'a1',addonitem_name:'Salad',addonitem_price:'49.00'}]}],
+                item_tax: cg + ',' + sg
+            }]
+        };
+    }
+
+    // posData in-memory
+    let posData = null;
+
+    // single checkbox: unchecked => use external ids (default)
+    function useExternalIds(){
+        const cb = el('useInternalIdCheckbox');
+        return !(cb && cb.checked); // unchecked => external
+    }
+
+    // network helpers (same endpoints)
+    async function postExtract(rawJson){
+        const useExternal = useExternalIds() ? 'true' : 'false';
+        const url = '/api/v2/menu/extract?useExternalId=' + encodeURIComponent(useExternal);
+        showOverlay('Extracting menu…');
+        try {
+            const resp = await fetch(url, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rawJson
+            });
+            if (!resp.ok) {
+                const t = await resp.text();
+                throw new Error('Extractor returned ' + resp.status + ': ' + t);
+            }
+            const j = await resp.json();
+            hideOverlay();
+            return j;
+        } catch (e) {
+            hideOverlay();
+            throw e;
+        }
+    }
+
+    async function postSave(pos){
+        showOverlay('Saving to DB…');
+        try {
+            const resp = await fetch('/api/v2/menu/import', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pos)
+            });
+            if (!resp.ok) {
+                const t = await resp.text();
+                throw new Error('Save failed ' + resp.status + ': ' + t);
+            }
+            const j = await resp.json();
+            hideOverlay();
+            return j;
+        } catch (e) {
+            hideOverlay();
+            throw e;
+        }
+    }
+
+    // ---------- actions ----------
+    el('btnExtract').addEventListener('click', async () => {
+        const raw = el('rawJson').value.trim();
+        if (!raw) { showToast('Paste raw Swiggy JSON first', 'info'); return; }
+        try {
+            el('extractMessage').textContent = '';
+            const res = await postExtract(raw);
+            posData = res;
+            // ensure arrays
+            posData.taxes = posData.taxes || [];
+            posData.restaurants = posData.restaurants || [];
+            posData.categories = posData.categories || [];
+            posData.items = posData.items || [];
+            normalizePrices(posData);
+            autoAssignDefaultTaxesIfAbsent();
+            renderViewer();
+            el('extractMessage').textContent = 'Extraction successful.';
+            showToast('Extraction successful', 'success');
+        } catch (ex) {
+            console.error(ex);
+            el('extractMessage').textContent = 'Extractor error: ' + ex.message;
+            showToast('Extractor error: ' + ex.message, 'error');
+            alert('Extractor error: ' + ex.message);
+        }
+    });
+
+    el('btnLoadSample').addEventListener('click', () => {
+        posData = samplePosData();
+        normalizePrices(posData);
+        renderViewer();
+        showToast('Sample loaded', 'info');
+    });
+
+    el('btnReset').addEventListener('click', () => {
+        posData = null;
+        el('rawJson').value = '';
+        el('viewerRoot').innerHTML = '';
+        el('extractMessage').textContent = '';
+        showToast('Reset done', 'info');
+    });
+
+    el('btnExport').addEventListener('click', () => {
+        if (!posData) { showToast('No POS data to export', 'info'); return; }
+        const blob = new Blob([JSON.stringify(posData, null, 2)], { type:'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'posdata.json';
+        a.click();
+        showToast('POS JSON downloaded', 'success');
+    });
+
+    // Save
+    el('btnSave').addEventListener('click', async () => {
+        if (!posData) { showToast('No data to save', 'info'); return; }
+        const problems = validatePosData(posData);
+        if (problems.length > 0) {
+            if (!confirm('Validation warnings found:\n- ' + problems.slice(0,6).join('\n- ') + (problems.length>6 ? '\n...more' : '') + '\n\nProceed anyway?')) {
+                showToast('Save cancelled', 'info');
+                return;
+            }
+        }
+        try {
+            const res = await postSave(posData);
+            showToast('Saved successfully', 'success');
+        } catch (e) {
+            showToast('Save failed: ' + e.message, 'error');
+            alert('Save failed: ' + e.message);
+        }
+    });
+
+    // ---------- price helpers ----------
+    function normalizePrices(pd){
+        if (!pd) return;
+        (pd.items || []).forEach(it => {
+            if (it.price !== undefined && it.price !== null) {
+                it.price = formatPriceString(it.price);
+            }
+            (it.variation || []).forEach(v => { v.price = formatPriceString(v.price); });
+            (it.addon || []).forEach(g => {
+                (g.addongroupitems || []).forEach(ai => { ai.addonitem_price = formatPriceString(ai.addonitem_price); });
+            });
+        });
+    }
+    function formatPriceString(val){
+        if (val === undefined || val === null) return '0.00';
+        let n;
+        if (typeof val === 'string' && val.trim() === '') return '0.00';
+        if (typeof val === 'string' && /^\d+$/.test(val.trim())) {
+            n = parseInt(val.trim(), 10) / 100.0;
+            return n.toFixed(2);
+        }
+        if (typeof val === 'number') {
+            if (Math.abs(val) > 1000) {
+                return (val / 100.0).toFixed(2);
+            } else {
+                return parseFloat(val).toFixed(2);
+            }
+        }
+        const f = parseFloat(String(val).replace(/,/g,''));
+        return (isNaN(f) ? '0.00' : f.toFixed(2));
+    }
+
+    function autoAssignDefaultTaxesIfAbsent(){
+        if (!posData) return;
+        posData.taxes = posData.taxes || [];
+        if (posData.taxes.length === 0) {
+            const cg = 't_cgst_' + Date.now();
+            const sg = 't_sgst_' + Date.now();
+            posData.taxes.push({ taxid: cg, taxname: 'CGST', tax: '2.5', active: '1' });
+            posData.taxes.push({ taxid: sg, taxname: 'SGST', tax: '2.5', active: '1' });
+        }
+        const defaultTaxIds = posData.taxes.slice(0,2).map(t => t.taxid).join(',');
+        (posData.items || []).forEach(it => {
+            if (!it.item_tax || String(it.item_tax).trim() === '') {
+                it.item_tax = defaultTaxIds;
+            }
+        });
+    }
+
+    // ---------- render viewer (same as previously, unchanged) ----------
+    function renderViewer(){
+        const root = el('viewerRoot');
+        if (!posData) { root.innerHTML = '<div class="pane">No data loaded. Paste raw Swiggy JSON and click Extract, or Load sample.</div>'; return; }
+
+        posData.restaurants = posData.restaurants || [];
+        posData.categories = posData.categories || [];
+        posData.items = posData.items || [];
+        posData.taxes = posData.taxes || [];
+
+        const rest = posData.restaurants[0] || { details:{} };
+        const rd = rest.details || {};
+
+        let html = '';
+
+        // Restaurant details
+        html += '<div class="pane"><div class="section-title">Restaurant Details</div><table>';
+        html += '<tr><th>Restaurant ID</th>' +
+            '<td><input id="rest-restaurantid" value="'+escapeHtml(rest.restaurantid || '')+'" ' +
+            'onchange="onRestRootChange(\'restaurantid\', this.value)"></td></tr>';
+        const rFields = [
+            ['restaurantname','Name'],
+            ['address','Address'],
+            ['city','City'],
+            ['contact','Contact'],
+            ['latitude','Latitude'],
+            ['longitude','Longitude'],
+            ['menusharingcode','MenuShare Code'],
+            ['currency_html','Currency'],
+            ['pc_taxes_id','Packing Tax ID'],
+            ['dc_taxes_id','Delivery Tax ID'],
+            ['deliveryhoursfrom1','Delivery From 1'],
+            ['deliveryhoursto1','Delivery To 1'],
+            ['deliveryhoursfrom2','Delivery From 2'],
+            ['deliveryhoursto2','Delivery To 2']
+        ];
+        rFields.forEach(pair => {
+            console.log(pair)
+            const k = pair[0], label = pair[1];
+            const v = rd[k] !== undefined ? rd[k] : '';
+            html += '<tr><th>' + escapeHtml(label) + '</th><td><input id="rest-'+escapeHtml(k)+'" value="'+escapeHtml(v)+'" onchange="onRestChange(\''+escapeHtml(k)+'\', this.value)"></td></tr>';
+        });
+
+        // images
+        const images = Array.isArray(rd.images) ? rd.images : [];
+        html += '<tr><th>Images</th><td><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+        images.forEach((img,i) => {
+            html += '<div style="text-align:center"><img id="rest-img-'+i+'" class="img-preview" src="'+escapeHtml(img)+'" onerror="this.src=placeholder()"><br>';
+            html += '<input value="'+escapeHtml(img)+'" onchange="onRestImageEdit('+i+', this.value)">';
+            html += '<div style="margin-top:6px;"><button class="inline-btn danger" onclick="removeRestImage('+i+');event.stopPropagation()">Remove</button></div></div>';
+        });
+        html += '<div style="text-align:center"><img class="img-preview" src="'+placeholder()+'"><br>';
+        html += '<input id="rest_new_img" placeholder="new image url">';
+        html += '<div style="margin-top:6px;"><button class="inline-btn" onclick="addRestImage()">Add</button></div></div>';
+
+        html += '</div></td></tr></table></div>';
+
+        // Taxes editor pane
+        html += '<div class="pane"><div class="section-title">Taxes</div>';
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><button class="inline-btn" onclick="addTax()">+ Add Tax</button><div class="muted small">You can create unlimited taxes. Items store comma-separated tax IDs.</div></div>';
+        html += '<table><tr><th>Tax ID</th><th>Tax Name</th><th>Percent</th><th>Active</th><th>Action</th></tr>';
+        (posData.taxes || []).forEach((t, ti) => {
+            html += '<tr>';
+            html += '<td><input value="'+escapeHtml(t.taxid||'')+'" onchange="updateTax('+ti+', \'taxid\', this.value)"></td>';
+            html += '<td><input value="'+escapeHtml(t.taxname||'')+'" onchange="updateTax('+ti+', \'taxname\', this.value)"></td>';
+            html += '<td><input value="'+escapeHtml(t.tax||'')+'" onchange="updateTax('+ti+', \'tax\', this.value)"></td>';
+            html += '<td><input value="'+escapeHtml(t.active||'1')+'" onchange="updateTax('+ti+', \'active\', this.value)"></td>';
+            html += '<td><button class="inline-btn danger" onclick="removeTax('+ti+')">Remove</button></td>';
+            html += '</tr>';
+        });
+        html += '</table></div>';
+
+        // Categories
+        html += '<div class="pane"><div class="section-title">Categories</div>';
+        posData.categories.forEach((c, ci) => {
+            html += '<div style="margin-bottom:8px;border:1px solid #f0f6ff;padding:8px;border-radius:8px;display:flex;gap:12px;align-items:center">';
+            html += '<div style="flex:1;"><div><b>Category #'+(ci+1)+'</b></div>';
+            html += '<div style="display:grid;grid-template-columns:140px 1fr;gap:8px;margin-top:8px">';
+            html += '<div>Category ID</div><div><input value="'+escapeHtml(c.categoryid||'')+'" onchange="updateCategory('+ci+', \'categoryid\', this.value)"></div>';
+            html += '<div>Category Name</div><div><input value="'+escapeHtml(c.categoryname||'')+'" onchange="updateCategory('+ci+', \'categoryname\', this.value)"></div>';
+            html += '<div>Active</div><div><input value="'+escapeHtml(c.active||'1')+'" onchange="updateCategory('+ci+', \'active\', this.value)"></div>';
+            html += '<div>Image URL</div><div><input value="'+escapeHtml(c.category_image_url||'')+'" onchange="updateCategory('+ci+', \'category_image_url\', this.value)"></div>';
+            html += '</div></div>';
+            html += '<div style="width:140px;text-align:center"><img id="cat-img-'+ci+'" class="img-preview" src="'+escapeHtml(c.category_image_url||'')+'" onerror="this.src=placeholder()"><div style="margin-top:8px"><button class="inline-btn danger" onclick="removeCategory('+ci+')">Remove</button></div></div>';
+            html += '</div>';
+        });
+        html += '<div style="margin-top:8px"><button class="inline-btn" onclick="addCategory()">+ Add Category</button></div>';
+        html += '</div>';
+
+        // Items
+        html += '<div class="pane"><div class="section-title">Items</div>';
+
+        // map categoryId -> items
+        const itemsByCat = {};
+        (posData.items || []).forEach(it => {
+            const cid = it.item_categoryid || (posData.categories[0] && posData.categories[0].categoryid) || '-1';
+            itemsByCat[cid] = itemsByCat[cid] || [];
+            itemsByCat[cid].push(it);
+        });
+
+        posData.categories.forEach(c => {
+            const cid = c.categoryid || '';
+            const items = itemsByCat[cid] || [];
+            html += '<div class="pane" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center">';
+            html += '<div><b>Category:</b> ' + escapeHtml(c.categoryname || ('#'+cid)) + ' <span class="muted">('+escapeHtml(cid)+')</span></div>';
+            html += '<div><button class="inline-btn" onclick="addItemToCategory(\''+escapeHtml(cid)+'\')">+ Add Item</button></div></div>';
+
+            if (items.length === 0) html += '<div class="muted small" style="margin-top:8px">No items</div>';
+
+            items.forEach(it => {
+                const globalIndex = posData.items.indexOf(it);
+                const itemCollapsedId = 'item-panel-' + globalIndex;
+                html += '<div class="accordion" onclick="toggle(\'' + itemCollapsedId + '\')">';
+                html += '<div>' + escapeHtml(it.itemname || ('Item ' + globalIndex)) + ' <span class="muted small">('+escapeHtml(it.itemid||'')+')</span></div>';
+                html += '<div class="muted small">Price: '+escapeHtml(it.price||'')+'</div></div>';
+
+                html += '<div id="'+itemCollapsedId+'" class="panel" onclick="event.stopPropagation()">';
+                html += '<table>';
+                html += '<tr><th>Item ID</th><td><input value="'+escapeHtml(it.itemid||'')+'" onchange="updateItem('+globalIndex+', \'itemid\', this.value)"></td></tr>';
+                html += '<tr><th>Name</th><td><input value="'+escapeHtml(it.itemname||'')+'" onchange="updateItem('+globalIndex+', \'itemname\', this.value)"></td></tr>';
+                html += '<tr><th>Description</th><td><input value="'+escapeHtml(it.itemdescription||'')+'" onchange="updateItem('+globalIndex+', \'itemdescription\', this.value)"></td></tr>';
+                html += '<tr><th>Category ID</th><td><input value="'+escapeHtml(it.item_categoryid||cid)+'" onchange="updateItem('+globalIndex+', \'item_categoryid\', this.value)"></td></tr>';
+                html += '<tr><th>Price</th><td><input value="'+escapeHtml(it.price||'')+'" onchange="updateItem('+globalIndex+', \'price\', this.value)"></td></tr>';
+                html += '<tr><th>In stock</th><td><input value="'+escapeHtml(it.in_stock||'1')+'" onchange="updateItem('+globalIndex+', \'in_stock\', this.value)"></td></tr>';
+                html += '<tr><th>Active</th><td><input value="'+escapeHtml(it.active||'1')+'" onchange="updateItem('+globalIndex+', \'active\', this.value)"></td></tr>';
+                html += '<tr><th>Image</th><td><div style="display:flex;gap:8px;align-items:center">';
+                html += '<img id="item-img-'+globalIndex+'" class="img-preview" src="'+escapeHtml(it.item_image_url||'')+'" onerror="this.src=placeholder()">';
+                html += '<input value="'+escapeHtml(it.item_image_url||'')+'" ' +
+                    'onchange="updateItem('+globalIndex+', \'item_image_url\', this.value); ' +
+                    'loadImagePreview(this.value, document.getElementById(\'item-img-'+globalIndex+'\'))">';
+                html += '</div></td></tr>';
+
+                // Tax selector for this item
+                html += '<tr><th>Taxes</th><td>';
+                html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+                const currentIds = (it.item_tax || '').split(',').map(s => s.trim()).filter(Boolean);
+                currentIds.forEach(tid => {
+                    const tax = (posData.taxes || []).find(x => x.taxid === tid);
+                    const label = tax ? tax.taxname + ' (' + tax.tax + '%)' : tid;
+                    html += '<div style="padding:6px 8px;background:#f3f6ff;border-radius:6px;border:1px solid #e8f0ff;margin-right:6px">'+escapeHtml(label) + ' <button class="inline-btn" onclick="removeTaxFromItem('+globalIndex+', \''+escapeHtml(tid)+'\'); event.stopPropagation()">x</button></div>';
+                });
+                html += '<select id="taxsel-'+globalIndex+'" onchange="addTaxToItem('+globalIndex+', this.value)">';
+                html += '<option value="">+ Add tax</option>';
+                (posData.taxes || []).forEach(tx => {
+                    html += '<option value="'+escapeHtml(tx.taxid)+'">'+escapeHtml(tx.taxname) + ' ('+escapeHtml(tx.tax)+'%)</option>';
+                });
+                html += '</select>';
+                html += '<div style="flex-basis:100%;margin-top:6px">Manual tax ids: <input style="width:320px" value="'+escapeHtml(it.item_tax||'')+'" onchange="updateItem('+globalIndex+', \'item_tax\', this.value)"></div>';
+                html += '</div></td></tr>';
+
+                html += '</table>';
+
+                // Variations
+                html += '<div style="margin-top:8px"><b>Variations</b> <button class="inline-btn" onclick="addVariation('+globalIndex+'); event.stopPropagation()">+ Add</button></div>';
+                html += '<table><tr><th>ID</th><th>Name</th><th>Group</th><th>Price</th><th>Active</th><th>Action</th></tr>';
+                (it.variation || []).forEach((v, vi) => {
+                    html += '<tr><td><input value="'+escapeHtml(v.id||v.variationid||'')+'" onchange="updateVariation('+globalIndex+','+vi+',\'id\',this.value)"></td>';
+                    html += '<td><input value="'+escapeHtml(v.name||'')+'" onchange="updateVariation('+globalIndex+','+vi+',\'name\',this.value)"></td>';
+                    html += '<td><input value="'+escapeHtml(v.groupname||'')+'" onchange="updateVariation('+globalIndex+','+vi+',\'groupname\',this.value)"></td>';
+                    html += '<td><input value="'+escapeHtml(v.price||'')+'" onchange="updateVariation('+globalIndex+','+vi+',\'price\',this.value)"></td>';
+                    html += '<td><input value="'+escapeHtml(v.active||'1')+'" onchange="updateVariation('+globalIndex+','+vi+',\'active\',this.value)"></td>';
+                    html += '<td><button class="inline-btn danger" onclick="removeVariation('+globalIndex+','+vi+'); event.stopPropagation()">Remove</button></td></tr>';
+                });
+                html += '</table>';
+
+                // Addons
+                html += '<div style="margin-top:8px"><b>Addons</b> <button class="inline-btn" onclick="addAddonGroup('+globalIndex+'); event.stopPropagation()">+ Add Group</button></div>';
+                (it.addon || []).forEach((g, gi) => {
+                    html += '<div style="margin-top:8px;border:1px dashed #eef3ff;padding:8px;border-radius:6px">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center"><div><b>Group:</b> <input value="'+escapeHtml(g.addongroup_name||'')+'" onchange="updateAddonGroup('+globalIndex+','+gi+',\'addongroup_name\',this.value)"></div>';
+                    html += '<div><button class="inline-btn danger" onclick="removeAddonGroup('+globalIndex+','+gi+'); event.stopPropagation()">Remove Group</button></div></div>';
+                    html += '<div style="margin-top:6px"><table><tr><th>Addon ID</th><th>Name</th><th>Price</th><th>Action</th></tr>';
+                    (g.addongroupitems || []).forEach((ai, aii) => {
+                        html += '<tr><td><input value="'+escapeHtml(ai.addonitemid||'')+'" onchange="updateAddonItem('+globalIndex+','+gi+','+aii+',\'addonitemid\',this.value)"></td>';
+                        html += '<td><input value="'+escapeHtml(ai.addonitem_name||'')+'" onchange="updateAddonItem('+globalIndex+','+gi+','+aii+',\'addonitem_name\',this.value)"></td>';
+                        html += '<td><input value="'+escapeHtml(ai.addonitem_price||'')+'" onchange="updateAddonItem('+globalIndex+','+gi+','+aii+',\'addonitem_price\',this.value)"></td>';
+                        html += '<td><button class="inline-btn danger" onclick="removeAddonItem('+globalIndex+','+gi+','+aii+'); event.stopPropagation()">Remove</button></td></tr>';
+                    });
+                    html += '</table><div style="margin-top:6px"><button class="inline-btn" onclick="addAddonItem('+globalIndex+','+gi+'); event.stopPropagation()">+ Add Item</button></div></div></div>';
+                });
+
+                html += '</div>'; // panel end
+            });
+
+            html += '</div>'; // category pane
+        });
+
+        html += '</div>'; // items wrapper
+        root.innerHTML = html;
+
+        // wire image previews for loaded items & categories
+        (posData.categories || []).forEach((c, i) => {
+            const elc = document.getElementById('cat-img-'+i);
+            if (elc) loadImagePreview(c.category_image_url || '', elc);
+        });
+        (posData.items || []).forEach((it, i) => {
+            const eli = document.getElementById('item-img-'+i);
+            if (eli) loadImagePreview(it.item_image_url || '', eli);
+        });
+    }
+
+    // ---------- editing helpers ----------
+    function onRestChange(key, value){ posData.restaurants[0].details[key] = value; }
+    function addRestImage(){
+        const v = el('rest_new_img').value.trim();
+        if (!v) { showToast('enter image url', 'info'); return; }
+        posData.restaurants[0].details.images = posData.restaurants[0].details.images || [];
+        posData.restaurants[0].details.images.push(v);
+        renderViewer();
+        showToast('Image added', 'success');
+    }
+    function removeRestImage(i){ posData.restaurants[0].details.images.splice(i,1); renderViewer(); showToast('Image removed', 'info'); }
+    function onRestImageEdit(i, v){ posData.restaurants[0].details.images[i] = v; renderViewer(); showToast('Image updated', 'info'); }
+    function addCategory(){ posData.categories.push({ categoryid: 'c_' + Date.now(), active:'1', categoryname:'New Category', category_image_url:'' }); renderViewer(); }
+    function updateCategory(idx,key,val){ posData.categories[idx][key] = val; renderViewer(); }
+    function removeCategory(idx){ if (!confirm('Remove category?')) return; posData.categories.splice(idx,1); renderViewer(); }
+
+    function addItemToCategory(catId){
+        posData.items = posData.items || [];
+        const defaultTaxIds = (posData.taxes || []).slice(0,2).map(t => t.taxid).join(',');
+        const it = { itemid:'i_' + Date.now(), itemname:'New Item', itemdescription:'', item_categoryid:catId, price:'0.00', in_stock:'1', active:'1', item_image_url:'', variation:[], addon:[], item_tax: defaultTaxIds };
+        posData.items.push(it); renderViewer(); showToast('Item added', 'success');
+    }
+    function updateItem(idx,key,val){ posData.items[idx][key] = val; renderViewer(); }
+
+    // Variations
+    function addVariation(itemIdx){
+        posData.items[itemIdx].variation = posData.items[itemIdx].variation || [];
+        posData.items[itemIdx].variation.push({ id:'v_' + Date.now(), name:'New Var', groupname:'Default', price:'0.00', active:'1', status:'1' });
+        renderViewer();
+    }
+    function updateVariation(itemIdx,varIdx,key,val){ posData.items[itemIdx].variation[varIdx][key] = val; renderViewer(); }
+    function removeVariation(itemIdx,varIdx){ posData.items[itemIdx].variation.splice(varIdx,1); renderViewer(); }
+
+    // Addons
+    function addAddonGroup(itemIdx){
+        posData.items[itemIdx].addon = posData.items[itemIdx].addon || [];
+        posData.items[itemIdx].addon.push({ addongroupid:'ag_' + Date.now(), addongroup_name:'New Addon Group', addon_item_selection_max:'0', addon_item_selection_min:'0', addongroupitems:[] });
+        renderViewer();
+    }
+    function removeAddonGroup(itemIdx, groupIdx){ posData.items[itemIdx].addon.splice(groupIdx,1); renderViewer(); }
+    function addAddonItem(itemIdx, groupIdx){
+        posData.items[itemIdx].addon[groupIdx].addongroupitems = posData.items[itemIdx].addon[groupIdx].addongroupitems || [];
+        posData.items[itemIdx].addon[groupIdx].addongroupitems.push({ addonitemid:'ai_' + Date.now(), addonitem_name:'New Addon', addonitem_price:'0.00' });
+        renderViewer();
+    }
+    function updateAddonItem(itemIdx, groupIdx, aiIdx, key, val){ posData.items[itemIdx].addon[groupIdx].addongroupitems[aiIdx][key] = val; renderViewer(); }
+    function removeAddonItem(itemIdx, groupIdx, aiIdx){ posData.items[itemIdx].addon[groupIdx].addongroupitems.splice(aiIdx,1); renderViewer(); }
+
+    function updateAddonGroup(itemIdx, groupIdx, key, val){ posData.items[itemIdx].addon[groupIdx][key] = val; renderViewer(); }
+
+    function toggle(id){
+        const elp = document.getElementById(id);
+        if (!elp) return;
+        elp.style.display = (elp.style.display === 'block') ? 'none' : 'block';
+    }
+
+    // ---------- Tax operations ----------
+    function addTax(){
+        posData.taxes = posData.taxes || [];
+        const tid = 't_' + Date.now();
+        posData.taxes.push({ taxid: tid, taxname: 'New Tax', tax: '0.00', active: '1' });
+        renderViewer();
+    }
+    function updateTax(idx, key, val){
+        posData.taxes[idx][key] = val;
+        renderViewer();
+    }
+    function removeTax(idx){
+        if (!confirm('Remove tax?')) return;
+        const tid = posData.taxes[idx].taxid;
+        posData.taxes.splice(idx,1);
+        (posData.items || []).forEach(it => {
+            if (!it.item_tax) return;
+            const arr = it.item_tax.split(',').map(s=>s.trim()).filter(Boolean).filter(x => x !== tid);
+            it.item_tax = arr.join(',');
+        });
+        renderViewer();
+    }
+
+    function addTaxToItem(itemIdx, taxid){
+        if (!taxid) return;
+        posData.items[itemIdx].item_tax = posData.items[itemIdx].item_tax || '';
+        const arr = posData.items[itemIdx].item_tax.split(',').map(s=>s.trim()).filter(Boolean);
+        if (!arr.includes(taxid)) arr.push(taxid);
+        posData.items[itemIdx].item_tax = arr.join(',');
+        renderViewer();
+    }
+    function removeTaxFromItem(itemIdx, taxid){
+        posData.items[itemIdx].item_tax = (posData.items[itemIdx].item_tax || '').split(',').map(s=>s.trim()).filter(Boolean).filter(x => x !== taxid).join(',');
+        renderViewer();
+    }
+
+    // ---------- Validation ----------
+    function validatePosData(pd){
+        const problems = [];
+        qAll('input').forEach(i => i.classList.remove('invalid'));
+
+        if (!pd || !pd.restaurants || pd.restaurants.length === 0) {
+            problems.push('No restaurant present');
+        } else {
+            const r = pd.restaurants[0];
+            if (!r.details || !r.details.restaurantname || String(r.details.restaurantname).trim() === '') {
+                problems.push('Restaurant name missing');
+                const elid = el('rest-restaurantname'); if (elid) elid.classList.add('invalid');
+            }
+        }
+
+        (pd.items || []).forEach((it, idx) => {
+            if (!it.itemname || String(it.itemname).trim() === '') {
+                problems.push('Item name missing for item #' + (idx+1));
+                qAll('input').forEach(inp => { if (inp.value === it.itemname) inp.classList.add('invalid'); });
+            }
+            const price = String(it.price || '').replace(/,/g,'').trim();
+            if (!/^\d+(\.\d{1,2})?$/.test(price)) {
+                problems.push('Invalid price for item ' + (it.itemname || it.itemid || idx+1));
+                qAll('input').forEach(inp => { if (inp.value === it.price) inp.classList.add('invalid'); });
+            }
+            (it.variation || []).forEach(v => {
+                const vp = String(v.price || '').replace(/,/g,'').trim();
+                if (!/^\d+(\.\d{1,2})?$/.test(vp)) {
+                    problems.push('Invalid variation price for ' + (v.name || ''));
+                }
+            });
+        });
+
+        (pd.taxes || []).forEach(t => {
+            if (!/^\d+(\.\d+)?$/.test(String(t.tax || '').trim())) {
+                problems.push('Invalid tax percent for ' + (t.taxname || t.taxid));
+            }
+        });
+
+        return problems;
+    }
+
+    // expose functions used by HTML
+    window.onRestChange = onRestChange;
+    window.addRestImage = addRestImage;
+    window.removeRestImage = removeRestImage;
+    window.onRestImageEdit = onRestImageEdit;
+    window.addCategory = addCategory;
+    window.updateCategory = updateCategory;
+    window.removeCategory = removeCategory;
+    window.addItemToCategory = addItemToCategory;
+    window.updateItem = updateItem;
+    window.addVariation = addVariation;
+    window.updateVariation = updateVariation;
+    window.removeVariation = removeVariation;
+    window.addAddonGroup = addAddonGroup;
+    window.removeAddonGroup = removeAddonGroup;
+    window.addAddonItem = addAddonItem;
+    window.updateAddonItem = updateAddonItem;
+    window.removeAddonItem = removeAddonItem;
+    window.updateAddonGroup = updateAddonGroup;
+    window.toggle = toggle;
+    window.loadImagePreview = loadImagePreview;
+    window.addTax = addTax;
+    window.updateTax = updateTax;
+    window.removeTax = removeTax;
+    window.addTaxToItem = addTaxToItem;
+    window.removeTaxFromItem = removeTaxFromItem;
+    window.updateVariation = updateVariation;
+    window.updateAddonItem = updateAddonItem;
+    window.updateItem = updateItem;
+
+    // initial view
+    el('viewerRoot').innerHTML = '<div class="pane">No data loaded. Paste raw Swiggy JSON and click Extract, or Load sample.</div>';
+
+    // default state: external IDs (checkbox unchecked)
+    el('useInternalIdCheckbox').checked = false;
+
+    function onRestRootChange(key, value) {
+        if (!posData.restaurants || posData.restaurants.length === 0) return;
+        posData.restaurants[0][key] = value;
+    }
+    window.onRestRootChange = onRestRootChange;
+</script>
+</body>
+</html>

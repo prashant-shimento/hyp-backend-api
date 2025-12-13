@@ -87,4 +87,19 @@ public class FileUtils {
                 .toLowerCase();
         return String.join("-", formatedFileName, uploadDate);
     }
+
+    public static String resolveContentType(String fileUrl) {
+        String lower = fileUrl.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+        if (lower.endsWith(".png")) return "image/png";
+        if (lower.endsWith(".webp")) return "image/webp";
+        return "image/jpeg";
+    }
+
+    public static String safeFileExtension(String contentType) {
+        if (contentType == null) return ".jpg";
+        if (contentType.contains("png")) return ".png";
+        if (contentType.contains("webp")) return ".webp";
+        return ".jpg";
+    }
 }

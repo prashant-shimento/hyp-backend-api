@@ -110,4 +110,7 @@ public class Item extends BaseEntity {
 
     @Field("offer_value")
     private Double offerValue;
+
+    @Field("source_id")
+    private String sourceId;
 }

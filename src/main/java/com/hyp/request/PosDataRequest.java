@@ -1,12 +1,7 @@
 package com.hyp.request;
 
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
@@ -33,16 +28,20 @@ public class PosDataRequest {
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class RestaurantRequest {
         private String restaurantid;
         private String active;
         private RestaurantDetails details;
+        private String sourceId;
+        private String ingestionSource;
     }
 
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class RestaurantDetails {
         private String menusharingcode;
@@ -90,6 +89,7 @@ public class PosDataRequest {
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class CategoryRequest {
         private String categoryid;
@@ -99,6 +99,7 @@ public class PosDataRequest {
         private String categoryname;
         private String categorytimings;
         private String category_image_url;
+        private String sourceId;
     }
 
     @Getter
@@ -117,6 +118,7 @@ public class PosDataRequest {
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class ItemRequest {
         private String itemid;
@@ -145,11 +147,13 @@ public class PosDataRequest {
         private String item_tax;
         private String gst_type;
         private String is_recommend;
+        private String sourceId;
     }
 
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class VariationRequest {
         private String id;
@@ -163,11 +167,13 @@ public class PosDataRequest {
         private List<AddonGroupRequest> addon;
         private int variationallowaddon;
         private String status;
+        private String sourceId;
     }
 
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class AddonGroupRequest {
         private String addongroupid;
@@ -178,11 +184,13 @@ public class PosDataRequest {
         private String addon_group_id;
         private String addon_item_selection_max;
         private String addon_item_selection_min;
+        private String sourceId;
     }
 
     @Getter
     @Setter
     @AllArgsConstructor
+    @NoArgsConstructor
     @ToString
     public static class AddonItemRequest {
         private String addonitemid;
@@ -191,6 +199,7 @@ public class PosDataRequest {
         private String active;
         private String attributes;
         private String addonitem_rank;
+        private String sourceId;
     }
 
     @Getter
@@ -240,10 +249,8 @@ public class PosDataRequest {
         private String discountorder;
     }
 
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @ToString
+    @Builder
+    @Data
     public static class TaxRequest {
         private String taxid;
         private String taxname;

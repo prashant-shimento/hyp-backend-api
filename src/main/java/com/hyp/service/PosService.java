@@ -10,9 +10,7 @@ import com.hyp.request.PosOrderUpdateRequest;
 import com.hyp.request.PosRiderUpdateRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
-import org.springframework.stereotype.Service;
 
-@Service
 public interface PosService {
 
     public void processPosOrder(Order order);

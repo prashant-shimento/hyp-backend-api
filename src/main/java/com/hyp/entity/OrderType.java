@@ -36,8 +36,6 @@ public class OrderType {
     @CreatedDate
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    ;
-
     @Field("updated_at")
     @LastModifiedDate
     private LocalDateTime updatedAt;

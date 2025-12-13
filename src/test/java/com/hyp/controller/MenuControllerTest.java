@@ -31,7 +31,7 @@ public class MenuControllerTest {
 
     @BeforeEach
     public void setup() {
-        menuController = new MenuController(categoryService);
+        menuController = new MenuController();
         ReflectionTestUtils.setField(menuController, "categoryService", categoryService);
         category1 = new Category();
         category1.setId("76342");

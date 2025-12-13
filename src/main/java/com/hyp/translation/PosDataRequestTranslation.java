@@ -1,5 +1,6 @@
 package com.hyp.translation;
 
+import com.hyp.constants.Constants;
 import com.hyp.entity.AddonGroup;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Attribute;
@@ -147,6 +148,8 @@ public class PosDataRequestTranslation {
                             .collect(Collectors.toList());
         }
         variation.setAddonGroupId(addonGroupIds);
+        variation.setSourceId(
+                variationRequest.getSourceId() != null ? variationRequest.getSourceId() : variationRequest.getId());
         return variation;
     }
 
@@ -157,9 +160,9 @@ public class PosDataRequestTranslation {
                 .filter(item -> "1".equalsIgnoreCase(item.getItemallowvariation()) && item.getVariation() != null)
                 .flatMap(item -> item.getVariation().stream())
                 .sorted(Comparator.comparing(VariationRequest::getVariationid))
-                .collect(Collectors.toList());
+                .toList();
 
-        Collections.sort(variationRequestList, Comparator.comparing(VariationRequest::getVariationid));
+        variationRequestList.sort(Comparator.comparing(VariationRequest::getVariationid));
 
         for (VariationRequest itemVariationRequest : itemVariationRequestList) {
             for (VariationRequest variationRequest : variationRequestList) {
@@ -171,7 +174,7 @@ public class PosDataRequestTranslation {
         }
 
         return itemVariationRequestList.stream()
-                .map(variationRequest -> translateToVariation(variationRequest))
+                .map(PosDataRequestTranslation::translateToVariation)
                 .collect(Collectors.toList());
     }
 
@@ -195,7 +198,7 @@ public class PosDataRequestTranslation {
         mergedItemAddonGroupRequestSet.addAll(itemAddonGroupRequestSet);
         mergedItemAddonGroupRequestSet.addAll(itemVariationAddonGroupRequestSet);
 
-        Collections.sort(addonGroupRequestList, Comparator.comparing(AddonGroupRequest::getAddongroupid));
+        addonGroupRequestList.sort(Comparator.comparing(AddonGroupRequest::getAddongroupid));
 
         for (AddonGroupRequest itemAddonGroupRequest : mergedItemAddonGroupRequestSet) {
             for (AddonGroupRequest addonGroupRequest : addonGroupRequestList) {
@@ -207,18 +210,16 @@ public class PosDataRequestTranslation {
             }
         }
         return addonGroupRequestList.stream()
-                .map(addonGroupRequest -> translateToAddonGroup(addonGroupRequest))
+                .map(PosDataRequestTranslation::translateToAddonGroup)
                 .collect(Collectors.toList());
     }
 
     public static List<Variation> getUniqueVariationList(List<VariationRequest> variationRequestList) {
         return variationRequestList == null
                 ? Collections.emptyList()
-                : variationRequestList.stream()
+                : new ArrayList<>(variationRequestList.stream()
                         .map(PosDataRequestTranslation::translateToVariation)
-                        .collect(Collectors.toSet())
-                        .stream()
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toSet()));
     }
 
     public static Restaurant translateToRestaurant(RestaurantRequest restaurantRequest, Restaurant existingRestaurant) {
@@ -311,6 +312,22 @@ public class PosDataRequestTranslation {
         } else {
             restaurant.setWebsiteUrl(null);
         }
+
+        if (existingRestaurant != null && existingRestaurant.getSourceId() != null) {
+            restaurant.setSourceId(existingRestaurant.getSourceId());
+        } else {
+            restaurant.setSourceId(
+                    restaurantRequest.getSourceId() != null ? restaurantRequest.getSourceId() : restaurant.getId());
+        }
+
+        if (existingRestaurant != null && existingRestaurant.getIngestionSource() != null) {
+            restaurant.setIngestionSource(existingRestaurant.getIngestionSource());
+        } else {
+            restaurant.setIngestionSource(
+                    restaurantRequest.getIngestionSource() != null
+                            ? restaurantRequest.getIngestionSource()
+                            : Constants.PET_POOJA);
+        }
         return restaurant;
     }
 
@@ -341,6 +358,8 @@ public class PosDataRequestTranslation {
         category.setActive(categoryRequest.getActive());
         category.setCategoryName(categoryRequest.getCategoryname());
         category.setCategoryRank(categoryRequest.getCategoryrank());
+        category.setSourceId(
+                category.getSourceId() != null ? categoryRequest.getSourceId() : categoryRequest.getCategoryid());
         return category;
     }
 
@@ -410,6 +429,10 @@ public class PosDataRequestTranslation {
         addonGroup.setAddonGroupItems(getAddonItemIdList(addonGroupRequest.getAddongroupitems()));
         addonGroup.setAddonItemSelectionMax(addonGroupRequest.getAddon_item_selection_max());
         addonGroup.setAddonItemSelectionMin(addonGroupRequest.getAddon_item_selection_min());
+        addonGroup.setSourceId(
+                addonGroupRequest.getSourceId() != null
+                        ? addonGroupRequest.getSourceId()
+                        : addonGroupRequest.getAddongroupid());
         return addonGroup;
     }
 
@@ -440,6 +463,10 @@ public class PosDataRequestTranslation {
         addonItem.setActive(addonItemRequest.getActive());
         addonItem.setAddonItemRank(addonItemRequest.getAddonitem_rank());
         addonItem.setAttributes(addonItemRequest.getAttributes());
+        addonItem.setSourceId(
+                addonItemRequest.getSourceId() != null
+                        ? addonItemRequest.getSourceId()
+                        : addonItemRequest.getAddonitemid());
         return addonItem;
     }
 
@@ -526,6 +553,11 @@ public class PosDataRequestTranslation {
             item.setOfferEnabled(false);
         }
 
+        if (existingItem != null) {
+            item.setSourceId(existingItem.getSourceId());
+        } else {
+            item.setSourceId(itemRequest.getSourceId() != null ? itemRequest.getSourceId() : itemRequest.getItemid());
+        }
         return item;
     }
 

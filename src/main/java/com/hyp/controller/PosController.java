@@ -8,14 +8,9 @@ import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.PosStockRequest;
 import com.hyp.response.PosResponse;
-import com.hyp.service.AddressService;
-import com.hyp.service.CustomerService;
-import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
-import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
 import com.hyp.service.RestaurantService;
-import com.hyp.translation.PosOrderRequestTranslation;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,21 +40,6 @@ public class PosController {
 
     @Autowired
     SimpMessagingTemplate messageTemplate;
-
-    @Autowired
-    AddressService addressService;
-
-    @Autowired
-    DeliveryService deliveryService;
-
-    @Autowired
-    PaymentService paymentService;
-
-    @Autowired
-    CustomerService customerService;
-
-    @Autowired
-    PosOrderRequestTranslation posOrderRequestTranslation;
 
     @Autowired
     private OrderEventPublisher orderEventPublisher;

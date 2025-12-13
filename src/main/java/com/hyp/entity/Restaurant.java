@@ -197,6 +197,12 @@ public class Restaurant {
     @Field("delivery_offer")
     private int deliveryOffer;
 
+    @Field("ingestion_source")
+    private String ingestionSource;
+
+    @Field("source_id")
+    private String sourceId;
+
     @Getter
     @Setter
     @NoArgsConstructor

@@ -79,4 +79,6 @@ public class RestaurantDto extends BaseDto {
     private String embedMapUrl;
     private String restaurantAltContact;
     private PreOrder preOrderConfig;
+    private String sourceId;
+    private String ingestionSource;
 }

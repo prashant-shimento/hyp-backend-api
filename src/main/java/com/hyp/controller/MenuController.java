@@ -1,24 +1,43 @@
 package com.hyp.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.hyp.entity.Category;
+import com.hyp.request.PosDataRequest;
 import com.hyp.response.Response;
 import com.hyp.service.CategoryService;
+import com.hyp.service.MenuService;
+import com.hyp.service.PosService;
 import java.util.List;
 import lombok.Data;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
 
 @Data
 @RestController
 @RequestMapping("/menu")
 public class MenuController {
 
-    private final CategoryService categoryService;
+    @Autowired
+    CategoryService categoryService;
+
+    @Autowired
+    PosService posService;
+
+    @Autowired
+    MenuService menuService;
+
+    @PostMapping("/extract")
+    public PosDataRequest extract(@RequestBody JsonNode rawJson, @RequestParam boolean useExternalId) throws Exception {
+        return menuService.extract(rawJson, useExternalId);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<Response> save(@RequestBody PosDataRequest posDataRequest) {
+        posService.savePosData(posDataRequest);
+        Response response = new Response(null, false, "Menu Imported");
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping("/category")
     public ResponseEntity<Response> getCategoryItems(@RequestParam String restaurantId) {

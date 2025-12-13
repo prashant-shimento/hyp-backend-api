@@ -38,4 +38,7 @@ public class AddonGroup extends BaseEntity {
 
     @Field("addon_items")
     private List<AddonItem> addonItems;
+
+    @Field("source_id")
+    private String sourceId;
 }

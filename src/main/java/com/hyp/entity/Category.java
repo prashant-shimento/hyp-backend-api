@@ -37,4 +37,7 @@ public class Category extends BaseEntity {
     private String categoryRank;
 
     private transient List<Item> items;
+
+    @Field("source_id")
+    private String sourceId;
 }
