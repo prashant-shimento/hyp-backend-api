@@ -339,8 +339,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     .fulfillDeliveryOrder(DeliveryRequestTranslation.getOrderFulfillRequest(delivery))
                     .subscribe();
         } else {
-            throw new DeliveryException(
-                    "No matching network found with the specified networkId or minimum price network");
+            log.info(
+                    "No matching network found with the specified networkId or minimum price network - Started smart fulfillment");
+            processDeliverySmartFulfill(delivery, fulfilledBy);
         }
     }
 
