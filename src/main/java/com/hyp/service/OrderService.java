@@ -359,12 +359,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
         Order order = findById(orderId);
         OrderStatusType oldStatus = order.getStatus();
-
-        if (oldStatus == newStatus) {
-            log.info("Order {} already in status {}, skipping update.", orderId, newStatus);
-            return order;
-        }
-
         order.setStatus(newStatus);
         order.getOrderLogs().add(new Order.OrderLog(newStatus.name()));
 
@@ -480,22 +474,43 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             if (order == null) {
                 throw new OrderNotFoundException("Order not found " + orderId);
             }
-            OrderStatusType oldStatus = order.getStatus();
-            OrderStatusType newStatus =
-                    OrderStatusType.valueOf(orderDto.getStatus().toUpperCase());
-            orderTranslation.updateEntityFromDto(orderDto, order);
-            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 
-            switch (newStatus) {
-                case ACCEPTED -> handleAccepted(order, restaurant);
-                case DELIVERED -> handleDelivered(order);
-                case CANCELLED -> handleCancelled(order, restaurant, oldStatus);
+            OrderStatusType oldStatus = order.getStatus();
+            OrderStatusType requestedStatus = null;
+
+            if (orderDto.getStatus() != null && !orderDto.getStatus().isBlank()) {
+                requestedStatus = OrderStatusType.valueOf(orderDto.getStatus().toUpperCase());
             }
 
-            return updateOrderStatus(orderId, newStatus);
+            if (requestedStatus != null && requestedStatus == oldStatus) {
+                log.info("Order {} already in status {}, duplicate status update request", orderId, requestedStatus);
+            }
+            // ModelMapper updates all fields, including status
+            orderTranslation.updateEntityFromDto(orderDto, order);
+            // Intentionally restore status: workflow fields must not be set via DTO mapping
+            order.setStatus(oldStatus);
+            // Persist entity-level updates
+            save(order);
+
+            // Apply workflow transition explicitly
+            if (requestedStatus != null && requestedStatus != oldStatus) {
+
+                Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+
+                switch (requestedStatus) {
+                    case ACCEPTED -> handleAccepted(order, restaurant);
+                    case DELIVERED -> handleDelivered(order);
+                    case CANCELLED -> handleCancelled(order, restaurant, oldStatus);
+                }
+
+                return updateOrderStatus(orderId, requestedStatus);
+            }
+
+            return order;
+
         } catch (PosException | DeliveryException | PaymentException | RequestTranslationException e) {
-            log.error("Order {} update failed: {}", orderId, e.getMessage());
-            throw new RuntimeException("Order update failed");
+            log.error("Order {} update failed", orderId, e);
+            throw new RuntimeException("Order update failed", e);
         }
     }
 
