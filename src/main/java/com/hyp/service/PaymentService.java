@@ -98,6 +98,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
             }
             setPaymentCheck(orderId);
+            log.info("Payment created for Order ID {}", orderId);
             return save(payment);
         } catch (Exception e) {
             log.error("Error creating payment order {}", e.getMessage());
@@ -251,6 +252,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String orderId) throws PaymentException {
         try {
+            log.info("Payment verification of Order ID {}", orderId);
             JSONObject verifyRequest = new JSONObject();
             verifyRequest.put("razorpay_order_id", razorPayVerifyDto.getRazorpayOrderId());
             verifyRequest.put("razorpay_payment_id", razorPayVerifyDto.getRazorpayPaymentId());
@@ -318,6 +320,8 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public Payment createRefund(String orderId, double amount, boolean instantRefund, String reason)
             throws PaymentException {
+        log.info("Creating refund of Order ID {}", orderId);
+
         try {
             Payment payment = paymentRepository.findByOrderId(orderId);
 

@@ -127,6 +127,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     public void processDeliveryCallback(Delivery delivery, DeliveryOrderData deliveryOrderData)
             throws DeliveryException {
+        log.info("Delivery Callback received for Order ID {}", delivery.getOrderId());
         try {
             DeliveryOrderStatusType status =
                     DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus());

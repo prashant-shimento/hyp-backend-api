@@ -48,9 +48,23 @@ public class LoggingFilterConfig extends OncePerRequestFilter {
             logData.put("responseStatus", response.getStatus());
             logData.put("responsePayload", responseJsonNode);
             logData.put("timeTaken", timeTaken);
+
+            // TEMPORARY DEBUG
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Host", request.getHeader("Host"));
+            headers.put("X-Forwarded-Host", request.getHeader("X-Forwarded-Host"));
+            headers.put("X-Forwarded-For", request.getHeader("X-Forwarded-For"));
+            headers.put("X-Real-IP", request.getHeader("X-Real-IP"));
+            headers.put("X-Forwarded-Proto", request.getHeader("X-Forwarded-Proto"));
+            headers.put("User-Agent", request.getHeader("User-Agent"));
+            headers.put("Referer", request.getHeader("Referer"));
+            headers.put("RemoteAddr", request.getRemoteAddr());
+
             String logJson = objectMapper.writeValueAsString(logData);
+            String logHeaders = objectMapper.writeValueAsString(headers);
 
             log.info("Request and Response Processed: {}", logJson);
+            log.info("Request Headers: {}", logHeaders);
         }
 
         responseWrapper.copyBodyToResponse();

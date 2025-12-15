@@ -232,6 +232,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
         order = save(order);
 
+        log.info("Order created {}", order.getId());
         if (order.getPaymentType() == PaymentType.COD) {
             orderEventPublisher.publishPosOrderEvent(order);
             orderEventPublisher.publishOrderStatusChangeEvent(order);
@@ -272,8 +273,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     }
 
     public void processOrderCallback(PosCallbackRequest posCallbackRequest) {
-
         String orderId = posCallbackRequest.getOrderId();
+        log.info("POS Callback received for Order ID {}", orderId);
         String restaurantId = posCallbackRequest.getRestaurantId();
         try {
             Restaurant restaurant = restaurantService.findByMenuSharingCode(restaurantId);
