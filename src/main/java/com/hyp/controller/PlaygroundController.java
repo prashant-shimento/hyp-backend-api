@@ -1,5 +1,6 @@
 package com.hyp.controller;
 
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.model.FacebookMessageResponse;
 import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FileUploadRequest;
@@ -97,17 +98,12 @@ public class PlaygroundController {
         }
     }
 
-    @PostMapping("/one-signal/test/{resId}")
-    public ResponseEntity<Response> sendPlainTextNotification(@PathVariable String resId) {
-        Response response;
-        try {
-            notificationService.sendTestNotification(resId);
-            response = new Response(null, false, "Notification Sent!");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+    @PostMapping("/one-signal/test/{restaurantId}")
+    public ResponseEntity<Response> sendPlainTextNotification(
+            @RequestBody(required = false) OneSignalNotificationRequest oneSignalNotificationRequest,
+            @PathVariable String restaurantId)
+            throws EntityNotFoundException {
+        notificationService.sendOneSignalNotification(oneSignalNotificationRequest, restaurantId);
+        return ResponseEntity.ok(new Response(null, false, "Notification Sent!"));
     }
 }

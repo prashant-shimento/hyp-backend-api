@@ -6,6 +6,7 @@ import com.hyp.entity.Feedback;
 import com.hyp.entity.Partner;
 import com.hyp.entity.User;
 import com.hyp.enums.PartnerType;
+import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.NotificationException;
 import com.hyp.exception.OneSignalException;
 import com.hyp.request.FacebookMessageRequest;
@@ -56,7 +57,7 @@ public class NotificationService {
     private UserService userService;
 
     @Value("${onesignal.partner.app.id}")
-    private String partberAppId;
+    private String partnerAppId;
 
     @Scheduled(cron = "0 10 12,18,23 * * ?")
     public void sendFeedbackMessageAndUpdateFlag() {
@@ -197,18 +198,6 @@ public class NotificationService {
     }
 
     @Async
-    public void sendUserNotification(String mobile, String templateName, List<String> parameters) {
-        log.info("Invoking sendUserNotification for mobile: {}, template: {}", mobile, templateName);
-        log.debug("Parameters passed to sendUserNotification: {}", parameters);
-        try {
-            sendNotification(mobile, templateName, parameters);
-            log.info("Completed sendUserNotification for mobile: {}", mobile);
-        } catch (Exception e) {
-            log.error("Exception in sendUserNotification for mobile: {}", mobile, e);
-        }
-    }
-
-    @Async
     public void sendInternalGroupNotification(String templateName, List<String> parameters) {
         log.info("Starting internal group notification for template: {} with parameters: {}", templateName, parameters);
         String alertMobileNum = redisService.getAlertUsers();
@@ -271,27 +260,33 @@ public class NotificationService {
         oneSignalClient.sendNotificationForPartner(oneSignalNotificationRequest);
     }
 
-    public void sendTestNotification(String restaurantId) {
+    public void sendOneSignalNotification(
+            OneSignalNotificationRequest oneSignalNotificationRequest, String restaurantId)
+            throws EntityNotFoundException {
         User user = userService.findByRestaurantId(restaurantId);
         if (user == null) {
-            log.warn("No user found for restaurantId={}", restaurantId);
-            return;
+            throw new EntityNotFoundException("Restaurant", restaurantId);
         }
-
-        OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
-                .targetChannel("push")
-                .includeAliases(OneSignalNotificationAlias.builder()
-                        .externalId(List.of(user.getId()))
-                        .build())
-                .appId(partberAppId)
-                .contents(Map.of("en", "OneSignal notification is working fine"))
-                .build();
-
+        if (oneSignalNotificationRequest == null) {
+            oneSignalNotificationRequest = OneSignalNotificationRequest.builder()
+                    .targetChannel("push")
+                    .includeAliases(OneSignalNotificationAlias.builder()
+                            .externalId(List.of(user.getId()))
+                            .build())
+                    .appId(partnerAppId)
+                    .contents(Map.of("en", "OneSignal notification is working fine"))
+                    .build();
+        } else {
+            oneSignalNotificationRequest.setIncludeAliases(OneSignalNotificationAlias.builder()
+                    .externalId(List.of(user.getId()))
+                    .build());
+            oneSignalNotificationRequest.setAppId(partnerAppId);
+        }
         try {
-            sendOneSignalNotificationForPartner(request);
+            sendOneSignalNotificationForPartner(oneSignalNotificationRequest);
             log.info("Test notification sent to userId={} for restaurantId={}", user.getId(), restaurantId);
         } catch (OneSignalException e) {
-            log.error("Error occurred in sending push notification {}", request, e);
+            log.error("Error occurred in sending push notification {}", oneSignalNotificationRequest, e);
         }
     }
 }

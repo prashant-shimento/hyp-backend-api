@@ -28,7 +28,7 @@ public class OneSignalNotificationRequest {
     @JsonProperty("included_segments")
     private List<String> includedSegments;
 
-    @JsonProperty("custom_data")
+    @JsonProperty("data")
     private Map<String, Object> customData;
 
     @JsonProperty("target_channel")

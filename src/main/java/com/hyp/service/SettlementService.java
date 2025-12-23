@@ -200,7 +200,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         double platformDeliveryShare = deliveryCharge
                 * Optional.ofNullable(restaurant.getPlatformDeliveryShare()).orElse(Constants.PLATFORM_DELIVERY_SHARE)
                 / 100.0;
-        double merchantDeliveryShare = getMerchantDeliveryShare(restaurant, netBill, platformDeliveryShare);
+        double merchantDeliveryShare = getMerchantDeliveryShare(restaurant, netBill, deliveryCharge);
 
         double totalSettlement = netBill - totalFees + merchantDeliveryShare;
 
@@ -238,18 +238,17 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         };
     }
 
-    private static double getMerchantDeliveryShare(
-            Restaurant restaurant, double netBill, double platformDeliveryShare) {
+    private static double getMerchantDeliveryShare(Restaurant restaurant, double netBill, double deliveryCharge) {
         Double restaurantDeliveryShare = restaurant.getRestaurantDeliveryShare();
         int deliveryOfferThreshold = restaurant.getDeliveryOffer();
 
         double merchantDeliveryShare;
 
         if (deliveryOfferThreshold != 0 && netBill >= deliveryOfferThreshold) {
-            merchantDeliveryShare = platformDeliveryShare;
+            merchantDeliveryShare = deliveryCharge;
         } else {
             merchantDeliveryShare =
-                    restaurantDeliveryShare != null ? platformDeliveryShare * restaurantDeliveryShare / 100.0 : 0;
+                    restaurantDeliveryShare != null ? deliveryCharge * restaurantDeliveryShare / 100.0 : 0;
         }
         return merchantDeliveryShare;
     }
