@@ -202,7 +202,7 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
                 / 100.0;
         double merchantDeliveryShare = getMerchantDeliveryShare(restaurant, netBill, deliveryCharge);
 
-        double totalSettlement = netBill - totalFees + merchantDeliveryShare;
+        double totalSettlement = netBill - totalFees - merchantDeliveryShare;
 
         // Populate settlement
         settlement.setItemTotal(CommonUtils.roundToTwoDecimal(itemTotal));

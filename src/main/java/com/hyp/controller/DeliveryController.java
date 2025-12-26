@@ -105,7 +105,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         DeliveryQuote deliveryQuote =
                 deliveryService.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
-        if (deliveryQuote.getData().getItems().isEmpty()) {
+        if (deliveryQuote.getData() == null
+                || deliveryQuote.getData().getItems() == null
+                || deliveryQuote.getData().getItems().isEmpty()) {
             throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
         }
 
