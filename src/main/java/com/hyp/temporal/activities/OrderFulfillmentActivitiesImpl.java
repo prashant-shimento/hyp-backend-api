@@ -7,6 +7,7 @@ import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
+import com.hyp.observability.ObservabilityContext;
 import com.hyp.service.CustomerService;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.NotificationService;
@@ -47,12 +48,22 @@ public class OrderFulfillmentActivitiesImpl implements OrderFulfillmentActivitie
 
     @Override
     public Order fetchOrder(String orderId) {
-        return orderService.findById(orderId);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            return orderService.findById(orderId);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
     public Delivery fetchDelivery(String orderId) {
-        return deliveryService.findByOrderId(orderId);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            return deliveryService.findByOrderId(orderId);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
@@ -62,36 +73,60 @@ public class OrderFulfillmentActivitiesImpl implements OrderFulfillmentActivitie
 
     @Override
     public void fulfillDelivery(Delivery delivery, String fulfilledBy, String fulfillType) throws DeliveryException {
-        deliveryService.processDeliveryOrderFulfill(delivery, fulfilledBy, fulfillType);
+        ObservabilityContext.setOrderId(delivery.getOrderId());
+        try {
+            deliveryService.processDeliveryOrderFulfill(delivery, fulfilledBy, fulfillType);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
     public void updateOrderStatus(String orderId, OrderStatusType status) {
-        orderService.updateOrderStatus(orderId, status);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            orderService.updateOrderStatus(orderId, status);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
     public void sendAlert(String orderId) {
-        Order order = fetchOrder(orderId);
-        Customer customer = customerService.findById(order.getCustomerId());
-        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-        List<String> parameters = CommonUtils.buildStringList(
-                orderId,
-                restaurant.getRestaurantName(),
-                order.getStatus(),
-                customer.getName(),
-                customer.getMobile(),
-                "-",
-                "-");
-        notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
-        oneSignalAlertService.notifyDeliveryDelay(
-                orderId, restaurant.getRestaurantName(), order.getStatus(), customer.getName(), customer.getMobile());
-        log.info("Sent fulfillment delay alert for {}", orderId);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            Order order = orderService.findById(orderId);
+            Customer customer = customerService.findById(order.getCustomerId());
+            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+            List<String> parameters = CommonUtils.buildStringList(
+                    orderId,
+                    restaurant.getRestaurantName(),
+                    order.getStatus(),
+                    customer.getName(),
+                    customer.getMobile(),
+                    "-",
+                    "-");
+            notificationService.sendInternalGroupNotification(Constants.META_DELIVERY_DELAY_ALERT_TEMPLATE, parameters);
+            oneSignalAlertService.notifyDeliveryDelay(
+                    orderId,
+                    restaurant.getRestaurantName(),
+                    order.getStatus(),
+                    customer.getName(),
+                    customer.getMobile());
+            log.info("Sent fulfillment delay alert");
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
     public Delivery createDelivery(Order order) {
-        deliveryService.processDeliveryOrder(order);
-        return deliveryService.findByOrderId(order.getId());
+        ObservabilityContext.setOrderId(order.getId());
+        try {
+            deliveryService.processDeliveryOrder(order);
+            return deliveryService.findByOrderId(order.getId());
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 }

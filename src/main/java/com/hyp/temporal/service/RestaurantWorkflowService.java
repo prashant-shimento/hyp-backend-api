@@ -14,15 +14,22 @@ import org.springframework.stereotype.Service;
 public class RestaurantWorkflowService {
 
     private final WorkflowClient workflowClient;
+
     public static final String RESTAURANT_TASK_QUEUE = "restaurant-task-queue";
 
     public void startRestaurantStatusWorkflow(String restaurantId, long delay) {
-        RestaurantWorkflow workflow = workflowClient.newWorkflowStub(
-                RestaurantWorkflow.class,
-                WorkflowOptions.newBuilder()
-                        .setWorkflowId("restaurant-status-update-" + CommonUtils.generateWorkflowId(restaurantId))
-                        .setTaskQueue(RESTAURANT_TASK_QUEUE)
-                        .build());
-        WorkflowClient.start(workflow::handleRestaurantStatus, restaurantId, delay);
+        try {
+            RestaurantWorkflow workflow = workflowClient.newWorkflowStub(
+                    RestaurantWorkflow.class,
+                    WorkflowOptions.newBuilder()
+                            .setWorkflowId("restaurant-status-update-" + CommonUtils.generateWorkflowId(restaurantId))
+                            .setTaskQueue(RESTAURANT_TASK_QUEUE)
+                            .build());
+            WorkflowClient.start(workflow::handleRestaurantStatus, restaurantId, delay);
+            log.info("Started RESTAURANT_STATUS workflow restaurantId={} delay={}", restaurantId, delay);
+        } catch (Exception e) {
+            log.error("Failed to start RESTAURANT_STATUS workflow restaurantId={}", restaurantId, e);
+            throw e;
+        }
     }
 }

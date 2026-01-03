@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Import Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Properties -->
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="hyp-backend"/>
+
+    <!-- Console Appender for local development (human-readable) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!-- request_id always present; order context available in JSON logs -->
+            <pattern>
+                %d{HH:mm:ss.SSS} [req=%X{request_id:-}] [order=%X{order_id:-}] [restaurant=%X{restaurant_id:-}] %-5level %logger{36} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <!-- JSON Appender for Loki (structured logging in Kubernetes) -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Application metadata -->
+            <customFields>{"application":"${APP_NAME}"}</customFields>
+
+            <!-- Include all MDC fields that have values (request_id, order_id, restaurant_id) -->
+            <includeMdc>true</includeMdc>
+
+            <includeCallerData>false</includeCallerData>
+            <includeContext>false</includeContext>
+
+            <!-- ISO 8601 timestamp for Loki -->
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+
+            <!-- Field names -->
+            <fieldNames>
+                <timestamp>@timestamp</timestamp>
+                <version>[ignore]</version>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <levelValue>[ignore]</levelValue>
+                <stackTrace>stack_trace</stackTrace>
+            </fieldNames>
+
+            <!-- Exception handling -->
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <maxLength>2048</maxLength>
+                <shortenedClassNameLength>20</shortenedClassNameLength>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <!-- Logger configurations -->
+    <logger name="com.hyp" level="INFO"/>
+    <logger name="com.hyp.observability" level="INFO"/>
+
+    <!-- Framework loggers -->
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="WARN"/>
+
+    <!-- Database loggers -->
+    <logger name="org.mongodb.driver" level="WARN"/>
+    <logger name="io.lettuce" level="WARN"/>
+    <logger name="redis.clients" level="WARN"/>
+
+    <!-- External services -->
+    <logger name="io.temporal" level="INFO"/>
+    <logger name="org.apache.http" level="WARN"/>
+    <logger name="reactor.netty" level="WARN"/>
+    <logger name="io.micrometer" level="INFO"/>
+
+    <!-- Profile-specific configurations -->
+
+    <!-- Local/Development - human readable -->
+    <springProfile name="local,dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Production/Staging - JSON for Loki -->
+    <springProfile name="production,prod,staging">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Default (container) - JSON -->
+    <springProfile name="default">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

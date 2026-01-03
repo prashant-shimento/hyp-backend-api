@@ -1,6 +1,9 @@
 package com.hyp.service;
 
 import com.hyp.exception.EntityNotFoundException;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
 import java.security.SecureRandom;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +25,16 @@ public class OtpService {
     private String smsKey;
 
     private static final int EXPIRE_MINS = 1;
-    private static final int OTP_LENGTH = 6;
 
     private final RedisService redisService;
     private final WebClient webClient;
+    private final ApplicationMetrics metrics;
 
     @Autowired
-    public OtpService(RedisService redisService) {
+    public OtpService(RedisService redisService, ApplicationMetrics metrics) {
         this.redisService = redisService;
         this.webClient = WebClient.builder().build();
+        this.metrics = metrics;
     }
 
     public void sendOtp(String mobileNum) throws Exception {
@@ -48,7 +52,11 @@ public class OtpService {
                     .map(response -> new JSONObject(response).optString("Status"))
                     .map("Success"::equalsIgnoreCase)
                     .block();
+
+            metrics.count(MetricsEvent.OTP, MetricTag.ACTION, "send", MetricTag.RESULT, "success");
+            log.info("OTP sent successfully to mobile ending with {}", mobileNum.substring(mobileNum.length() - 4));
         } catch (Exception e) {
+            metrics.count(MetricsEvent.OTP, MetricTag.ACTION, "send", MetricTag.RESULT, "failed");
             log.error("Error while sending OTP SMS {}", e.getMessage());
             throw new Exception(e.getMessage());
         }

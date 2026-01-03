@@ -6,6 +6,7 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.PaymentException;
+import com.hyp.observability.ObservabilityContext;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import java.util.Optional;
@@ -28,17 +29,21 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
 
     @Override
     public String fetchPaymentStatus(String orderId) {
+        ObservabilityContext.setOrderId(orderId);
         try {
             return paymentService.fetchPaymentOrderStatus(orderId);
         } catch (PaymentException e) {
             throw new RuntimeException("Failed to fetch payment status", e);
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 
     @Override
     public void verifyPayment(String orderId, String paymentStatus) {
+        ObservabilityContext.setOrderId(orderId);
         try {
-            log.info("Payment Verification via Workflow");
+            log.info("Verifying payment via workflow");
             Order order = Optional.ofNullable(orderService.findById(orderId))
                     .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
             Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
@@ -46,6 +51,8 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
             paymentService.verifyPayment(order, payment, paymentStatus);
         } catch (EntityNotFoundException | PaymentException e) {
             throw new RuntimeException("Failed to verify payment", e);
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 
@@ -57,26 +64,31 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
 
     @Override
     public void dropOffOrder(String orderId) {
-        Order order = orderService.findById(orderId);
-        order.setStatus(OrderStatusType.DROPPED_OFF);
-        orderService.save(order);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            Order order = orderService.findById(orderId);
+            order.setStatus(OrderStatusType.DROPPED_OFF);
+            orderService.save(order);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
     public void initiateRefund(String orderId, boolean instantRefund) {
-        log.info("initiateRefund orderId={} instantRefund={}", orderId, instantRefund);
+        ObservabilityContext.setOrderId(orderId);
+        log.info("Initiating refund instantRefund={}", instantRefund);
         try {
             Order order = orderService.findById(orderId);
-
             paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), instantRefund, "Order Cancelled");
-
             order.setStatus(OrderStatusType.REFUND_INITIATED);
             orderService.save(order);
-
-            log.info("refund initiated for orderId={} amount={}", orderId, order.getGrandTotalAmount());
+            log.info("Refund initiated amount={}", order.getGrandTotalAmount());
         } catch (Exception e) {
-            log.error("refund failed for orderId={}", orderId, e);
+            log.error("Refund failed", e);
             throw new RuntimeException("Refund initiation failed", e);
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 }

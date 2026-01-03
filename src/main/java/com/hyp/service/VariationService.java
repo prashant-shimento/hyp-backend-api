@@ -50,7 +50,7 @@ public class VariationService extends BaseServiceImpl<Variation, String> {
             AggregationResults<Variation> results = mongoTemplate.aggregate(aggregation, "variations", Variation.class);
             return results.getMappedResults();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to get variations with addon groups", e);
             return null;
         }
     }

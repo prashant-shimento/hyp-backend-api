@@ -19,6 +19,9 @@ import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.PosData;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
 import com.hyp.request.FileUploadRequest;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosDataRequest.ItemRequest;
@@ -33,6 +36,7 @@ import com.hyp.temporal.service.StockWorkflowService;
 import com.hyp.translation.PosDataRequestTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
+import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -98,6 +102,9 @@ public class PosServiceImpl implements PosService {
     @Autowired
     PosOrderRequestTranslation posOrderRequestTranslation;
 
+    @Autowired
+    ApplicationMetrics metrics;
+
     public PosServiceImpl(
             AttributeService attributeService,
             CategoryService categoryService,
@@ -157,10 +164,11 @@ public class PosServiceImpl implements PosService {
     @Override
     @Transactional
     public boolean savePosData(PosDataRequest posDataRequest) {
+        Timer.Sample timerSample = metrics.startTimer();
+        String restaurantId = posDataRequest.getRestaurants().get(0).getRestaurantid();
         try {
             long existingRestQuery = System.currentTimeMillis();
-            String existingRestaurantId = posDataRequest.getRestaurants().get(0).getRestaurantid();
-            Restaurant existingRestaurant = restaurantService.findById(existingRestaurantId);
+            Restaurant existingRestaurant = restaurantService.findById(restaurantId);
             log.info("Time taken for existingRestQuery: {} ms", System.currentTimeMillis() - existingRestQuery);
             if (existingRestaurant != null) {
                 deletePosData(existingRestaurant.getId());
@@ -191,9 +199,34 @@ public class PosServiceImpl implements PosService {
                     posDataRequest.getRestaurants().get(0).getDetails().getRestaurantname(),
                     posDataRequest.getRestaurants().get(0).getRestaurantid(),
                     posDataRequest.getRestaurants().get(0).getDetails().getMenusharingcode());
+
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    Constants.PET_POOJA,
+                    MetricTag.ACTION,
+                    "menu_push",
+                    MetricTag.RESULT,
+                    "success");
+
+            metrics.stopTimer(
+                    timerSample,
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    Constants.PET_POOJA,
+                    MetricTag.ACTION,
+                    "menu_push");
             return true;
         } catch (Exception e) {
             log.error("Exception occurred while saving POS data: {}", e.getMessage(), e);
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    Constants.PET_POOJA,
+                    MetricTag.ACTION,
+                    "menu_push",
+                    MetricTag.RESULT,
+                    "failed");
             PosException posException = new PosException("Error in savePosData API call: " + e.getMessage(), e);
             sendAlert(posException);
             return false;
@@ -276,18 +309,6 @@ public class PosServiceImpl implements PosService {
         }
     }
 
-    private CompletableFuture<Void> saveAsync(Runnable task, String name) {
-        return CompletableFuture.runAsync(() -> {
-            long t = System.currentTimeMillis();
-            try {
-                task.run();
-                log.info("Saved {} in {} ms", name, System.currentTimeMillis() - t);
-            } catch (Exception e) {
-                log.error("Failed to save {}: {}", name, e.getMessage(), e);
-            }
-        });
-    }
-
     @Override
     public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
         try {
@@ -303,8 +324,25 @@ public class PosServiceImpl implements PosService {
                     .block();
             log.info("createPosOrder Response {}", objectMapper.writeValueAsString(response));
 
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    Constants.PET_POOJA,
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "success");
+
         } catch (Exception e) {
             log.error("Error occurred during createPosOrder {}", e.getMessage());
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    Constants.PET_POOJA,
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "failed");
             throw new PosException("POS Order Creation failed " + e.getMessage());
         }
     }

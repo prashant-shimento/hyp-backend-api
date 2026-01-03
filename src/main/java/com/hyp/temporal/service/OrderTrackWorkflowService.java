@@ -12,21 +12,27 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class OrderTrackWorkflowService {
+
     private final WorkflowClient workflowClient;
+
     public static final String ORDER_TRACK_QUEUE = "order-track-queue";
 
     public void startOrderTrackWorkflow(String orderId) {
         String workflowId = "order-track-" + orderId;
-        OrderTrackWorkFlow workflow = workflowClient.newWorkflowStub(
-                OrderTrackWorkFlow.class,
-                WorkflowOptions.newBuilder()
-                        .setWorkflowId(workflowId)
-                        .setTaskQueue(ORDER_TRACK_QUEUE)
-                        .build());
         try {
+            OrderTrackWorkFlow workflow = workflowClient.newWorkflowStub(
+                    OrderTrackWorkFlow.class,
+                    WorkflowOptions.newBuilder()
+                            .setWorkflowId(workflowId)
+                            .setTaskQueue(ORDER_TRACK_QUEUE)
+                            .build());
             WorkflowClient.start(workflow::handleOrderTrack, orderId);
+            log.info("Started ORDER_TRACK workflow orderId={}", orderId);
         } catch (WorkflowExecutionAlreadyStarted e) {
-            log.warn("Workflow already running for {}", workflowId);
+            log.warn("Workflow already running workflowId={}", workflowId);
+        } catch (Exception e) {
+            log.error("Failed to start ORDER_TRACK workflow orderId={}", orderId, e);
+            throw e;
         }
     }
 }

@@ -55,12 +55,10 @@ public abstract class BaseController<DTO, T, ID> {
         if (query == null) {
             return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
         }
-        log.info("getAll Query {}", query);
+        log.info("getAll {}", query);
         long startTime = System.currentTimeMillis();
         List<T> entities = service.findByQueryWithReferences(entity, query);
-        long endTime = System.currentTimeMillis(); // End time
-        long executionTime = endTime - startTime; // Execution time in milliseconds
-        log.info("Query Execution Time for getAll: {} ms", executionTime);
+        log.info("Query Execution Time for getAll: {} ms", System.currentTimeMillis() - startTime);
         List<DTO> dtoEntities = translationService.getDtoList(entities);
         Response response = new Response(dtoEntities, false, "success");
         return ResponseEntity.ok(response);

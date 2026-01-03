@@ -22,6 +22,7 @@ jobs:
     - name: Build with Maven
       run: mvn clean install -DskipTests
       env:
+        ENV: production
         GOOGLE_KEY: ${{ secrets.GOOGLE_KEY }}
         APP_DOMAIN: ${{ secrets.PRODUCTION_APP_DOMAIN }}
         DELIVERY_PIDGE_PASSWORD: ${{ secrets.PRODUCTION_DELIVERY_PIDGE_PASSWORD }}

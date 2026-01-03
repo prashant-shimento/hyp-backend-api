@@ -14,6 +14,9 @@ import com.hyp.exception.PaymentException;
 import com.hyp.exception.ValidationException;
 import com.hyp.model.PaymentConfig;
 import com.hyp.model.PaymentRoute;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
 import com.hyp.repository.PaymentRepository;
 import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.temporal.service.OrderWorkflowService;
@@ -71,7 +74,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     @Autowired
     private OrderEventPublisher orderEventPublisher;
 
+    @Autowired
+    private ApplicationMetrics metrics;
+
     public Payment createPaymentOrder(com.hyp.entity.Order order) throws PaymentException {
+        long startTime = System.currentTimeMillis();
         try {
             if (order == null || !OrderStatusType.CREATED.equals(order.getStatus())) {
                 throw new ValidationException(
@@ -88,20 +95,36 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 try {
                     payment = createRoutingOrder(razorpayClient, orderId, amount, restaurant);
                 } catch (Exception routingEx) {
-                    log.warn(
-                            "Routing failed for order {}: {}. Falling back to standard order.",
-                            orderId,
-                            routingEx.getMessage());
+                    log.warn("Payment routing failed, falling back to standard reason={}", routingEx.getMessage());
                     payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
                 }
             } else {
                 payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
             }
             setPaymentCheck(orderId);
-            log.info("Payment created for Order ID {}", orderId);
+            log.info("Payment created amount={} routing={}", amount, restaurant.isPaymentRoutingEnabled());
+
+            metrics.count(
+                    MetricsEvent.PAYMENT,
+                    MetricTag.PARTNER,
+                    Constants.RAZOR_PAY,
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.STATUS,
+                    payment.getStatus(),
+                    MetricTag.RESULT,
+                    "success");
             return save(payment);
         } catch (Exception e) {
-            log.error("Error creating payment order {}", e.getMessage());
+            log.error("Payment creation failed", e);
+            metrics.count(
+                    MetricsEvent.PAYMENT,
+                    MetricTag.PARTNER,
+                    Constants.RAZOR_PAY,
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "failed");
             throw new PaymentException("Error creating payment order: " + e.getMessage(), e);
         }
     }
@@ -252,7 +275,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String orderId) throws PaymentException {
         try {
-            log.info("Payment verification of Order ID {}", orderId);
+            log.info("Verifying payment signature");
             JSONObject verifyRequest = new JSONObject();
             verifyRequest.put("razorpay_order_id", razorPayVerifyDto.getRazorpayOrderId());
             verifyRequest.put("razorpay_payment_id", razorPayVerifyDto.getRazorpayPaymentId());
@@ -261,7 +284,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                     verifyRequest,
                     EncryptionUtils.decrypt(getRazorpayPaymentConfig(orderId).getSecret()));
         } catch (Exception e) {
-            log.error("Error in verifySignature {}", e.getMessage());
+            log.error("Payment signature verification failed", e);
             throw new PaymentException("Error in verifySignature: " + e.getMessage(), e);
         }
     }
@@ -273,7 +296,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             Order order = razorpayClient.orders.fetch(payment.getPaymentOrderId());
             return order.get("status");
         } catch (Exception e) {
-            log.error("Error in fetchOrderStatus {}", e.getMessage());
+            log.error("Failed to fetch payment status", e);
             throw new PaymentException("Error fetchOrderStatus: " + e.getMessage(), e);
         }
     }
@@ -295,13 +318,13 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
             if (matchedPayment != null) {
                 String paymentId = matchedPayment.get("id");
-                log.info("Fetched Razorpay Payment ID: {} for Order ID: {}", paymentId, orderId);
+                log.debug("Fetched razorpay paymentId={}", paymentId);
                 return paymentId;
             }
 
-            log.warn("No matching payment found for Order ID: {}", orderId);
+            log.warn("No captured/authorized payment found");
         } catch (Exception e) {
-            log.error("Error fetching Razorpay Payment ID for Order ID: {}. Exception:", orderId, e);
+            log.error("Failed to fetch razorpay payment ID", e);
         }
         return null;
     }
@@ -320,8 +343,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public Payment createRefund(String orderId, double amount, boolean instantRefund, String reason)
             throws PaymentException {
-        log.info("Creating refund of Order ID {}", orderId);
-
+        log.info("Creating refund amount={} instant={}", amount, instantRefund);
         try {
             Payment payment = paymentRepository.findByOrderId(orderId);
 
@@ -347,9 +369,27 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             save(payment);
             orderService.updateOrderStatus(
                     orderId, OrderStatusType.getOrderStatusByRefundStatus(paymentRefund.getStatus()));
+            metrics.count(
+                    MetricsEvent.PAYMENT,
+                    MetricTag.PARTNER,
+                    Constants.RAZOR_PAY,
+                    MetricTag.ACTION,
+                    "refund",
+                    MetricTag.STATUS,
+                    paymentRefund.getStatus(),
+                    MetricTag.RESULT,
+                    "success");
             return payment;
         } catch (Exception e) {
-            log.error("Error in creating refund order {}", e.getMessage());
+            log.error("Refund creation failed", e);
+            metrics.count(
+                    MetricsEvent.PAYMENT,
+                    MetricTag.PARTNER,
+                    Constants.RAZOR_PAY,
+                    MetricTag.ACTION,
+                    "refund",
+                    MetricTag.RESULT,
+                    "failed");
             throw new PaymentException("Error creating refund order: " + e.getMessage(), e);
         }
     }
@@ -375,7 +415,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                     .build();
 
         } catch (Exception e) {
-            log.error("Error in fetchRefund order {}", e.getMessage());
+            log.error("Failed to fetch refund", e);
             throw new PaymentException("Error fetchRefund refund order: " + e.getMessage(), e);
         }
     }
@@ -433,7 +473,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 || status == OrderStatusType.PAYMENT_FAILED
                 || status == OrderStatusType.ERROR
                 || status == OrderStatusType.PROCESSING) {
-            log.info("Processing order {}", order.getId());
+            log.info("Processing payment status={}", paymentStatus);
             orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByPaymentStatus(paymentStatus));
             payment.setStatus(paymentStatus);
             if (payment.getPaymentId() == null) {
@@ -449,16 +489,35 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 || status == OrderStatusType.PAYMENT_FAILED
                 || status == OrderStatusType.ERROR
                 || status == OrderStatusType.PROCESSING) {
-            log.info("Updating order {} to PAID", order.getId());
+            log.info("Payment successful, updating to PAID");
             boolean save = orderService.updateStatus(order.getId(), OrderStatusType.PAID);
             if (!save) {
-                log.error("Unable to update the status of order for ID {}", order.getId());
+                log.error("Failed to update order status to PAID");
+                metrics.count(
+                        MetricsEvent.REFUND,
+                        MetricTag.PARTNER,
+                        Constants.RAZOR_PAY,
+                        MetricTag.ACTION,
+                        "process_payment",
+                        MetricTag.RESULT,
+                        "failed");
+                return;
             }
             payment.setStatus(paymentStatus);
             if (payment.getPaymentId() == null) {
                 payment.setPaymentId(fetchPaymentId(order.getId()));
             }
             save(payment);
+            metrics.count(
+                    MetricsEvent.REFUND,
+                    MetricTag.PARTNER,
+                    Constants.RAZOR_PAY,
+                    MetricTag.ACTION,
+                    "process_payment",
+                    MetricTag.STATUS,
+                    paymentStatus,
+                    MetricTag.RESULT,
+                    "success");
             orderEventPublisher.publishProcessOrderEvent(order);
         }
     }

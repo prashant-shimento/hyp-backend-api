@@ -17,6 +17,10 @@ import com.hyp.enums.*;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.*;
 import com.hyp.model.PreOrder;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
+import com.hyp.observability.ObservabilityContext;
 import com.hyp.repository.OrderRepository;
 import com.hyp.request.PosCallbackRequest;
 import com.hyp.request.PosOrderUpdateRequest;
@@ -25,6 +29,7 @@ import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.mongodb.client.result.UpdateResult;
+import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -113,7 +118,11 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     PosService posService;
 
+    @Autowired
+    ApplicationMetrics metrics;
+
     public Order create(OrderDto orderDto) throws Exception {
+        Timer.Sample timerSample = metrics.startTimer();
 
         Restaurant restaurant = Optional.ofNullable(restaurantService.findById(orderDto.getRestaurantId()))
                 .orElseThrow(() ->
@@ -232,26 +241,53 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
         order = save(order);
 
-        log.info("Order created {}", order.getId());
-        if (order.getPaymentType() == PaymentType.COD) {
-            orderEventPublisher.publishPosOrderEvent(order);
-            orderEventPublisher.publishOrderStatusChangeEvent(order);
-        }
+        metrics.count(
+                MetricsEvent.ORDER,
+                MetricTag.ACTION,
+                "create",
+                MetricTag.STATUS,
+                order.getStatus().name(),
+                MetricTag.RESULT,
+                "success",
+                MetricTag.ORDER_TYPE,
+                order.getOrderType());
 
-        List<String> parameters = CommonUtils.buildStringList(
-                customer.getName(),
-                customer.getMobile(),
-                order.getId(),
-                order.getStatus(),
-                restaurant.getRestaurantName());
-        notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
-        oneSignalAlertService.notifyNewOrder(
-                customer.getName(),
-                customer.getMobile(),
-                order.getId(),
-                order.getStatus(),
-                restaurant.getRestaurantName());
-        return order;
+        // Track active orders gauge
+        metrics.incrementGauge("active_orders", MetricTag.ORDER_TYPE, order.getOrderType());
+
+        metrics.stopTimer(timerSample, MetricsEvent.ORDER, MetricTag.ACTION, "create");
+        // Set observability context for downstream logging
+        ObservabilityContext.setOrderContext(order.getId(), order.getRestaurantId());
+
+        try {
+            log.info(
+                    "Order created orderId={} type={} paymentType={} amount={}",
+                    order.getId(),
+                    order.getOrderType(),
+                    order.getPaymentType(),
+                    order.getGrandTotalAmount());
+            if (order.getPaymentType() == PaymentType.COD) {
+                orderEventPublisher.publishPosOrderEvent(order);
+                orderEventPublisher.publishOrderStatusChangeEvent(order);
+            }
+
+            List<String> parameters = CommonUtils.buildStringList(
+                    customer.getName(),
+                    customer.getMobile(),
+                    order.getId(),
+                    order.getStatus(),
+                    restaurant.getRestaurantName());
+            notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+            oneSignalAlertService.notifyNewOrder(
+                    customer.getName(),
+                    customer.getMobile(),
+                    order.getId(),
+                    order.getStatus(),
+                    restaurant.getRestaurantName());
+            return order;
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     private static PreOrder getPreOrder(OrderDto orderDto, Restaurant restaurant, boolean isPreOrder)
@@ -274,8 +310,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     public void processOrderCallback(PosCallbackRequest posCallbackRequest) {
         String orderId = posCallbackRequest.getOrderId();
-        log.info("POS Callback received for Order ID {}", orderId);
         String restaurantId = posCallbackRequest.getRestaurantId();
+        ObservabilityContext.setOrderContext(orderId, restaurantId);
+        log.info("POS callback received orderId={} posStatus={}", orderId, posCallbackRequest.getStatus());
         try {
             Restaurant restaurant = restaurantService.findByMenuSharingCode(restaurantId);
             if (restaurant == null) {
@@ -306,11 +343,14 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                         Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(2);
 
                 if (fulfillmentDelay > 0) {
-                    log.info("Scheduling fulfillment for order {} after {} minutes", order.getId(), fulfillmentDelay);
                     boolean isWorkflowEnabled = redisService
                             .getRedisData(Constants.FULFILLMENT_WORKFLOW_ENABLED)
                             .map(Boolean::parseBoolean)
                             .orElse(false);
+                    log.info(
+                            "Scheduling fulfillment delayMinutes={} workflowEnabled={}",
+                            fulfillmentDelay,
+                            isWorkflowEnabled);
 
                     if (isWorkflowEnabled) {
                         startOrderFulfillmentWorkflow(order.getId(), fulfillmentDelay);
@@ -324,7 +364,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 Delivery delivery = deliveryService.findByOrderId(order.getId());
 
                 if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
-                    log.warn("No PENDING delivery found for order {}. Skipping fulfillment.", order.getId());
+                    log.warn("Skipping fulfillment - no pending delivery found");
                     return;
                 }
 
@@ -352,6 +392,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         } catch (Exception e) {
             updateOrderStatus(posCallbackRequest.getOrderId(), OrderStatusType.ERROR);
             throw new RuntimeException("Exception Occurred while processCallback Order " + e.getMessage());
+        } finally {
+            ObservabilityContext.clear();
         }
     }
 
@@ -365,6 +407,31 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
         save(order);
 
+        metrics.count(
+                MetricsEvent.ORDER,
+                MetricTag.ACTION,
+                "status_update",
+                MetricTag.RESULT,
+                "success",
+                MetricTag.STATUS,
+                newStatus.name().toLowerCase());
+
+        if (newStatus == OrderStatusType.ERROR || newStatus == OrderStatusType.PAYMENT_FAILED) {
+            metrics.count(
+                    MetricsEvent.ORDER,
+                    MetricTag.ACTION,
+                    "status_update",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.STATUS,
+                    newStatus.name().toLowerCase());
+        }
+
+        // Decrement active orders gauge when order reaches terminal state
+        if (isTerminalStatus(newStatus)) {
+            metrics.decrementGauge("active_orders", MetricTag.ORDER_TYPE, order.getOrderType());
+        }
+
         try {
             orderEventPublisher.publishOrderStatusChangeEvent(order);
 
@@ -372,10 +439,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 orderEventPublisher.publishSettlementEvent(order);
             }
         } catch (Exception e) {
-            log.error("Failed to publish event for order {} status {}: {}", orderId, newStatus, e.getMessage());
+            log.error("Failed to publish event status={}", newStatus, e);
         }
 
-        log.info("Order {} status updated from {} -> {}", orderId, oldStatus, newStatus);
+        log.info("Status changed from={} to={}", oldStatus, newStatus);
         return order;
     }
 
@@ -396,12 +463,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         UpdateResult result = mongoTemplate.updateFirst(query, update, Order.class);
 
         if (result.getModifiedCount() > 0) {
-            log.info("Order {} status updated to {} atomically.", orderId, newStatus);
+            log.info("Status updated atomically to={}", newStatus);
             Order updatedOrder = this.findById(orderId);
             orderEventPublisher.publishOrderStatusChangeEvent(updatedOrder);
             return true;
         } else {
-            log.info("Order {} not updated; already processed or in final state.", orderId);
+            log.debug("Status update skipped - already processed or in final state");
             return false;
         }
     }
@@ -484,7 +551,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
 
             if (requestedStatus != null && requestedStatus == oldStatus) {
-                log.info("Order {} already in status {}, duplicate status update request", orderId, requestedStatus);
+                log.debug("Duplicate status update ignored currentStatus={}", requestedStatus);
             }
             // ModelMapper updates all fields, including status
             orderTranslation.updateEntityFromDto(orderDto, order);
@@ -510,7 +577,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             return order;
 
         } catch (PosException | DeliveryException | PaymentException | RequestTranslationException e) {
-            log.error("Order {} update failed", orderId, e);
+            log.error("Order update failed", e);
             throw new RuntimeException("Order update failed", e);
         }
     }
@@ -556,5 +623,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
         paymentService.createRefund(
                 order.getId(), order.getGrandTotalAmount(), restaurant.isInstantRefund(), "Cancellation");
+    }
+
+    private boolean isTerminalStatus(OrderStatusType status) {
+        return status == OrderStatusType.DELIVERED
+                || status == OrderStatusType.CANCELLED
+                || status == OrderStatusType.DROPPED_OFF
+                || status == OrderStatusType.ERROR
+                || status == OrderStatusType.PAYMENT_FAILED;
     }
 }

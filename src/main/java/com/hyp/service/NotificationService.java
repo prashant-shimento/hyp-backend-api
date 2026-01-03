@@ -9,6 +9,9 @@ import com.hyp.enums.PartnerType;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.NotificationException;
 import com.hyp.exception.OneSignalException;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
 import com.hyp.request.FacebookMessageRequest;
 import com.hyp.request.FacebookMessageRequest.Component;
 import com.hyp.request.FacebookMessageRequest.Language;
@@ -55,6 +58,9 @@ public class NotificationService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private ApplicationMetrics metrics;
 
     @Value("${onesignal.partner.app.id}")
     private String partnerAppId;
@@ -191,9 +197,29 @@ public class NotificationService {
             }
             log.info("Notification service enabled; sending messageRequest");
             metaService.sendMessage(messageRequest);
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "success",
+                    MetricTag.TYPE,
+                    templateName,
+                    MetricTag.CHANNEL,
+                    "WHATSAPP");
             log.info("sendNotification completed successfully for mobile: {}", mobile);
         } catch (NotificationException e) {
             log.error("Error occurred in sendOrderNotification {}", e.getMessage());
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.TYPE,
+                    templateName,
+                    MetricTag.CHANNEL,
+                    "WHATSAPP");
         }
     }
 
@@ -244,20 +270,84 @@ public class NotificationService {
             }
             log.info("Notification service enabled; sending message to mobile: {}", mobile);
             metaService.sendMessage(messageRequest);
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "success",
+                    MetricTag.TYPE,
+                    templateName,
+                    MetricTag.CHANNEL,
+                    "WHATSAPP");
             log.info("sendNotification completed successfully for mobile: {}", mobile);
         } catch (NotificationException e) {
             log.error("Error occurred in sendNotification {}", e.getMessage());
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.TYPE,
+                    templateName,
+                    MetricTag.CHANNEL,
+                    "WHATSAPP");
         }
     }
 
     public void sendOneSignalNotification(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
-        oneSignalClient.sendNotification(oneSignalNotificationRequest);
+        try {
+            oneSignalClient.sendNotification(oneSignalNotificationRequest);
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "success",
+                    MetricTag.CHANNEL,
+                    "ONE_SIGNAL");
+        } catch (OneSignalException e) {
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.CHANNEL,
+                    "ONE_SIGNAL");
+            throw e;
+        }
     }
 
     public void sendOneSignalNotificationForPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
-        oneSignalClient.sendNotificationForPartner(oneSignalNotificationRequest);
+        try {
+            oneSignalClient.sendNotificationForPartner(oneSignalNotificationRequest);
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "success",
+                    MetricTag.CHANNEL,
+                    "ONE_SIGNAL",
+                    MetricTag.PARTNER,
+                    "RESTAURANT");
+        } catch (OneSignalException e) {
+            metrics.count(
+                    MetricsEvent.NOTIFICATION,
+                    MetricTag.ACTION,
+                    "send_notification",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.CHANNEL,
+                    "ONE_SIGNAL",
+                    MetricTag.PARTNER,
+                    "RESTAURANT");
+            throw e;
+        }
     }
 
     public void sendOneSignalNotification(

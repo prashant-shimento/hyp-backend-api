@@ -43,10 +43,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class PosOrderRequestTranslation {
 
@@ -78,7 +80,7 @@ public class PosOrderRequestTranslation {
             posOrderUpdateRequest.setCancelReason(cancelReason);
             posOrderUpdateRequest.setStatus("-1");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to build POS order update request", e);
             throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
         }
         return posOrderUpdateRequest;
@@ -97,7 +99,7 @@ public class PosOrderRequestTranslation {
             posRiderUpdateRequest.setStatus(String.valueOf(riderStatus));
             posRiderUpdateRequest.setExternalOrderId(CommonUtils.emptyIfNullOrZeroToString(null));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to build POS rider update request", e);
         }
         return posRiderUpdateRequest;
     }
@@ -112,7 +114,7 @@ public class PosOrderRequestTranslation {
 
             posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer, address));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to build POS order request", e);
             throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
         }
         return posOrderRequest;
@@ -128,7 +130,7 @@ public class PosOrderRequestTranslation {
 
             posOrderRequest.setOrderInfo(getOrderInfo(restaurant, order, customer));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to build POS order request", e);
             throw new RequestTranslationException(Constants.PET_POOJA, e.getMessage());
         }
         return posOrderRequest;

@@ -1,6 +1,7 @@
 package com.hyp.temporal.activities;
 
-import com.hyp.service.*;
+import com.hyp.service.AddonItemService;
+import com.hyp.service.ItemService;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,5 +29,6 @@ public class StockUpdateActivitiesImpl implements StockUpdateActivities {
             default:
                 throw new IllegalArgumentException("Unsupported item type: " + type);
         }
+        log.info("Updated stock type={} count={} inStock={}", type, itemIds.size(), inStock);
     }
 }

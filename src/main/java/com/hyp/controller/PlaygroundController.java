@@ -12,6 +12,7 @@ import com.hyp.service.MailService;
 import com.hyp.service.MetaService;
 import com.hyp.service.NotificationService;
 import java.util.Collections;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/play-ground")
 public class PlaygroundController {
@@ -49,8 +51,8 @@ public class PlaygroundController {
             response = new Response(Collections.singletonList(facebookMessageResponse), false, "Meta Message Sent !");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("Meta message failed", e);
             response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -63,8 +65,8 @@ public class PlaygroundController {
             response = new Response(null, false, "Mail Sent !");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("Mail send failed", e);
             response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -77,8 +79,8 @@ public class PlaygroundController {
             response = new Response(null, false, "File Uploaded !");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("File upload failed", e);
             response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -92,8 +94,8 @@ public class PlaygroundController {
             response = new Response(null, false, "Notification Sent !");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("OneSignal notification failed", e);
             response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

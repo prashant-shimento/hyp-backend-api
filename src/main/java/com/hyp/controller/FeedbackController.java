@@ -9,6 +9,7 @@ import com.hyp.service.FeedbackService;
 import com.hyp.service.PartnerService;
 import com.hyp.translation.FeedbackTranslation;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/feedback")
 public class FeedbackController extends BaseController<FeedbackDto, Feedback, String> {
@@ -48,8 +50,8 @@ public class FeedbackController extends BaseController<FeedbackDto, Feedback, St
             response = new Response(null, false, "Feedback Successfully Consumed from ChatIO");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
+            log.error("Failed to consume feedback from ChatIO", e);
             response = new Response(null, true, e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

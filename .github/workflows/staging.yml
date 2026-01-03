@@ -22,6 +22,7 @@ jobs:
       - name: Build with Maven
         run: mvn clean install -DskipTests
         env:
+          ENV: staging
           GOOGLE_KEY: ${{ secrets.GOOGLE_KEY }}
           APP_DOMAIN: ${{ secrets.STAGING_APP_DOMAIN }}
           DELIVERY_PIDGE_PASSWORD: ${{ secrets.STAGING_DELIVERY_PIDGE_PASSWORD }}

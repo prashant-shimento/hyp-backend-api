@@ -2,6 +2,7 @@ package com.hyp.temporal.activities;
 
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.observability.ObservabilityContext;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.OrderService;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class OrderTrackActivitiesImpl implements OrderTrackActivities {
+
     @Autowired
     OrderService orderService;
 
@@ -38,14 +40,19 @@ public class OrderTrackActivitiesImpl implements OrderTrackActivities {
 
     @Override
     public void sendOrderTrackAlert(String orderId, long finalMinutesSinceCreation, String nextExpected) {
-        Order order = fetchOrder(orderId);
-        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-        oneSignalAlertService.notifyOrderTrackDelay(
-                orderId,
-                restaurant.getRestaurantName(),
-                order.getStatus().name(),
-                finalMinutesSinceCreation,
-                nextExpected);
-        log.info("Sent fulfillment delay alert for {}", orderId);
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            Order order = orderService.findById(orderId);
+            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+            oneSignalAlertService.notifyOrderTrackDelay(
+                    orderId,
+                    restaurant.getRestaurantName(),
+                    order.getStatus().name(),
+                    finalMinutesSinceCreation,
+                    nextExpected);
+            log.info("Sent order track alert minutes={} nextExpected={}", finalMinutesSinceCreation, nextExpected);
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 }

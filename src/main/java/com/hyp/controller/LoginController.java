@@ -5,6 +5,9 @@ import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.EntityNotFoundException;
+import com.hyp.observability.ApplicationMetrics;
+import com.hyp.observability.MetricTag;
+import com.hyp.observability.MetricsEvent;
 import com.hyp.response.Response;
 import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
@@ -52,13 +55,28 @@ public class LoginController {
     @Autowired
     RedisService redisService;
 
+    @Autowired
+    ApplicationMetrics metrics;
+
     @PostMapping("/otp")
     public ResponseEntity<Response> userLogin(@RequestBody @Valid LoginDto loginDto) throws Exception {
-        Customer customer = Optional.ofNullable(customerService.findByMobile(loginDto.getMobile()))
-                .orElseGet(() -> customerService.save(Customer.builder()
-                        .name(loginDto.getName())
-                        .mobile(loginDto.getMobile())
-                        .build()));
+        Customer existingCustomer = customerService.findByMobile(loginDto.getMobile());
+        boolean isNewCustomer = existingCustomer == null;
+
+        Customer customer = Optional.ofNullable(existingCustomer).orElseGet(() -> {
+            Customer newCustomer = customerService.save(Customer.builder()
+                    .name(loginDto.getName())
+                    .mobile(loginDto.getMobile())
+                    .build());
+            metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "signup", MetricTag.RESULT, "success");
+
+            log.info(
+                    "New customer created with mobile ending {}",
+                    loginDto.getMobile().substring(loginDto.getMobile().length() - 4));
+            return newCustomer;
+        });
+
+        metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "login", MetricTag.RESULT, "attempt");
         if (isInternalUser(customer.getMobile())) {
             otpService.sendOtp(customer.getMobile());
         }
@@ -71,21 +89,49 @@ public class LoginController {
         Customer customer = Optional.ofNullable(customerService.findByMobile(verificationRequest.getMobile()))
                 .orElseThrow(() -> {
                     otpService.clearOtp(verificationRequest.getMobile());
+                    metrics.count(
+                            MetricsEvent.OTP,
+                            MetricTag.ACTION,
+                            "verify",
+                            MetricTag.RESULT,
+                            "failed",
+                            MetricTag.REASON,
+                            "customer_not_found");
                     return new EntityNotFoundException("Login Mobile", verificationRequest.getMobile());
                 });
 
         if (!restaurantService.isExistsById(verificationRequest.getRestaurantId())) {
             otpService.clearOtp(verificationRequest.getMobile());
+            metrics.count(
+                    MetricsEvent.OTP,
+                    MetricTag.ACTION,
+                    "verify",
+                    MetricTag.RESULT,
+                    "failed",
+                    MetricTag.REASON,
+                    "restaurant_not_found");
             throw new EntityNotFoundException("Restaurant", verificationRequest.getRestaurantId());
         }
         if (isInternalUser(verificationRequest.getMobile())) {
             int storedOtp = otpService.getOtp(verificationRequest.getMobile());
             log.info("storedOTP {} requestedOTP {}", storedOtp, verificationRequest.getOtp());
             if (verificationRequest.getOtp() != storedOtp) {
+                metrics.count(
+                        MetricsEvent.OTP,
+                        MetricTag.ACTION,
+                        "verify",
+                        MetricTag.RESULT,
+                        "failed",
+                        MetricTag.REASON,
+                        "otp_mismatch");
                 throw new BadRequestException("Login", "OTP Verification failed");
             }
             otpService.clearOtp(verificationRequest.getMobile());
         }
+
+        // OTP verified successfully
+        metrics.count(MetricsEvent.OTP, MetricTag.ACTION, "verify", MetricTag.RESULT, "success");
+        metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "login", MetricTag.RESULT, "success");
 
         customer.setVerified(true);
 
@@ -95,6 +141,7 @@ public class LoginController {
         customer.getRestaurants().add(verificationRequest.getRestaurantId());
 
         customerService.save(customer);
+        log.info("OTP verified successfully for customer, restaurantId={}", verificationRequest.getRestaurantId());
         return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
     }
 

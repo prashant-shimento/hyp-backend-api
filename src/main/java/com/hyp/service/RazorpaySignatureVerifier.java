@@ -5,8 +5,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class RazorpaySignatureVerifier {
 
@@ -21,7 +23,7 @@ public class RazorpaySignatureVerifier {
             String calculatedSignature = Base64.getEncoder().encodeToString(hashBytes);
             return calculatedSignature.equals(signature);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            e.printStackTrace();
+            log.error("Signature verification failed", e);
             return false;
         }
     }

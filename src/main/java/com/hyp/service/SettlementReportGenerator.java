@@ -27,10 +27,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component(SettlementReportGenerator.REPORT_NAME)
 public class SettlementReportGenerator implements ReportPdfGenerator {
 
@@ -284,7 +286,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
 
             new Canvas(page, pageSize).add(topImage);
         } catch (Exception e) {
-            System.err.println("Failed to add top banner: " + e.getMessage());
+            log.warn("Failed to add top banner", e);
         }
 
         try {
@@ -294,7 +296,7 @@ public class SettlementReportGenerator implements ReportPdfGenerator {
 
             new Canvas(page, pageSize).add(bottomImage);
         } catch (Exception e) {
-            System.err.println("Failed to add bottom banner: " + e.getMessage());
+            log.warn("Failed to add bottom banner", e);
         }
     }
 
