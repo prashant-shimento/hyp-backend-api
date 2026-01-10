@@ -67,7 +67,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
         Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
         log.info("Payment Verification via Consume API");
-        paymentService.verifyPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
+        paymentService.processPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(order))
                 .error(false)
@@ -83,7 +83,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
         Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
         log.info("Payment Processing API");
-        paymentService.processPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
+        paymentService.updatePayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(order))
                 .error(false)
@@ -103,7 +103,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
             payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
             payment.setSignature(razorPayDto.getRazorpaySignature());
             log.info("Payment Verification via Verify API");
-            paymentService.verifyPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
+            paymentService.processPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
         }
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(order))
@@ -223,7 +223,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
         }
 
         log.info("Verifying payment via webhook for order {}", order.getId());
-        paymentService.verifyPayment(order, payment, "paid");
+        paymentService.processPayment(order, payment, "paid");
     }
 
     private void handlePaymentFailureEvent(RazorpayEventDto razorPayEventDto) {

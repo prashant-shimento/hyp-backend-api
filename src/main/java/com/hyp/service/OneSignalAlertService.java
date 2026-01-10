@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,6 +30,7 @@ public class OneSignalAlertService {
     @Autowired
     private OneSignalNotificationTemplates oneSignalNotificationTemplates;
 
+    @Async
     public void notifyErrorResponseAlert(String orderId, String errorMessage, String platform) {
         String messageBody =
                 oneSignalNotificationTemplates.buildErrorResponseAlertMessage(orderId, errorMessage, platform);
@@ -49,6 +51,7 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
     public void notifyDeliveryDelay(
             String orderId, String restaurantName, OrderStatusType status, String customerName, String mobile) {
         String messageBody = oneSignalNotificationTemplates.buildDeliveryDelayNotificationMessage(
@@ -70,6 +73,7 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
     public void notifyRiderNotMovingAlert(
             String orderId,
             String restaurantName,
@@ -98,6 +102,7 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
     public void notifyNewOrder(
             String customerName,
             String customerMobile,
@@ -127,6 +132,7 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
     public void notifyMenuPush(String restaurantname, String restaurantid, String menusharingcode) {
         String messageBody = oneSignalNotificationTemplates.buildMenuPushNotificationMessage(
                 restaurantname, restaurantid, menusharingcode);
@@ -148,6 +154,7 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
     public void notifyOrderTrackDelay(
             String orderId,
             String restaurantName,

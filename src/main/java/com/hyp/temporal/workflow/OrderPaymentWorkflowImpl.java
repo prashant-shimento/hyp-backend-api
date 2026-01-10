@@ -3,7 +3,6 @@ package com.hyp.temporal.workflow;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.temporal.activities.OrderPaymentActivities;
 import io.temporal.activity.ActivityOptions;
-import io.temporal.common.RetryOptions;
 import io.temporal.workflow.Workflow;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
@@ -11,64 +10,68 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
 
+    private OrderStatusType currentStatus = OrderStatusType.PAYMENT_PENDING;
+
     private final OrderPaymentActivities activities = Workflow.newActivityStub(
             OrderPaymentActivities.class,
             ActivityOptions.newBuilder()
-                    .setStartToCloseTimeout(Duration.ofMinutes(1))
-                    .setRetryOptions(RetryOptions.newBuilder()
-                            .setInitialInterval(Duration.ofSeconds(5))
-                            .setBackoffCoefficient(2)
-                            .setMaximumInterval(Duration.ofMinutes(1))
-                            .setMaximumAttempts(5)
-                            .build())
+                    .setStartToCloseTimeout(Duration.ofMinutes(2))
                     .build());
 
     @Override
     public void handleOrderPayment(String orderId) {
-        log.info("Workflow started: handleOrderPayment for orderId={}", orderId);
+        log.info("Payment workflow started for order {}", orderId);
+
+        // Check order status first
+        currentStatus =
+                OrderStatusType.valueOf(activities.fetchOrderStatus(orderId).toUpperCase());
+        if (currentStatus != OrderStatusType.PAYMENT_PENDING) {
+            log.info("Order {} already resolved with status {}", orderId, currentStatus);
+            return;
+        }
+
+        // Order is pending - check actual payment status from gateway
+        String paymentStatus = activities.fetchPaymentStatus(orderId);
+        if ("paid".equalsIgnoreCase(paymentStatus)) {
+            log.info("Payment already done for order {}, processing", orderId);
+            activities.processPayment(orderId, paymentStatus);
+            return;
+        }
+
+        // Wait for signal or timeout
+        boolean resolved =
+                Workflow.await(Duration.ofMinutes(45), () -> currentStatus != OrderStatusType.PAYMENT_PENDING);
+
+        if (!resolved) {
+            // Before dropping off, check payment gateway one more time
+            paymentStatus = activities.fetchPaymentStatus(orderId);
+            if ("paid".equalsIgnoreCase(paymentStatus)) {
+                log.info("Payment found on timeout check for order {}, processing", orderId);
+                activities.processPayment(orderId, paymentStatus);
+                return;
+            }
+            log.warn("Payment timeout for order {}", orderId);
+            activities.dropOffOrder(orderId);
+            return;
+        }
+
+        log.info("Payment workflow completed for order {} with status {}", orderId, currentStatus);
+    }
+
+    @Override
+    public void onPaymentStatusChanged(String newStatus) {
         try {
-            final int maxAttempts = 45;
-            boolean paidWithinTime = false;
-            int paidAtMinute = -1;
+            OrderStatusType incoming = OrderStatusType.valueOf(newStatus.toUpperCase());
 
-            for (int minute = 1; minute <= maxAttempts; minute++) {
-                Workflow.sleep(Duration.ofMinutes(1));
-
-                String currentOrderStatus = activities.fetchOrderStatus(orderId);
-                OrderStatusType currentStatus = OrderStatusType.valueOf(currentOrderStatus.toUpperCase());
-
-                if (currentStatus == OrderStatusType.PAID || currentStatus == OrderStatusType.CANCELLED) {
-
-                    if (currentStatus == OrderStatusType.PAID) {
-                        paidWithinTime = true;
-                        paidAtMinute = minute;
-                        log.info("Order {} marked as PAID at {}th minute. Completing workflow.", orderId, minute);
-                    } else {
-                        log.info("Order {} already in final state: {}. Stopping workflow.", orderId, currentStatus);
-                    }
-                    return;
-                }
-
-                String paymentStatus = activities.fetchPaymentStatus(orderId);
-                activities.verifyPayment(orderId, paymentStatus);
-            }
-
-            String finalStatus = activities.fetchOrderStatus(orderId);
-
-            if (OrderStatusType.PAID.name().equalsIgnoreCase(finalStatus)) {
-                log.warn("Order {} paid AFTER {} minutes. Initiating refund.", orderId, maxAttempts);
-                activities.initiateRefund(orderId, true);
-            } else if (OrderStatusType.PAYMENT_PENDING.name().equalsIgnoreCase(finalStatus)) {
-                log.warn("Order {} still pending after {} minutes. Dropping off.", orderId, maxAttempts);
-                activities.dropOffOrder(orderId);
+            if (currentStatus == OrderStatusType.PAYMENT_PENDING) {
+                currentStatus = incoming;
+                log.info("Workflow received status update: {}", incoming);
             } else {
-                log.info("Order {} final status after {} minutes: {}.", orderId, maxAttempts, finalStatus);
+                log.debug("Ignoring status update {} because payment already resolved as {}", incoming, currentStatus);
             }
 
-            log.info("Workflow completed: handleOrderPayment for orderId={}", orderId);
-        } catch (Exception e) {
-            log.error("Workflow failed for order {}", orderId, e);
-            throw Workflow.wrap(e);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid order status received: {}", newStatus);
         }
     }
 }

@@ -406,7 +406,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.getOrderLogs().add(new Order.OrderLog(newStatus.name()));
 
         save(order);
-
+        if (order.getStatus() == OrderStatusType.PAID || order.getStatus() == OrderStatusType.CANCELLED) {
+            orderWorkflowService.signalPaymentStatusChanged(
+                    order.getId(), order.getStatus().name());
+        }
         metrics.count(
                 MetricsEvent.ORDER,
                 MetricTag.ACTION,
@@ -465,6 +468,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (result.getModifiedCount() > 0) {
             log.info("Status updated atomically to={}", newStatus);
             Order updatedOrder = this.findById(orderId);
+            orderWorkflowService.signalPaymentStatusChanged(
+                    updatedOrder.getId(), updatedOrder.getStatus().name());
             orderEventPublisher.publishOrderStatusChangeEvent(updatedOrder);
             return true;
         } else {

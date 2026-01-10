@@ -77,7 +77,7 @@
     <!-- Profile-specific configurations -->
 
     <!-- Local/Development - human readable -->
-    <springProfile name="local,dev">
+    <springProfile name="local,dev,load">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>

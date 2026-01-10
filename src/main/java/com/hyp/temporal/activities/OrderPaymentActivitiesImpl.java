@@ -9,23 +9,20 @@ import com.hyp.exception.PaymentException;
 import com.hyp.observability.ObservabilityContext;
 import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
+import io.temporal.failure.ApplicationFailure;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
 
-    @Autowired
-    PaymentService paymentService;
-
-    @Autowired
-    OrderService orderService;
-
-    @Autowired
-    OrderEventPublisher orderEventPublisher;
+    private final PaymentService paymentService;
+    private final OrderService orderService;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Override
     public String fetchPaymentStatus(String orderId) {
@@ -40,16 +37,17 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
     }
 
     @Override
-    public void verifyPayment(String orderId, String paymentStatus) {
+    public void processPayment(String orderId, String paymentStatus) {
         ObservabilityContext.setOrderId(orderId);
         try {
-            log.info("Verifying payment via workflow");
             Order order = Optional.ofNullable(orderService.findById(orderId))
                     .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
             Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
                     .orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
-            paymentService.verifyPayment(order, payment, paymentStatus);
-        } catch (EntityNotFoundException | PaymentException e) {
+            paymentService.processPayment(order, payment, paymentStatus);
+        } catch (EntityNotFoundException e) {
+            throw ApplicationFailure.newNonRetryableFailure(e.getMessage(), "ENTITY_NOT_FOUND", e);
+        } catch (PaymentException e) {
             throw new RuntimeException("Failed to verify payment", e);
         } finally {
             ObservabilityContext.clear();
@@ -58,8 +56,16 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
 
     @Override
     public String fetchOrderStatus(String orderId) {
-        Order order = orderService.findById(orderId);
-        return order.getStatus().name();
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            Order order = orderService.findById(orderId);
+            if (order == null) {
+                throw ApplicationFailure.newNonRetryableFailure("Order not found: " + orderId, "ORDER_NOT_FOUND");
+            }
+            return order.getStatus().name();
+        } finally {
+            ObservabilityContext.clear();
+        }
     }
 
     @Override
@@ -67,26 +73,12 @@ public class OrderPaymentActivitiesImpl implements OrderPaymentActivities {
         ObservabilityContext.setOrderId(orderId);
         try {
             Order order = orderService.findById(orderId);
+            if (order == null) {
+                throw ApplicationFailure.newNonRetryableFailure("Order not found: " + orderId, "ORDER_NOT_FOUND");
+            }
             order.setStatus(OrderStatusType.DROPPED_OFF);
             orderService.save(order);
-        } finally {
-            ObservabilityContext.clear();
-        }
-    }
-
-    @Override
-    public void initiateRefund(String orderId, boolean instantRefund) {
-        ObservabilityContext.setOrderId(orderId);
-        log.info("Initiating refund instantRefund={}", instantRefund);
-        try {
-            Order order = orderService.findById(orderId);
-            paymentService.createRefund(order.getId(), order.getGrandTotalAmount(), instantRefund, "Order Cancelled");
-            order.setStatus(OrderStatusType.REFUND_INITIATED);
-            orderService.save(order);
-            log.info("Refund initiated amount={}", order.getGrandTotalAmount());
-        } catch (Exception e) {
-            log.error("Refund failed", e);
-            throw new RuntimeException("Refund initiation failed", e);
+            log.info("Order dropped off orderId={}", orderId);
         } finally {
             ObservabilityContext.clear();
         }

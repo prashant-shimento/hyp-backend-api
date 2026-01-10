@@ -103,6 +103,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             }
             setPaymentCheck(orderId);
             log.info("Payment created amount={} routing={}", amount, restaurant.isPaymentRoutingEnabled());
+            log.info("Payment creation time : {} ms", System.currentTimeMillis() - startTime);
 
             metrics.count(
                     MetricsEvent.PAYMENT,
@@ -457,17 +458,14 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
         return getPaymentConfig(restaurant);
     }
 
-    public void verifyPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus)
+    public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus)
             throws PaymentException {
         if ("paid".equalsIgnoreCase(paymentStatus)) {
             processSuccessPayment(order, payment, paymentStatus);
-            if (!order.isPreOrder()) {
-                startOrderTrackWorkflow(order.getId());
-            }
         }
     }
 
-    public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
+    public void updatePayment(com.hyp.entity.Order order, Payment payment, String paymentStatus) {
         OrderStatusType status = order.getStatus();
         if (status == OrderStatusType.PAYMENT_PENDING
                 || status == OrderStatusType.PAYMENT_FAILED
@@ -519,6 +517,9 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                     MetricTag.RESULT,
                     "success");
             orderEventPublisher.publishProcessOrderEvent(order);
+            if (!order.isPreOrder()) {
+                startOrderTrackWorkflow(order.getId());
+            }
         }
     }
 }

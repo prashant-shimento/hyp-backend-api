@@ -3,7 +3,9 @@ package com.hyp.temporal.service;
 import com.hyp.temporal.workflow.OrderFulfillmentWorkflow;
 import com.hyp.temporal.workflow.OrderPaymentWorkflow;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowExecutionAlreadyStarted;
 import io.temporal.client.WorkflowOptions;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,18 +20,35 @@ public class OrderWorkflowService {
     public static final String ORDER_TASK_QUEUE = "order-task-queue";
 
     public void startOrderPaymentWorkflow(String orderId) {
+        String workflowId = "order-payment-" + orderId;
         try {
             OrderPaymentWorkflow workflow = workflowClient.newWorkflowStub(
                     OrderPaymentWorkflow.class,
                     WorkflowOptions.newBuilder()
-                            .setWorkflowId("order-payment-" + orderId)
+                            .setWorkflowId(workflowId)
                             .setTaskQueue(ORDER_TASK_QUEUE)
+                            .setWorkflowExecutionTimeout(Duration.ofMinutes(50))
                             .build());
+
             WorkflowClient.start(workflow::handleOrderPayment, orderId);
             log.info("Started ORDER_PAYMENT workflow orderId={}", orderId);
+
+        } catch (WorkflowExecutionAlreadyStarted e) {
+            log.warn("ORDER_PAYMENT workflow already running for orderId={}", orderId);
         } catch (Exception e) {
             log.error("Failed to start ORDER_PAYMENT workflow orderId={}", orderId, e);
             throw e;
+        }
+    }
+
+    public void signalPaymentStatusChanged(String orderId, String newStatus) {
+        try {
+            OrderPaymentWorkflow workflow =
+                    workflowClient.newWorkflowStub(OrderPaymentWorkflow.class, "order-payment-" + orderId);
+            workflow.onPaymentStatusChanged(newStatus);
+            log.info("Signalled payment status change orderId={} status={}", orderId, newStatus);
+        } catch (Exception e) {
+            log.debug("Failed to signal payment workflow orderId={}: {}", orderId, e.getMessage());
         }
     }
 

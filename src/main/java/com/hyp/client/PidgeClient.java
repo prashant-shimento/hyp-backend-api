@@ -19,7 +19,6 @@ import com.hyp.service.MockService;
 import com.hyp.service.NotificationService;
 import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.RedisService;
-import com.hyp.util.CommonUtils;
 import com.hyp.util.LoggingUtils;
 import java.time.Duration;
 import java.util.List;
@@ -116,11 +115,6 @@ public class PidgeClient {
                 .doOnSuccess(orderId -> log.info("createDeliveryOrder successful for DeliveryOrderId: {}", orderId))
                 .onErrorResume(e -> {
                     log.error("Error in createDeliveryOrder. Cause: {}", e.getMessage(), e);
-                    String currentEnv = env.getProperty("env");
-                    if ("staging".equalsIgnoreCase(currentEnv) || "dev".equalsIgnoreCase(currentEnv)) {
-                        log.warn("Returning mocked DeliveryOrderId due to failure in {} environment", currentEnv);
-                        return Mono.just(CommonUtils.generateMockDeliveryOrderId());
-                    }
                     DeliveryException deliveryException = new DeliveryException("createDeliveryOrder", e.getMessage());
                     sendAlert(deliveryException);
                     return Mono.error(deliveryException);
@@ -143,14 +137,6 @@ public class PidgeClient {
                         deliveryFulfillRequest.getIds().toString()))
                 .onErrorResume(e -> {
                     log.error("Final failure after retries. Error: {}", e.getMessage(), e);
-                    String currentEnv = env.getProperty("env");
-                    if ("staging".equalsIgnoreCase(currentEnv) || "dev".equalsIgnoreCase(currentEnv)) {
-                        log.warn(
-                                "Mocking fulfillDeliveryOrder for environment: {} with request: {}",
-                                currentEnv,
-                                deliveryFulfillRequest);
-                        return Mono.empty();
-                    }
                     DeliveryException deliveryException = new DeliveryException(
                             "fulfillDeliveryOrder" + " "
                                     + deliveryFulfillRequest.getIds().toString(),
@@ -209,14 +195,6 @@ public class PidgeClient {
                         log.error("Error in smartFulfillDeliveryOrder for IDs: {}", deliveryFulfillRequest.getIds(), e))
                 .onErrorResume(e -> {
                     log.error("Final failure after retries for smartFulfillDeliveryOrder. Alerting failure...");
-                    String currentEnv = env.getProperty("env");
-                    if ("staging".equalsIgnoreCase(currentEnv) || "dev".equalsIgnoreCase(currentEnv)) {
-                        log.warn(
-                                "Mocking smartFulfillDeliveryOrder for environment: {} with request: {}",
-                                currentEnv,
-                                deliveryFulfillRequest);
-                        return Mono.empty();
-                    }
                     DeliveryException deliveryException = new DeliveryException(
                             "smartFulfillDeliveryOrder "
                                     + deliveryFulfillRequest.getIds().toString(),
@@ -288,10 +266,6 @@ public class PidgeClient {
         } catch (WebClientResponseException e) {
             log.error("WebClientResponseException occurred while getting quote : {}", e.getMessage(), e);
             DeliveryException deliveryException = new DeliveryException("getDeliveryQuote", e.getMessage());
-            String currentEnv = env.getProperty("env");
-            if ("staging".equalsIgnoreCase(currentEnv) || "dev".equalsIgnoreCase(currentEnv)) {
-                return mockService.readMock("delivery_quote.json", DeliveryQuote.class);
-            }
             sendAlert(deliveryException);
             throw deliveryException;
 
