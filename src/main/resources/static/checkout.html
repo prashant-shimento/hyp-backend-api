@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Complete Your Order</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #FC8019;
+            --primary-dark: #E67312;
+            --primary-light: #FFF5ED;
+            --success: #60B246;
+            --success-light: #E8F5E3;
+            --error: #E23744;
+            --error-light: #FCEDEF;
+            --text-primary: #1C1C1C;
+            --text-secondary: #686B78;
+            --text-muted: #93959F;
+            --border: #E8E8E8;
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F8F8F8;
+            --bg-tertiary: #FAFAFA;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .secure-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--success);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .secure-badge svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Main Layout */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 32px;
+            align-items: start;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Order Items */
+        .order-items {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .order-item {
+            display: flex;
+            gap: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .item-quantity {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .item-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .item-variant {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .item-addons {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .item-price {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        /* Bill Details */
+        .bill-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .bill-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .bill-row .label {
+            color: var(--text-secondary);
+        }
+
+        .bill-row .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .bill-row.discount .value {
+            color: var(--success);
+        }
+
+        .bill-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 0;
+            margin-top: 12px;
+            border-top: 2px solid var(--text-primary);
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* Payment Section */
+        .payment-section {
+            position: sticky;
+            top: 100px;
+        }
+
+        .amount-display {
+            text-align: center;
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary-light), #FFF);
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+        }
+
+        .amount-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .amount-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(252, 128, 25, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(252, 128, 25, 0.4);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Trust Badges */
+        .trust-section {
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-sm);
+            margin-top: 20px;
+        }
+
+        .trust-badges {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .trust-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .trust-badge svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Processing Overlay */
+        .processing-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .processing-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 24px;
+        }
+
+        .processing-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .processing-subtext {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Success State */
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            animation: scaleIn 0.4s ease;
+        }
+
+        .success-icon svg {
+            width: 50px;
+            height: 50px;
+            color: var(--success);
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .success-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .success-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .redirect-text {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Error State */
+        .error-banner {
+            background: var(--error-light);
+            border: 1px solid #F5C6CB;
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .error-banner svg {
+            width: 20px;
+            height: 20px;
+            color: var(--error);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .error-banner-content {
+            flex: 1;
+        }
+
+        .error-banner-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--error);
+            margin-bottom: 4px;
+        }
+
+        .error-banner-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Loading Skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        .skeleton-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+        }
+
+        .skeleton-qty {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+        }
+
+        .skeleton-text {
+            height: 14px;
+            border-radius: 4px;
+        }
+
+        .skeleton-text.w-full { width: 100%; }
+        .skeleton-text.w-3\/4 { width: 75%; }
+        .skeleton-text.w-1\/2 { width: 50%; }
+        .skeleton-text.w-1\/4 { width: 25%; }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Hidden */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 16px;
+                gap: 20px;
+            }
+
+            .payment-section {
+                position: static;
+            }
+
+            .header {
+                padding: 12px 16px;
+            }
+
+            .amount-value {
+                font-size: 28px;
+            }
+        }
+
+        /* Veg/Non-veg indicator */
+        .food-type {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid;
+            border-radius: 3px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .food-type.veg {
+            border-color: #0F8A0F;
+        }
+
+        .food-type.veg::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #0F8A0F;
+            border-radius: 50%;
+        }
+
+        .food-type.non-veg {
+            border-color: #E23744;
+        }
+
+        .food-type.non-veg::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 6px solid #E23744;
+        }
+
+        .item-name-wrapper {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <a href="#" class="logo" id="restaurant-logo">
+                <div class="logo-icon" id="logo-initial">R</div>
+                <span class="logo-text" id="restaurant-name">Restaurant</span>
+            </a>
+            <div class="secure-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                </svg>
+                100% Secure
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Left Column - Order Details -->
+        <div class="order-details-section">
+            <!-- Error Banner -->
+            <div id="error-banner" class="error-banner hidden">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div class="error-banner-content">
+                    <div class="error-banner-title">Payment Failed</div>
+                    <div class="error-banner-message" id="error-message">Something went wrong. Please try again.</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <path d="M16 10a4 4 0 0 1-8 0"/>
+                        </svg>
+                        Your Order
+                    </div>
+                    <span id="item-count" class="text-muted" style="font-size: 13px; color: var(--text-muted);"></span>
+                </div>
+                <div class="card-body">
+                    <!-- Order Items -->
+                    <div id="order-items" class="order-items">
+                        <!-- Loading skeleton -->
+                        <div class="skeleton-item">
+                            <div class="skeleton skeleton-qty"></div>
+                            <div style="flex: 1;">
+                                <div class="skeleton skeleton-text w-3/4" style="margin-bottom: 8px;"></div>
+                                <div class="skeleton skeleton-text w-1/2"></div>
+                            </div>
+                            <div class="skeleton skeleton-text w-1/4" style="width: 60px;"></div>
+                        </div>
+                        <div class="skeleton-item">
+                            <div class="skeleton skeleton-qty"></div>
+                            <div style="flex: 1;">
+                                <div class="skeleton skeleton-text w-3/4" style="margin-bottom: 8px;"></div>
+                                <div class="skeleton skeleton-text w-1/2"></div>
+                            </div>
+                            <div class="skeleton skeleton-text w-1/4" style="width: 60px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bill Details -->
+                    <div id="bill-details" class="bill-details hidden">
+                        <div class="bill-row">
+                            <span class="label">Item Total</span>
+                            <span class="value" id="bill-subtotal">-</span>
+                        </div>
+                        <div class="bill-row" id="delivery-row">
+                            <span class="label">Delivery Fee</span>
+                            <span class="value" id="bill-delivery">-</span>
+                        </div>
+                        <div class="bill-row" id="packaging-row">
+                            <span class="label">Packaging</span>
+                            <span class="value" id="bill-packaging">-</span>
+                        </div>
+                        <div class="bill-row">
+                            <span class="label">Taxes & Charges</span>
+                            <span class="value" id="bill-tax">-</span>
+                        </div>
+                        <div class="bill-row discount hidden" id="discount-row">
+                            <span class="label">Discount</span>
+                            <span class="value" id="bill-discount">-</span>
+                        </div>
+                        <div class="bill-total">
+                            <span>To Pay</span>
+                            <span id="bill-total">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Payment -->
+        <div class="payment-section">
+            <div class="card">
+                <div class="card-body">
+                    <div class="amount-display">
+                        <div class="amount-label">Total Amount</div>
+                        <div class="amount-value" id="total-amount">
+                            <span class="skeleton" style="display: inline-block; width: 100px; height: 32px;"></span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" id="pay-button" disabled>
+                        <span class="spinner"></span>
+                        Loading...
+                    </button>
+
+                    <div class="trust-section">
+                        <div class="trust-badges">
+                            <div class="trust-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                Secure SSL
+                            </div>
+                            <div class="trust-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                                PCI Compliant
+                            </div>
+                            <div class="trust-badge">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                                Verified
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Processing Overlay -->
+    <div id="processing-overlay" class="processing-overlay hidden">
+        <div class="processing-spinner"></div>
+        <div class="processing-text" id="processing-text">Verifying Payment...</div>
+        <div class="processing-subtext">Please wait, do not close this page</div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div id="success-overlay" class="success-overlay hidden">
+        <div class="success-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <div class="success-title">Payment Successful!</div>
+        <div class="success-subtitle">Your order has been placed</div>
+        <div class="redirect-text">Redirecting to order tracking...</div>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        // Configuration
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('orderId');
+        const baseUrl = urlParams.get('baseUrl') || window.location.origin + '/api/v2';
+        const redirectUrl = urlParams.get('redirect'); // e.g., order.xyz.com/order-track
+
+        let checkoutData = null;
+        let orderData = null;
+
+        // DOM Elements
+        const payButton = document.getElementById('pay-button');
+        const totalAmountEl = document.getElementById('total-amount');
+        const orderItemsEl = document.getElementById('order-items');
+        const billDetailsEl = document.getElementById('bill-details');
+        const errorBanner = document.getElementById('error-banner');
+        const processingOverlay = document.getElementById('processing-overlay');
+        const successOverlay = document.getElementById('success-overlay');
+
+        // Initialize
+        if (!orderId) {
+            showError('Invalid checkout link. Please try again from your order page.');
+        } else {
+            fetchOrderDetails();
+        }
+
+        function showError(message) {
+            errorBanner.classList.remove('hidden');
+            document.getElementById('error-message').textContent = message;
+            payButton.disabled = true;
+            payButton.innerHTML = 'Unable to Proceed';
+        }
+
+        function hideError() {
+            errorBanner.classList.add('hidden');
+        }
+
+        function formatCurrency(amount) {
+            return '₹' + amount.toFixed(2);
+        }
+
+        async function fetchOrderDetails() {
+            try {
+                // Fetch checkout details
+                const checkoutRes = await fetch(`${baseUrl}/payment/checkout/${orderId}`);
+                const checkoutJson = await checkoutRes.json();
+
+                if (checkoutJson.error || !checkoutJson.data || checkoutJson.data.length === 0) {
+                    throw new Error(checkoutJson.message || 'Order not found');
+                }
+
+                checkoutData = checkoutJson.data[0];
+
+                // Try to fetch full order details for items
+                try {
+                    const orderRes = await fetch(`${baseUrl}/order/${orderId}`);
+                    const orderJson = await orderRes.json();
+                    if (!orderJson.error && orderJson.data && orderJson.data.length > 0) {
+                        orderData = orderJson.data[0];
+                    }
+                } catch (e) {
+                    console.log('Could not fetch order details, using checkout data only');
+                }
+
+                renderOrderDetails();
+                enablePayment();
+
+            } catch (err) {
+                showError(err.message || 'Unable to load order details. Please try again.');
+            }
+        }
+
+        function renderOrderDetails() {
+            const amount = checkoutData.amount / 100;
+            totalAmountEl.textContent = formatCurrency(amount);
+
+            // Update restaurant info if available
+            if (orderData && orderData.restaurantName) {
+                document.getElementById('restaurant-name').textContent = orderData.restaurantName;
+                document.getElementById('logo-initial').textContent = orderData.restaurantName.charAt(0).toUpperCase();
+            }
+
+            // Render order items
+            if (orderData && orderData.orderItems && orderData.orderItems.length > 0) {
+                document.getElementById('item-count').textContent = `${orderData.orderItems.length} item${orderData.orderItems.length > 1 ? 's' : ''}`;
+
+                orderItemsEl.innerHTML = orderData.orderItems.map(item => {
+                    const addons = item.orderAddonItems && item.orderAddonItems.length > 0
+                        ? item.orderAddonItems.map(a => a.addonItemName).join(', ')
+                        : '';
+
+                    const foodType = item.itemAttribute === 'veg' ? 'veg' : (item.itemAttribute === 'non-veg' ? 'non-veg' : '');
+                    const itemTotal = (item.finalPrice || item.price) * item.quantity;
+
+                    return `
+                        <div class="order-item">
+                            <div class="item-quantity">${item.quantity}x</div>
+                            <div class="item-details">
+                                <div class="item-name-wrapper">
+                                    ${foodType ? `<span class="food-type ${foodType}"></span>` : ''}
+                                    <span class="item-name">${item.name}</span>
+                                </div>
+                                ${item.variationName ? `<div class="item-variant">${item.variationName}</div>` : ''}
+                                ${addons ? `<div class="item-addons">+ ${addons}</div>` : ''}
+                            </div>
+                            <div class="item-price">${formatCurrency(itemTotal)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Render bill details
+                billDetailsEl.classList.remove('hidden');
+                document.getElementById('bill-subtotal').textContent = formatCurrency(orderData.itemTotalAmount || orderData.totalAmount || 0);
+
+                if (orderData.deliveryCharge && orderData.deliveryCharge > 0) {
+                    document.getElementById('bill-delivery').textContent = formatCurrency(orderData.deliveryCharge);
+                } else {
+                    document.getElementById('delivery-row').classList.add('hidden');
+                }
+
+                if (orderData.packagingCharge && orderData.packagingCharge > 0) {
+                    document.getElementById('bill-packaging').textContent = formatCurrency(orderData.packagingCharge);
+                } else {
+                    document.getElementById('packaging-row').classList.add('hidden');
+                }
+
+                const totalTax = (orderData.taxAmount || 0) + (orderData.dcTaxAmount || 0) + (orderData.pcTaxAmount || 0) + (orderData.scTaxAmount || 0);
+                document.getElementById('bill-tax').textContent = formatCurrency(totalTax);
+
+                if (orderData.discountAmount && orderData.discountAmount > 0) {
+                    document.getElementById('discount-row').classList.remove('hidden');
+                    document.getElementById('bill-discount').textContent = '-' + formatCurrency(orderData.discountAmount);
+                }
+
+                document.getElementById('bill-total').textContent = formatCurrency(orderData.grandTotalAmount || amount);
+
+            } else {
+                // Minimal display if no order details
+                orderItemsEl.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 12px; display: block; opacity: 0.5;">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <path d="M16 10a4 4 0 0 1-8 0"/>
+                        </svg>
+                        <div style="font-size: 14px;">Order #${orderId}</div>
+                    </div>
+                `;
+
+                billDetailsEl.classList.remove('hidden');
+                document.getElementById('bill-subtotal').textContent = formatCurrency(amount);
+                document.getElementById('delivery-row').classList.add('hidden');
+                document.getElementById('packaging-row').classList.add('hidden');
+                document.getElementById('bill-tax').textContent = 'Included';
+                document.getElementById('bill-total').textContent = formatCurrency(amount);
+            }
+        }
+
+        function enablePayment() {
+            payButton.disabled = false;
+            payButton.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                    <line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                Pay ${formatCurrency(checkoutData.amount / 100)}
+            `;
+        }
+
+        function getRedirectUrl() {
+            // Priority: URL param > referrer > construct from current domain
+            if (redirectUrl) {
+                return redirectUrl.includes('?')
+                    ? `${redirectUrl}&orderId=${orderId}`
+                    : `${redirectUrl}?orderId=${orderId}`;
+            }
+
+            // Try to use referrer
+            if (document.referrer) {
+                const referrerUrl = new URL(document.referrer);
+                return `${referrerUrl.origin}/order-track?orderId=${orderId}`;
+            }
+
+            // Fallback: construct from current origin (minus /pay.html)
+            const currentOrigin = window.location.origin;
+            return `${currentOrigin}/order-track?orderId=${orderId}`;
+        }
+
+        async function verifyPayment(paymentResponse) {
+            processingOverlay.classList.remove('hidden');
+            document.getElementById('processing-text').textContent = 'Verifying Payment...';
+
+            try {
+                const response = await fetch(`${baseUrl}/payment/verify/${orderId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(paymentResponse)
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.message || 'Payment verification failed');
+                }
+
+                // Success!
+                processingOverlay.classList.add('hidden');
+                successOverlay.classList.remove('hidden');
+
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = getRedirectUrl();
+                }, 2000);
+
+            } catch (err) {
+                processingOverlay.classList.add('hidden');
+                showError('Payment verification failed. Please contact support if money was deducted.');
+                payButton.disabled = false;
+                payButton.innerHTML = 'Retry Payment';
+            }
+        }
+
+        // Pay button click handler
+        payButton.onclick = function(e) {
+            e.preventDefault();
+
+            if (!checkoutData) {
+                showError('Order data not loaded. Please refresh the page.');
+                return;
+            }
+
+            hideError();
+            payButton.disabled = true;
+            payButton.innerHTML = '<span class="spinner"></span>Opening Payment...';
+
+            const options = {
+                key: checkoutData.key,
+                amount: checkoutData.amount,
+                currency: checkoutData.currency || "INR",
+                name: orderData?.restaurantName || "Restaurant",
+                description: `Order #${orderId}`,
+                order_id: checkoutData.paymentOrderId,
+                handler: function(response) {
+                    // Payment successful - verify it
+                    verifyPayment({
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_signature: response.razorpay_signature
+                    });
+                },
+                modal: {
+                    ondismiss: function() {
+                        payButton.disabled = false;
+                        payButton.innerHTML = `
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                                <line x1="1" y1="10" x2="23" y2="10"/>
+                            </svg>
+                            Pay ${formatCurrency(checkoutData.amount / 100)}
+                        `;
+                    }
+                },
+                prefill: {
+                    name: orderData?.customerName || "",
+                    email: orderData?.customerEmail || "",
+                    contact: orderData?.customerMobile || ""
+                },
+                theme: {
+                    color: "#FC8019"
+                }
+            };
+
+            const rzp = new Razorpay(options);
+
+            rzp.on('payment.failed', function(response) {
+                payButton.disabled = false;
+                payButton.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                    Retry Payment
+                `;
+                showError(response.error.description || 'Payment failed. Please try again.');
+            });
+
+            rzp.open();
+        };
+    </script>
+</body>
+</html>

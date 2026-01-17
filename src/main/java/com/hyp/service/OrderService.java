@@ -12,6 +12,7 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.entity.Partner;
+import com.hyp.entity.ReferralToken;
 import com.hyp.entity.Restaurant;
 import com.hyp.enums.*;
 import com.hyp.event.OrderEventPublisher;
@@ -120,6 +121,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     @Autowired
     ApplicationMetrics metrics;
+
+    @Autowired
+    ReferralTokenService referralTokenService;
 
     public Order create(OrderDto orderDto) throws Exception {
         Timer.Sample timerSample = metrics.startTimer();
@@ -239,6 +243,19 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
         order.setItemTotalAmount(itemTotalAmount);
         order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
+
+        // Handle referral attribution - token-only (trusted source)
+        // Token is NOT consumed here - only on successful PAID status
+        ReferralToken referralToken = referralTokenService.validateTokenForOrder(orderDto.getReferralToken());
+        if (referralToken != null) {
+            order.setReferralCode(referralToken.getReferralCode());
+            order.setReferralTokenId(referralToken.getId());
+            log.info(
+                    "Order referral set: code={}, token={} (pending payment)",
+                    referralToken.getReferralCode(),
+                    referralToken.getId());
+        }
+
         order = save(order);
 
         metrics.count(
@@ -406,6 +423,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.getOrderLogs().add(new Order.OrderLog(newStatus.name()));
 
         save(order);
+
+        consumeReferralTokenIfPaid(order, newStatus);
+
         if (order.getStatus() == OrderStatusType.PAID || order.getStatus() == OrderStatusType.CANCELLED) {
             orderWorkflowService.signalPaymentStatusChanged(
                     order.getId(), order.getStatus().name());
@@ -468,6 +488,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (result.getModifiedCount() > 0) {
             log.info("Status updated atomically to={}", newStatus);
             Order updatedOrder = this.findById(orderId);
+
+            consumeReferralTokenIfPaid(updatedOrder, newStatus);
+
             orderWorkflowService.signalPaymentStatusChanged(
                     updatedOrder.getId(), updatedOrder.getStatus().name());
             orderEventPublisher.publishOrderStatusChangeEvent(updatedOrder);
@@ -635,6 +658,27 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 || status == OrderStatusType.CANCELLED
                 || status == OrderStatusType.DROPPED_OFF
                 || status == OrderStatusType.ERROR
-                || status == OrderStatusType.PAYMENT_FAILED;
+                || status == OrderStatusType.PAYMENT_FAILED
+                || status == OrderStatusType.REFUND_COMPLETED | status == OrderStatusType.REFUND_INITIATED;
+    }
+
+    private void consumeReferralTokenIfPaid(Order order, OrderStatusType newStatus) {
+        if (newStatus != OrderStatusType.PAID || order.getReferralTokenId() == null) {
+            return;
+        }
+
+        boolean consumed = referralTokenService.consumeTokenForPaidOrder(order.getReferralTokenId(), order.getId());
+        if (consumed) {
+            log.info(
+                    "Referral token consumed for paid order: orderId={}, token={}",
+                    order.getId(),
+                    order.getReferralTokenId());
+        } else {
+            // Token already used by another order - clear referral attribution
+            log.warn("Referral token already consumed, clearing attribution: orderId={}", order.getId());
+            order.setReferralCode(null);
+            order.setReferralTokenId(null);
+            save(order);
+        }
     }
 }

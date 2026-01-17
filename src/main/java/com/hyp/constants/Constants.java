@@ -48,8 +48,8 @@ public interface Constants {
     List<String> DATE_API_PARAMS = Arrays.asList("createdAt", "orderTime");
     List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
     List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
-    List<String> RESTAURANT_API_PARAMS =
-            Arrays.asList("id", "restaurantName", "active", "serviceable", "menuSharingCode", "contact");
+    List<String> RESTAURANT_API_PARAMS = Arrays.asList(
+            "id", "restaurantName", "active", "serviceable", "menuSharingCode", "contact", "discoverable");
     List<String> PAYMENT_API_PARAMS =
             Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider", "status", "amount", "paymentId");
     List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
@@ -59,6 +59,10 @@ public interface Constants {
     List<String> FEE_API_PARAMS = Arrays.asList("id", "partnerId", "restaurantId", "active");
     List<String> SETTLEMENT_API_PARAMS =
             Arrays.asList("id", "partnerId", "restaurantId", "orderId", "createdAt", "updatedAt", "settlementStatus");
+    List<String> REFERRAL_CODE_API_PARAMS =
+            Arrays.asList("id", "referrerName", "partnerId", "code", "createdAt", "updatedAt");
+    List<String> REFERRAL_TOKEN_API_PARAMS = Arrays.asList(
+            "id", "token", "referralCode", "restaurantId", "source", "createdAt", "updatedAt", "usedOrder");
 
     static Map<String, String> getContentTypes() {
         Map<String, String> contentTypes = new HashMap<>();

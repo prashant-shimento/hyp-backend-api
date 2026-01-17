@@ -153,6 +153,12 @@ public class Order {
     @Field("partner_id")
     private String partnerId;
 
+    @Field("referral_code")
+    private String referralCode;
+
+    @Field("referral_token_id")
+    private String referralTokenId;
+
     @Data
     @NoArgsConstructor
     public static class OrderItem {

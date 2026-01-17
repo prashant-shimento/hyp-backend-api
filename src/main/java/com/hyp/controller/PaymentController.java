@@ -18,6 +18,8 @@ import com.hyp.service.PaymentService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.PaymentTranslation;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -153,6 +155,36 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
                 .data(Collections.singletonList(paymentService.fetchRefund(orderId)))
                 .error(false)
                 .message("Refund Fetched")
+                .build());
+    }
+
+    /**
+     * Dev endpoint to get checkout details for pay.html
+     * Returns paymentOrderId, amount, and key for Razorpay checkout
+     */
+    @GetMapping("/checkout/{orderId}")
+    public ResponseEntity<Response> getCheckoutDetails(@PathVariable String orderId) throws Exception {
+        Order order = orderService.findById(orderId);
+        if (order == null) {
+            throw new PaymentException("Order not found " + orderId);
+        }
+        Payment payment = paymentService.findByOrderId(orderId);
+        if (payment == null) {
+            throw new PaymentException("Payment not found. Create payment order first for " + orderId);
+        }
+
+        Map<String, Object> checkoutDetails = new HashMap<>();
+        checkoutDetails.put("orderId", orderId);
+        checkoutDetails.put("paymentOrderId", payment.getPaymentOrderId());
+        checkoutDetails.put("amount", (int) (payment.getAmount() * 100)); // Convert to paise
+        checkoutDetails.put("currency", payment.getCurrency() != null ? payment.getCurrency() : "INR");
+        checkoutDetails.put("key", paymentService.getRazorpayKey());
+        checkoutDetails.put("status", order.getStatus().name());
+
+        return ResponseEntity.ok(Response.builder()
+                .data(Collections.singletonList(checkoutDetails))
+                .error(false)
+                .message("Checkout details fetched")
                 .build());
     }
 

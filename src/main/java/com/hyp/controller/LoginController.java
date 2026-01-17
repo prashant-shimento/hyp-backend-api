@@ -3,6 +3,7 @@ package com.hyp.controller;
 import com.hyp.dto.LoginDto;
 import com.hyp.dto.VerificationRequestDto;
 import com.hyp.entity.Customer;
+import com.hyp.entity.ReferralToken;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.observability.ApplicationMetrics;
@@ -13,6 +14,7 @@ import com.hyp.service.AddressService;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 import com.hyp.service.RedisService;
+import com.hyp.service.ReferralTokenService;
 import com.hyp.service.RestaurantService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -57,6 +59,9 @@ public class LoginController {
 
     @Autowired
     ApplicationMetrics metrics;
+
+    @Autowired
+    ReferralTokenService referralTokenService;
 
     @PostMapping("/otp")
     public ResponseEntity<Response> userLogin(@RequestBody @Valid LoginDto loginDto) throws Exception {
@@ -132,8 +137,26 @@ public class LoginController {
         // OTP verified successfully
         metrics.count(MetricsEvent.OTP, MetricTag.ACTION, "verify", MetricTag.RESULT, "success");
         metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "login", MetricTag.RESULT, "success");
-
         customer.setVerified(true);
+
+        // First-touch attribution (analytics only)
+        // Does NOT mark token as used or count referral
+        if (verificationRequest.getReferralToken() != null
+                && !verificationRequest.getReferralToken().isBlank()) {
+            try {
+                ReferralToken referralToken = referralTokenService.validateToken(
+                        verificationRequest.getReferralToken(), verificationRequest.getRestaurantId());
+                referralTokenService.linkCustomerReferral(
+                        customer, verificationRequest.getRestaurantId(), referralToken);
+                log.info(
+                        "Referral linked for customer={}, restaurant={}, referralCode={}",
+                        customer.getId(),
+                        verificationRequest.getRestaurantId(),
+                        referralToken.getReferralCode());
+            } catch (Exception e) {
+                log.warn("Failed to link referral for customer {}: {}", customer.getId(), e.getMessage());
+            }
+        }
 
         if (customer.getRestaurants() == null) {
             customer.setRestaurants(new HashSet<>());
@@ -141,6 +164,7 @@ public class LoginController {
         customer.getRestaurants().add(verificationRequest.getRestaurantId());
 
         customerService.save(customer);
+
         log.info("OTP verified successfully for customer, restaurantId={}", verificationRequest.getRestaurantId());
         return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
     }

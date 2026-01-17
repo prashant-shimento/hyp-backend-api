@@ -4,15 +4,12 @@ import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -24,10 +21,19 @@ public class CommonUtils {
     private static final DateTimeFormatter FORMATTER_WITH_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter FORMATTER_WITHOUT_SECONDS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final char[] ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+    private static final char[] ALPHANUM =
+            "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+    private static final int CODE_LENGTH = 10;
+    private static final int TOKEN_BYTES = 24;
+
     public static String genId() {
-        Random random = new Random();
-        char[] alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
-        return NanoIdUtils.randomNanoId(random, alphabet, 10);
+        return NanoIdUtils.randomNanoId(SECURE_RANDOM, ALPHANUM, CODE_LENGTH);
+    }
+
+    public static String genCode() {
+        return NanoIdUtils.randomNanoId(SECURE_RANDOM, ALPHABET, CODE_LENGTH);
     }
 
     public static String generateWorkflowId(String input) {
@@ -173,5 +179,11 @@ public class CommonUtils {
 
     public static double roundToTwoDecimal(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    public static String generateSecureToken() {
+        byte[] bytes = new byte[TOKEN_BYTES];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

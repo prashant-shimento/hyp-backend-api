@@ -68,17 +68,18 @@ public class RestaurantDto extends BaseDto {
     private String paymentPartner;
     private String instantRefund;
     private Integer fulfillmentDelay;
-    private boolean serviceable;
+    private Boolean serviceable;
     private String serviceableMessage;
     private Double deliveryFee;
     private List<PlatformFee> platformFee;
-    private boolean paymentRoutingEnabled;
+    private Boolean paymentRoutingEnabled;
     private List<PaymentRoute> paymentRouteList;
-    private boolean showCustomMessage;
+    private Boolean showCustomMessage;
     private String customMessage;
     private String embedMapUrl;
     private String restaurantAltContact;
     private PreOrder preOrderConfig;
     private String sourceId;
     private String ingestionSource;
+    private Boolean discoverable;
 }

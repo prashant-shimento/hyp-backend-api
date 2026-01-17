@@ -77,6 +77,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     @Autowired
     private ApplicationMetrics metrics;
 
+    public String getRazorpayKey() throws Exception {
+        return EncryptionUtils.decrypt(razorPayKey);
+    }
+
     public Payment createPaymentOrder(com.hyp.entity.Order order) throws PaymentException {
         long startTime = System.currentTimeMillis();
         try {

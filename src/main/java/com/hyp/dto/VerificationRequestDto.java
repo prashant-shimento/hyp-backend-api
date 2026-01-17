@@ -16,4 +16,6 @@ public class VerificationRequestDto {
 
     @NotBlank(message = "Restaurant ID is required")
     private String restaurantId;
+
+    private String referralToken;
 }

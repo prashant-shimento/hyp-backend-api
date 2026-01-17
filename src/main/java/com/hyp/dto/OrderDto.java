@@ -101,6 +101,8 @@ public class OrderDto extends BaseDto {
     private Double platformFee;
     private OrderPlatform orderPlatform;
     private double itemTotalAmount;
+    private String referralToken;
+    private String referralCode;
 
     @Data
     @NoArgsConstructor

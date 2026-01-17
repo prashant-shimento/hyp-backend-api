@@ -203,6 +203,9 @@ public class Restaurant {
     @Field("source_id")
     private String sourceId;
 
+    @Field("discoverable")
+    private boolean discoverable;
+
     @Getter
     @Setter
     @NoArgsConstructor
