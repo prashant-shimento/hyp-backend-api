@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
 
+    private static final int MAX_MINUTES = 45;
+
     private OrderStatusType currentStatus = OrderStatusType.PAYMENT_PENDING;
 
     private final OrderPaymentActivities activities = Workflow.newActivityStub(
@@ -22,40 +24,33 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
     public void handleOrderPayment(String orderId) {
         log.info("Payment workflow started for order {}", orderId);
 
-        // Check order status first
-        currentStatus =
-                OrderStatusType.valueOf(activities.fetchOrderStatus(orderId).toUpperCase());
-        if (currentStatus != OrderStatusType.PAYMENT_PENDING) {
-            log.info("Order {} already resolved with status {}", orderId, currentStatus);
-            return;
-        }
+        for (int minute = 1; minute <= MAX_MINUTES; minute++) {
 
-        // Order is pending - check actual payment status from gateway
-        String paymentStatus = activities.fetchPaymentStatus(orderId);
-        if ("paid".equalsIgnoreCase(paymentStatus)) {
-            log.info("Payment already done for order {}, processing", orderId);
-            activities.processPayment(orderId, paymentStatus);
-            return;
-        }
+            boolean signaled =
+                    Workflow.await(Duration.ofMinutes(1), () -> currentStatus != OrderStatusType.PAYMENT_PENDING);
 
-        // Wait for signal or timeout
-        boolean resolved =
-                Workflow.await(Duration.ofMinutes(45), () -> currentStatus != OrderStatusType.PAYMENT_PENDING);
+            if (signaled) {
+                log.info(
+                        "Workflow stopped via signal at minute {} for order {}, status={}",
+                        minute,
+                        orderId,
+                        currentStatus);
+                return;
+            }
 
-        if (!resolved) {
-            // Before dropping off, check payment gateway one more time
-            paymentStatus = activities.fetchPaymentStatus(orderId);
+            String paymentStatus = activities.fetchPaymentStatus(orderId);
+
             if ("paid".equalsIgnoreCase(paymentStatus)) {
-                log.info("Payment found on timeout check for order {}, processing", orderId);
+                log.info("Payment detected at minute {} for order {}, processing", minute, orderId);
                 activities.processPayment(orderId, paymentStatus);
                 return;
             }
-            log.warn("Payment timeout for order {}", orderId);
-            activities.dropOffOrder(orderId);
-            return;
+
+            log.debug("Minute {}: payment still pending for order {}", minute, orderId);
         }
 
-        log.info("Payment workflow completed for order {} with status {}", orderId, currentStatus);
+        log.warn("Payment still pending after {} minutes, dropping order {}", MAX_MINUTES, orderId);
+        activities.dropOffOrder(orderId);
     }
 
     @Override
@@ -63,11 +58,13 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
         try {
             OrderStatusType incoming = OrderStatusType.valueOf(newStatus.toUpperCase());
 
-            if (currentStatus == OrderStatusType.PAYMENT_PENDING) {
+            if (currentStatus == OrderStatusType.PAYMENT_PENDING
+                    && (incoming == OrderStatusType.PAID || incoming == OrderStatusType.CANCELLED)) {
+
                 currentStatus = incoming;
-                log.info("Workflow received status update: {}", incoming);
+                log.info("Workflow resolved via signal: {}", incoming);
             } else {
-                log.debug("Ignoring status update {} because payment already resolved as {}", incoming, currentStatus);
+                log.debug("Ignoring signal {} in state {}", incoming, currentStatus);
             }
 
         } catch (IllegalArgumentException e) {
