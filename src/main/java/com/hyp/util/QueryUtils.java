@@ -35,6 +35,7 @@ public class QueryUtils {
         ALLOWED_API_PARAMS.put("Settlement", Constants.SETTLEMENT_API_PARAMS);
         ALLOWED_API_PARAMS.put("ReferralCode", Constants.REFERRAL_CODE_API_PARAMS);
         ALLOWED_API_PARAMS.put("ReferralToken", Constants.REFERRAL_TOKEN_API_PARAMS);
+        ALLOWED_API_PARAMS.put("Tax", Constants.TAX_API_PARAMS);
     }
 
     public static Query getFilterQuery(Map<String, String> requestParam, List<String> allowedParams) {
