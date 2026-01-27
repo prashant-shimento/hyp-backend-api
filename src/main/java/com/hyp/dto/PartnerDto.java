@@ -9,9 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Map;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Data
 @AllArgsConstructor
@@ -71,4 +69,18 @@ public class PartnerDto {
     private Map<String, String> locationConfigs;
 
     private String googleAnalytics;
+
+    private DeliveryWaiver deliveryWaiver;
+
+    private String razorPayKey;
+
+    @Getter
+    @Setter
+    @ToString
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryWaiver {
+        private boolean applicable;
+        private Integer offsetValue;
+    }
 }

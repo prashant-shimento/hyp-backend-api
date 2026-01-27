@@ -89,4 +89,20 @@ public class Partner {
 
     @Field("google_analytics")
     private String googleAnalytics;
+
+    @Field("delivery_waiver")
+    private DeliveryWaiver deliveryWaiver;
+
+    @Field("razorpay_key")
+    private String razorPayKey;
+
+    @Getter
+    @Setter
+    @ToString
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryWaiver {
+        private boolean applicable;
+        private Integer offsetValue;
+    }
 }
