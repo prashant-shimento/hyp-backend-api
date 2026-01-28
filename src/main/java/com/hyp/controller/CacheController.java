@@ -106,16 +106,19 @@ public class CacheController {
 
     /**
      * Get Redis connection pool statistics.
+     * JedisPooled is the primary pool for all operations.
+     * JedisConnectionFactory is a minimal pool used only for pub/sub.
      */
     @GetMapping("/redis/pool-stats")
     public ResponseEntity<Response> getRedisPoolStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         try {
-            // Get JedisPooled pool stats
+            // Get JedisPooled pool stats (PRIMARY pool for all operations)
             Pool<?> pool = jedisPooled.getPool();
             if (pool != null) {
                 Map<String, Object> jedisPoolStats = new LinkedHashMap<>();
+                jedisPoolStats.put("description", "Primary pool for all Redis operations");
                 jedisPoolStats.put("numActive", pool.getNumActive());
                 jedisPoolStats.put("numIdle", pool.getNumIdle());
                 jedisPoolStats.put("numWaiters", pool.getNumWaiters());
@@ -143,12 +146,21 @@ public class CacheController {
                 stats.put("jedisPooled", jedisPoolStats);
             }
 
-            // Get JedisConnectionFactory info
+            // Get JedisConnectionFactory info (minimal pool for pub/sub only)
             Map<String, Object> connectionFactoryStats = new LinkedHashMap<>();
+            connectionFactoryStats.put("description", "Minimal pool for pub/sub listeners only");
             connectionFactoryStats.put("hostName", jedisConnectionFactory.getHostName());
             connectionFactoryStats.put("port", jedisConnectionFactory.getPort());
             connectionFactoryStats.put("usePool", jedisConnectionFactory.getUsePool());
-            stats.put("connectionFactory", connectionFactoryStats);
+            connectionFactoryStats.put("maxTotal", 4);
+            stats.put("pubSubPool", connectionFactoryStats);
+
+            // Summary
+            Map<String, Object> summary = new LinkedHashMap<>();
+            summary.put("totalMaxConnections", pool != null ? pool.getMaxTotal() + 4 : 4);
+            summary.put("redisMaxClients", 30);
+            summary.put("availableBuffer", pool != null ? 30 - pool.getMaxTotal() - 4 : 26);
+            stats.put("summary", summary);
 
             return ResponseEntity.ok(
                     new Response(Collections.singletonList(stats), false, "Redis pool stats retrieved successfully"));

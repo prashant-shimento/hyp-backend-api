@@ -1,25 +1,22 @@
 package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.json.Path2;
 
+/**
+ * Redis service using JedisPooled for all operations.
+ * This consolidates all Redis operations into a single connection pool,
+ * reducing connection usage compared to using both RedisTemplate and JedisPooled.
+ */
 @Slf4j
 @Component
 public class RedisService {
-
-    @Autowired
-    private RedisTemplate<String, String> redisStringTemplate;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisObjectTemplate;
 
     @Autowired
     private JedisPooled jedis;
@@ -28,45 +25,88 @@ public class RedisService {
     private ObjectMapper objectMapper;
 
     public boolean isNotificationServiceEnabled() {
-        String value = redisStringTemplate.opsForValue().get("notification:service:enabled");
+        String value = jedis.get("notification:service:enabled");
         return Boolean.parseBoolean(value);
     }
 
     public String getAlertUsers() {
-        return redisStringTemplate.opsForValue().get("whatsappAlert");
+        return jedis.get("whatsappAlert");
     }
 
     public String getInternalUsers() {
-        return redisStringTemplate.opsForValue().get("internalUsers");
+        return jedis.get("internalUsers");
     }
 
-    @Async
-    public void setRedisData(String key, Object value, long ttl) {
+    /**
+     * Get a string value from Redis.
+     */
+    public Optional<String> getRedisData(String key) {
         try {
-            redisObjectTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttl));
+            String value = jedis.get(key);
+            return Optional.ofNullable(value);
+        } catch (Exception e) {
+            log.error("Error fetching value from Redis for key: {}", key, e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Set a string value in Redis with TTL.
+     */
+    @Async
+    public void setRedisStringData(String key, String value, long ttlSeconds) {
+        try {
+            jedis.setex(key, ttlSeconds, value);
             log.info("Redis set operation completed for key: {}", key);
         } catch (Exception e) {
             log.error("Failed to set Redis data for key: {}", key, e);
         }
     }
 
+    /**
+     * Set an object value in Redis with TTL (serialized as JSON).
+     */
     @Async
-    public void increment(String key) {
-        redisStringTemplate.opsForValue().increment(key);
+    public void setRedisData(String key, Object value, long ttlSeconds) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(value);
+            jedis.setex(key, ttlSeconds, jsonValue);
+            log.info("Redis set operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to set Redis data for key: {}", key, e);
+        }
     }
 
+    /**
+     * Increment a counter in Redis.
+     */
     @Async
-    public void setRedisJsonData(String key, Object data, long ttl) {
+    public void increment(String key) {
+        try {
+            jedis.incr(key);
+        } catch (Exception e) {
+            log.error("Failed to increment Redis key: {}", key, e);
+        }
+    }
+
+    /**
+     * Set JSON data using Redis JSON module.
+     */
+    @Async
+    public void setRedisJsonData(String key, Object data, long ttlSeconds) {
         try {
             String jsonString = objectMapper.writeValueAsString(data);
             jedis.jsonSet(key, Path2.ROOT_PATH, jsonString);
-            jedis.expire(key, ttl);
+            jedis.expire(key, ttlSeconds);
             log.info("Redis JSON Data set operation completed for key: {}", key);
         } catch (Exception e) {
             log.error("Failed to set Redis JSON data for key: {}", key, e);
         }
     }
 
+    /**
+     * Get JSON data using Redis JSON module.
+     */
     public <T> Optional<T> getRedisJsonData(String key, Class<T> valueType) {
         try {
             Object jsonElement = jedis.jsonGet(key);
@@ -81,11 +121,14 @@ public class RedisService {
         return Optional.empty();
     }
 
+    /**
+     * Remove a key from Redis.
+     */
     @Async
     public void removeRedisData(String key) {
         try {
-            Boolean isDeleted = redisObjectTemplate.delete(key);
-            if (isDeleted) {
+            long deleted = jedis.del(key);
+            if (deleted > 0) {
                 log.info("Successfully removed key: {}", key);
             } else {
                 log.warn("Key not found or not removed: {}", key);
@@ -95,13 +138,27 @@ public class RedisService {
         }
     }
 
-    public Optional<String> getRedisData(String key) {
+    /**
+     * Check if a key exists in Redis.
+     */
+    public boolean exists(String key) {
         try {
-            String value = redisStringTemplate.opsForValue().get(key);
-            return Optional.ofNullable(value);
+            return jedis.exists(key);
         } catch (Exception e) {
-            log.error("Error fetching value from Redis for key: {}", key, e);
-            return Optional.empty();
+            log.error("Error checking existence of Redis key: {}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * Set expiry on an existing key.
+     */
+    @Async
+    public void expire(String key, long ttlSeconds) {
+        try {
+            jedis.expire(key, ttlSeconds);
+        } catch (Exception e) {
+            log.error("Failed to set expiry on Redis key: {}", key, e);
         }
     }
 }

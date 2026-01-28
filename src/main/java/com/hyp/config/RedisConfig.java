@@ -13,12 +13,9 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
 import redis.clients.jedis.Connection;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
@@ -55,25 +52,26 @@ public class RedisConfig {
     private int timeout;
 
     /**
-     * Shared connection pool configuration for all Redis clients.
+     * Main connection pool configuration for JedisPooled (primary Redis client).
+     * This is the main pool used for all Redis operations.
      */
     @Bean
     public GenericObjectPoolConfig<Connection> jedisPoolConfig() {
         GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
 
-        // Pool size settings
-        poolConfig.setMaxTotal(maxActive); // Maximum connections in pool
-        poolConfig.setMaxIdle(maxIdle); // Maximum idle connections
-        poolConfig.setMinIdle(minIdle); // Minimum idle connections
+        // Pool size settings - this is the main pool for all operations
+        poolConfig.setMaxTotal(maxActive);
+        poolConfig.setMaxIdle(maxIdle);
+        poolConfig.setMinIdle(minIdle);
 
         // Blocking behavior when pool exhausted
         poolConfig.setMaxWait(Duration.ofMillis(maxWaitMillis));
         poolConfig.setBlockWhenExhausted(true);
 
         // Connection validation
-        poolConfig.setTestOnBorrow(true); // Validate before borrowing
-        poolConfig.setTestOnReturn(false); // Don't validate on return
-        poolConfig.setTestWhileIdle(true); // Validate idle connections
+        poolConfig.setTestOnBorrow(true);
+        poolConfig.setTestOnReturn(false);
+        poolConfig.setTestWhileIdle(true);
 
         // Eviction settings for idle connections
         poolConfig.setTimeBetweenEvictionRuns(Duration.ofSeconds(30));
@@ -82,10 +80,10 @@ public class RedisConfig {
 
         // JMX monitoring
         poolConfig.setJmxEnabled(true);
-        poolConfig.setJmxNamePrefix("redis-pool");
+        poolConfig.setJmxNamePrefix("jedis-pooled");
 
         log.info(
-                "Redis pool configured: maxActive={}, maxIdle={}, minIdle={}, maxWait={}ms",
+                "JedisPooled pool configured: maxActive={}, maxIdle={}, minIdle={}, maxWait={}ms",
                 maxActive,
                 maxIdle,
                 minIdle,
@@ -94,42 +92,62 @@ public class RedisConfig {
         return poolConfig;
     }
 
+    /**
+     * Minimal pool configuration for JedisConnectionFactory (pub/sub only).
+     * This factory is only used by RedisMessageListenerContainer for key expiry events.
+     */
     @Bean
-    public JedisConnectionFactory jedisConnectionFactory(GenericObjectPoolConfig<Connection> poolConfig) {
+    public GenericObjectPoolConfig<Connection> pubSubPoolConfig() {
+        GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
+
+        // Minimal pool - only needed for pub/sub subscriptions
+        poolConfig.setMaxTotal(4);
+        poolConfig.setMaxIdle(2);
+        poolConfig.setMinIdle(1);
+
+        poolConfig.setMaxWait(Duration.ofMillis(maxWaitMillis));
+        poolConfig.setBlockWhenExhausted(true);
+        poolConfig.setTestOnBorrow(true);
+        poolConfig.setTestWhileIdle(true);
+        poolConfig.setTimeBetweenEvictionRuns(Duration.ofSeconds(60));
+        poolConfig.setMinEvictableIdleDuration(Duration.ofMinutes(10));
+
+        poolConfig.setJmxEnabled(true);
+        poolConfig.setJmxNamePrefix("pubsub-pool");
+
+        log.info("Pub/Sub pool configured: maxActive=4, maxIdle=2, minIdle=1");
+
+        return poolConfig;
+    }
+
+    /**
+     * JedisConnectionFactory - used ONLY for pub/sub (RedisMessageListenerContainer).
+     * Uses minimal pool since it only handles key expiry event subscriptions.
+     */
+    @Bean
+    public JedisConnectionFactory jedisConnectionFactory(GenericObjectPoolConfig<Connection> pubSubPoolConfig) {
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
         redisConfig.setPassword(redisPassword);
 
         JedisClientConfiguration clientConfig = JedisClientConfiguration.builder()
                 .usePooling()
-                .poolConfig(poolConfig)
+                .poolConfig(pubSubPoolConfig)
                 .and()
                 .connectTimeout(Duration.ofMillis(timeout))
                 .readTimeout(Duration.ofMillis(timeout))
                 .build();
 
         JedisConnectionFactory factory = new JedisConnectionFactory(redisConfig, clientConfig);
-        log.info("JedisConnectionFactory created with host={}, port={}", redisHost, redisPort);
+        log.info("JedisConnectionFactory created for pub/sub with host={}, port={}", redisHost, redisPort);
         return factory;
     }
 
-    @Bean
-    RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.afterPropertiesSet();
-        return template;
-    }
-
     /**
-     * JedisPooled for direct Jedis operations (JSON module, etc.)
-     * Uses separate pool but with same configuration.
+     * JedisPooled - the PRIMARY Redis client for all operations.
+     * All Redis operations (get, set, json, etc.) go through this pool.
      */
     @Bean
-    public JedisPooled jedisPooled(GenericObjectPoolConfig<Connection> poolConfig) {
+    public JedisPooled jedisPooled(GenericObjectPoolConfig<Connection> jedisPoolConfig) {
         HostAndPort hostAndPort = new HostAndPort(redisHost, redisPort);
         JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
                 .password(redisPassword)
@@ -137,8 +155,8 @@ public class RedisConfig {
                 .socketTimeoutMillis(timeout)
                 .build();
 
-        JedisPooled jedisPooled = new JedisPooled(poolConfig, hostAndPort, clientConfig);
-        log.info("JedisPooled created with host={}, port={}", redisHost, redisPort);
+        JedisPooled jedisPooled = new JedisPooled(jedisPoolConfig, hostAndPort, clientConfig);
+        log.info("JedisPooled (primary) created with host={}, port={}", redisHost, redisPort);
         return jedisPooled;
     }
 

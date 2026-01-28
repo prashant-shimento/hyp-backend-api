@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -38,9 +37,6 @@ public class OrderListener implements MessageListener {
 
     @Autowired
     DeliveryService deliveryService;
-
-    @Autowired
-    StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     PaymentService paymentService;
@@ -142,7 +138,8 @@ public class OrderListener implements MessageListener {
                     if (order.getStatus().equals(OrderStatusType.ACCEPTED)
                             || order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
                         Delivery delivery = deliveryService.findByOrderId(order.getId());
-                        String fulfillType = stringRedisTemplate.opsForValue().get("fulfill");
+                        String fulfillType =
+                                redisService.getRedisData("fulfill").orElse(Constants.KEY_SMART);
                         try {
                             deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
                         } catch (DeliveryException e) {
