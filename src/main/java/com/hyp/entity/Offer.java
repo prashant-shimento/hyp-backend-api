@@ -1,14 +1,12 @@
 package com.hyp.entity;
 
-import com.hyp.annotation.GenerateId;
-import com.hyp.enums.OfferStatusType;
+import com.hyp.enums.OfferType;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -18,41 +16,18 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "offers")
-public class Offer {
+public class Offer extends BaseEntity {
 
-    @Id
-    @GenerateId(sequenceName = "offer_sequence")
-    private String id;
+    private static final long serialVersionUID = 1L;
 
-    @Field("title")
-    private String title;
+    @Field("offer_code")
+    private String offerCode;
 
-    @Field("image_url")
-    private String imageUrl;
-
-    @Field("description")
-    private String description;
-
-    @Field("coupon_code")
-    private String couponCode;
-
-    @Field("offer_status_type")
-    private OfferStatusType offerStatusType;
-
-    @Field("discount_type")
-    private String discountType;
+    @Field("offer_type")
+    private OfferType offerType;
 
     @Field("discount_value")
-    private double discountValue;
-
-    @Field("max_discount_value")
-    private double maxDiscountValue;
-
-    @Field("max_discount")
-    private double maxDiscount;
-
-    @Field("minimum_order_value")
-    private double minimumOrderValue;
+    private Double discountValue;
 
     @Field("start_date")
     private LocalDateTime startDate;
@@ -60,9 +35,15 @@ public class Offer {
     @Field("end_date")
     private LocalDateTime endDate;
 
-    @Field("redemption_limit")
-    private int redemptionLimit; // Maximum number of redemptions allowed
+    @Field("maximum_redemption_limit")
+    private String maximumRedemptionLimit;
 
-    @Field("redemptions_count")
-    private int redemptionsCount; // Current number of times the offer has been redeemed
+    @Field("is_active")
+    private Boolean isActive;
+
+    @Field("partner_id")
+    private String partnerId;
+
+    @Field("notes")
+    private String notes;
 }

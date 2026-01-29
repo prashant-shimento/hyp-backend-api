@@ -10,4 +10,6 @@ public interface OrderRepository extends MongoRepository<Order, String> {
 
     List<Order> findByRestaurantIdAndStatusInAndCreatedAtBetween(
             String restaurantId, OrderStatusType statusType, LocalDateTime startDate, LocalDateTime endDate);
+
+    long countByCustomerIdAndStatus(String customerId, String created);
 }

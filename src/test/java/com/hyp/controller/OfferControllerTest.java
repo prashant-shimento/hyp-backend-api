@@ -11,10 +11,12 @@ import static org.mockito.Mockito.when;
 import com.hyp.dto.OfferDto;
 import com.hyp.entity.Item;
 import com.hyp.entity.Offer;
+import com.hyp.enums.OfferType;
 import com.hyp.response.Response;
 import com.hyp.service.OfferService;
 import com.hyp.translation.OfferTranslation;
 import com.hyp.util.QueryUtils;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,38 +56,48 @@ public class OfferControllerTest {
         MockitoAnnotations.openMocks(this);
 
         offer1 = new Offer();
-        offer1.setId("1");
-        offer1.setTitle("Special Discount");
-        offer1.setDescription("Get 20% off on your next order!");
-        offer1.setCouponCode("DISCOUNT_PRO");
-        offer1.setDiscountType("percentage");
-        offer1.setMaxDiscount(50);
+        offer1.setOfferCode("OFFER1");
+        offer1.setOfferType(OfferType.PERCENTAGE);
+        offer1.setDiscountValue(20.0);
+        offer1.setStartDate(LocalDateTime.now());
+        offer1.setEndDate(LocalDateTime.now().plusDays(30));
+        offer1.setMaximumRedemptionLimit("3");
+        offer1.setIsActive(true);
+        offer1.setPartnerId("partner-123");
+        offer1.setNotes("Get 20% off on your next order!");
 
-        // Offer 1 DTO
         offer1Dto = new OfferDto();
-        offer1Dto.setId("1");
-        offer1Dto.setTitle("Special Discount");
-        offer1Dto.setDescription("Get 20% off on your next order!");
-        offer1Dto.setCouponCode("DISCOUNT_PRO");
-        // offer1Dto.setDiscountType("percentage");
-        offer1Dto.setMaxDiscount(50);
+        offer1Dto.setOfferCode(offer1.getOfferCode());
+        offer1Dto.setOfferType(offer1.getOfferType());
+        offer1Dto.setDiscountValue(offer1.getDiscountValue());
+        offer1Dto.setStartDate(offer1.getStartDate());
+        offer1Dto.setEndDate(offer1.getEndDate());
+        offer1Dto.setMaximumRedemptionLimit(offer1.getMaximumRedemptionLimit());
+        offer1Dto.setIsActive(offer1.getIsActive());
+        offer1Dto.setPartnerId(offer1.getPartnerId());
+        offer1Dto.setNotes(offer1.getNotes());
 
         offer2 = new Offer();
-        offer2.setId("2");
-        offer2.setTitle("Buy One Get One Free");
-        offer2.setDescription("Enjoy a buy-one-get-one-free offer on select Offers!");
-        offer2.setCouponCode("BOGOFREE");
-        offer2.setDiscountType("percentage");
-        offer2.setMaxDiscount(100);
+        offer2.setOfferCode("OFFER2");
+        offer2.setOfferType(OfferType.FLAT);
+        offer2.setDiscountValue(100.0);
+        offer2.setStartDate(LocalDateTime.now().minusDays(5));
+        offer2.setEndDate(LocalDateTime.now().plusDays(10));
+        offer2.setMaximumRedemptionLimit("3");
+        offer2.setIsActive(true);
+        offer2.setPartnerId("partner-456");
+        offer2.setNotes("Buy one get one free on select items");
 
-        // offer2 Dto
         offer2Dto = new OfferDto();
-        offer2Dto.setId("2");
-        offer2Dto.setTitle("Buy One Get One Free");
-        offer2Dto.setDescription("Enjoy a buy-one-get-one-free offer on select Offers!");
-        offer2Dto.setCouponCode("BOGOFREE");
-        // offer2Dto.setDiscountType("percentage");
-        offer2Dto.setMaxDiscount(100);
+        offer2Dto.setOfferCode(offer2.getOfferCode());
+        offer2Dto.setOfferType(offer2.getOfferType());
+        offer2Dto.setDiscountValue(offer2.getDiscountValue());
+        offer2Dto.setStartDate(offer2.getStartDate());
+        offer2Dto.setEndDate(offer2.getEndDate());
+        offer2Dto.setMaximumRedemptionLimit(offer2.getMaximumRedemptionLimit());
+        offer2Dto.setIsActive(offer2.getIsActive());
+        offer2Dto.setPartnerId(offer2.getPartnerId());
+        offer2Dto.setNotes(offer2.getNotes());
     }
 
     // Test to get all

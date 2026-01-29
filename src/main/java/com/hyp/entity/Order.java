@@ -159,6 +159,9 @@ public class Order {
     @Field("referral_token_id")
     private String referralTokenId;
 
+    @Field("offer_id")
+    private String offerCode;
+
     @Data
     @NoArgsConstructor
     public static class OrderItem {
