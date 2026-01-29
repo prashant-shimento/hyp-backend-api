@@ -2,12 +2,15 @@ package com.hyp.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.hyp.entity.Category;
+import com.hyp.entity.Item;
 import com.hyp.request.PosDataRequest;
+import com.hyp.request.UpdateItemsRequest;
 import com.hyp.response.Response;
 import com.hyp.service.CategoryService;
 import com.hyp.service.MenuService;
 import com.hyp.service.PosService;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -65,6 +68,33 @@ public class MenuController {
         } catch (Exception e) {
             response.setError(true);
             response.setMessage("Error occurred while fetching categories: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PatchMapping("/category/{categoryId}/items")
+    public ResponseEntity<Response> updateCategoryItems(
+            @PathVariable String categoryId, @RequestBody UpdateItemsRequest request) {
+        Response response = new Response();
+        try {
+            List<Category> categories = categoryService.getCategoryItemsById(categoryId);
+            if (categories.isEmpty() || categories.get(0).getItems() == null) {
+                response.setError(true);
+                response.setMessage("No items found for the given category.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+            List<Item> itemsToUpdate = categories.get(0).getItems();
+            if (request.getItemIds() != null && !request.getItemIds().isEmpty()) {
+                itemsToUpdate = itemsToUpdate.stream()
+                        .filter(item -> request.getItemIds().contains(item.getId()))
+                        .collect(Collectors.toList());
+            }
+            categoryService.updateItems(itemsToUpdate, request.getFields());
+            response.setMessage("items updated successfully.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.setError(true);
+            response.setMessage("Error occurred while updating items: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
