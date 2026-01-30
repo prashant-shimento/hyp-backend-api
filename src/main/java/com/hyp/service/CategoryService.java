@@ -1,8 +1,12 @@
 package com.hyp.service;
 
 import com.hyp.entity.Category;
+import com.hyp.entity.Item;
 import com.hyp.repository.CategoryRepository;
+import com.mongodb.client.result.UpdateResult;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -10,6 +14,8 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationPipeline;
 import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -67,5 +73,21 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
                 .foreignField("item_category_id")
                 .pipeline(taxLookUpPipeline)
                 .as("items");
+    }
+
+    public int updateItems(List<Item> items, Map<String, Object> fieldsToUpdate) {
+        if (items.isEmpty()) {
+            return 0;
+        }
+
+        List<String> itemIds = items.stream().map(Item::getId).collect(Collectors.toList());
+
+        Query query = new Query(Criteria.where("_id").in(itemIds));
+
+        Update update = new Update();
+        fieldsToUpdate.forEach(update::set);
+
+        UpdateResult result = mongoTemplate.updateMulti(query, update, "items");
+        return (int) result.getModifiedCount();
     }
 }
