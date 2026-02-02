@@ -43,13 +43,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class PosDataRequestTranslation {
 
-    public static PosData getPosData(PosDataRequest posDataRequest, List<Item> existingItem) {
+    public static PosData getPosData(PosDataRequest posDataRequest, List<Item> existingItem, List<Tax> existingTax) {
         return PosData.builder()
                 .orderTypes(PosDataRequestTranslation.translateToOrderTypeList(posDataRequest.getOrdertypes()))
                 .attributes(PosDataRequestTranslation.translateToAttributeList(posDataRequest.getAttributes()))
                 .discounts(PosDataRequestTranslation.translateToDiscountList(posDataRequest.getDiscounts()))
                 .categories(PosDataRequestTranslation.translateToCategoryList(posDataRequest.getCategories()))
-                .taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes()))
+                .taxes(PosDataRequestTranslation.translateToTaxList(posDataRequest.getTaxes(), existingTax))
                 .addonItems(PosDataRequestTranslation.getUniqueAddonItemList(posDataRequest.getAddongroups()))
                 .addonGroups(PosDataRequestTranslation.translateToAddonGroupByItemList(
                         posDataRequest.getAddongroups(), posDataRequest.getItems()))
@@ -97,13 +97,18 @@ public class PosDataRequestTranslation {
                         .collect(Collectors.toList());
     }
 
-    public static Tax translateToTax(TaxRequest taxRequest) {
+    public static Tax translateToTax(TaxRequest taxRequest, Tax existingTax) {
         if (taxRequest == null) {
             return null;
         }
         Tax tax = new Tax();
         tax.setId(taxRequest.getTaxid());
-        tax.setTaxName(taxRequest.getTaxname());
+
+        if (existingTax != null && existingTax.getTaxName() != null) {
+            tax.setTaxName(existingTax.getTaxName());
+        } else {
+            tax.setTaxName(taxRequest.getTaxname());
+        }
         tax.setTax(taxRequest.getTax());
         tax.setTaxType(taxRequest.getTaxtype());
         tax.setTaxCoreOrTotal(taxRequest.getTax_coreortotal());
@@ -116,12 +121,23 @@ public class PosDataRequestTranslation {
         return tax;
     }
 
-    public static List<Tax> translateToTaxList(List<TaxRequest> taxRequestList) {
-        return taxRequestList == null
-                ? Collections.emptyList()
-                : taxRequestList.stream()
-                        .map(PosDataRequestTranslation::translateToTax)
-                        .collect(Collectors.toList());
+    public static List<Tax> translateToTaxList(List<TaxRequest> taxRequestList, List<Tax> existingTaxes) {
+        if (taxRequestList == null) {
+            return Collections.emptyList();
+        }
+
+        List<Tax> mergedTaxes = new ArrayList<>();
+        for (TaxRequest request : taxRequestList) {
+            Tax existingTax = null;
+            if (existingTaxes != null) {
+                existingTax = existingTaxes.stream()
+                        .filter(tax -> tax.getId().equals(request.getTaxid()))
+                        .findFirst()
+                        .orElse(null);
+            }
+            mergedTaxes.add(translateToTax(request, existingTax));
+        }
+        return mergedTaxes;
     }
 
     public static Variation translateToVariation(VariationRequest variationRequest) {
