@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.hyp.entity.Offer;
+import com.hyp.enums.OfferType;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -42,24 +44,30 @@ public class OfferServiceTest {
     @BeforeEach
     public void setup() {
         MockitoAnnotations.openMocks(this);
+
         offer1 = new Offer();
-        offer1.setId("1");
-        offer1.setTitle("Special Discount");
-        offer1.setDescription("Get 20% off on your next order!");
-        offer1.setCouponCode("DISCOUNT_PRO");
-        offer1.setDiscountType("percentage");
-        offer1.setMaxDiscount(50);
+        offer1.setOfferCode("OFFER1");
+        offer1.setOfferType(OfferType.PERCENTAGE);
+        offer1.setDiscountValue(20.0);
+        offer1.setStartDate(LocalDateTime.now());
+        offer1.setEndDate(LocalDateTime.now().plusDays(30));
+        offer1.setMaximumRedemptionLimit("3");
+        offer1.setIsActive(true);
+        offer1.setPartnerId("partner-123");
+        offer1.setNotes("Get 20% off on your next order!");
 
         offer2 = new Offer();
-        offer2.setId("2");
-        offer2.setTitle("Buy One Get One Free");
-        offer2.setDescription("Enjoy a buy-one-get-one-free offer on select Offers!");
-        offer2.setCouponCode("BOGOFREE");
-        offer2.setDiscountType("percentage");
-        offer2.setMaxDiscount(100);
+        offer2.setOfferCode("OFFER2");
+        offer2.setOfferType(OfferType.PERCENTAGE);
+        offer2.setDiscountValue(100.0);
+        offer2.setStartDate(LocalDateTime.now().minusDays(5));
+        offer2.setEndDate(LocalDateTime.now().plusDays(10));
+        offer2.setMaximumRedemptionLimit("3");
+        offer2.setIsActive(true);
+        offer2.setPartnerId("partner-456");
+        offer2.setNotes("Buy one get one free on select items");
     }
 
-    // UTC for find By Id
     @Test
     public void testForFindById_SUCCESS() {
         when(offerRepository.findById("1")).thenReturn(Optional.of(offer1));

@@ -1,6 +1,6 @@
 package com.hyp.dto;
 
-import com.hyp.enums.OfferStatusType;
+import com.hyp.enums.OfferType;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -13,35 +13,18 @@ import lombok.ToString;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-public class OfferDto {
+public class OfferDto extends BaseDto {
 
-    private String id;
-
-    private String title;
-
-    private String imageUrl;
-
-    private String description;
-
-    private String couponCode;
-
-    private String discountType;
-
-    private OfferStatusType offerStatusType;
-
-    private double discountValue;
-
-    private double maxDiscountValue;
-
-    private double maxDiscount;
-
-    private double minimumOrderValue;
+    private String offerCode;
+    private OfferType offerType;
+    private Double discountValue;
 
     private LocalDateTime startDate;
-
     private LocalDateTime endDate;
 
-    private int redemptionLimit;
+    private String maximumRedemptionLimit;
+    private Boolean isActive;
 
-    private int redemptionsCount;
+    private String partnerId;
+    private String notes;
 }

@@ -103,6 +103,7 @@ public class OrderDto extends BaseDto {
     private double itemTotalAmount;
     private String referralToken;
     private String referralCode;
+    private String offerCode;
 
     @Data
     @NoArgsConstructor

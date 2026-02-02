@@ -10,4 +10,8 @@ public class OfferService extends BaseServiceImpl<Offer, String> {
 
     @Autowired
     OfferRepository offerRepository;
+
+    public Offer findByOfferCode(String offerCode) {
+        return offerRepository.findByOfferCode(offerCode);
+    }
 }

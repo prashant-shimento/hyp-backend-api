@@ -7,14 +7,9 @@ import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
 import com.hyp.dto.OrderDto.OrderTax;
-import com.hyp.entity.Address;
-import com.hyp.entity.Customer;
-import com.hyp.entity.Delivery;
-import com.hyp.entity.Order;
-import com.hyp.entity.Partner;
-import com.hyp.entity.ReferralToken;
-import com.hyp.entity.Restaurant;
+import com.hyp.entity.*;
 import com.hyp.enums.*;
+import com.hyp.enums.OrderType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.*;
 import com.hyp.model.PreOrder;
@@ -31,12 +26,7 @@ import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import com.mongodb.client.result.UpdateResult;
 import io.micrometer.core.instrument.Timer;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -125,6 +115,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     ReferralTokenService referralTokenService;
 
+    @Autowired
+    OfferService offerService;
+
+    @Autowired
+    OfferUsageService offerUsageService;
+
     public Order create(OrderDto orderDto) throws Exception {
         Timer.Sample timerSample = metrics.startTimer();
 
@@ -210,6 +206,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         }
 
         double itemTotalAmount = 0;
+        double appliedOfferAmount = 0;
         for (OrderItem orderItem : orderDto.getOrderItems()) {
             if (orderItem.getVariationId() != null || orderItem.getVariationName() != null) {
                 if (!variationService.isExistsById(orderItem.getId())) {
@@ -234,14 +231,29 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
 
             itemTotalAmount += (orderItem.getPrice() * orderItem.getQuantity()) + addonTotal;
+            appliedOfferAmount = validateAndApplyOffer(
+                    orderDto,
+                    itemTotalAmount,
+                    orderDto.getCustomerId(),
+                    orderDto.getPartnerId(),
+                    orderDto.getRestaurantId());
         }
-
         Order order = orderTranslation.getEntity(orderDto);
+        double finalItemTotal = itemTotalAmount;
+
+        if (appliedOfferAmount > 0) {
+            order.setOfferCode(orderDto.getOfferCode());
+
+            finalItemTotal = itemTotalAmount - appliedOfferAmount;
+            if (finalItemTotal < 0d) {
+                finalItemTotal = 0d;
+            }
+        }
         order.setStatus(OrderStatusType.CREATED);
         order.setOrderTime(LocalDateTime.now());
         order.setCreatedAt(LocalDateTime.now());
         order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
-        order.setItemTotalAmount(itemTotalAmount);
+        order.setItemTotalAmount(finalItemTotal);
         order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
 
         // Handle referral attribution - token-only (trusted source)
@@ -304,6 +316,94 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             return order;
         } finally {
             ObservabilityContext.clear();
+        }
+    }
+
+    private double validateAndApplyOffer(
+            OrderDto orderDto, double itemTotalAmount, String customerId, String partnerId, String restaurantId)
+            throws Exception {
+
+        double appliedOfferAmount = 0d;
+
+        if (orderDto.getOfferCode() == null || orderDto.getOfferCode().isBlank()) {
+            return 0d;
+        }
+        long createdOrderCount = orderRepository.countByCustomerIdAndStatus(customerId, "PAID");
+
+        Offer offer = offerService.findByOfferCode(orderDto.getOfferCode());
+
+        if (!Boolean.TRUE.equals(offer.getIsActive())) {
+            throw new Exception("Offer is not active: " + orderDto.getOfferCode());
+        }
+
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        ZonedDateTime now = ZonedDateTime.now(zone);
+
+        if (offer.getStartDate() != null) {
+            ZonedDateTime start = offer.getStartDate().atZone(zone);
+            if (now.isBefore(start)) {
+                throw new Exception("Offer not started yet");
+            }
+        }
+
+        if (offer.getEndDate() != null) {
+            ZonedDateTime end = offer.getEndDate().atZone(zone);
+            if (now.isAfter(end)) {
+                throw new Exception("Offer expired");
+            }
+        }
+
+        if (offer.getPartnerId() != null && !offer.getPartnerId().equals(partnerId)) {
+            throw new Exception("Offer not valid for this partner");
+        }
+
+        if (offer.getRestaurantId() != null && !offer.getRestaurantId().equals(restaurantId)) {
+            throw new Exception("Offer not valid for this restaurant");
+        }
+
+        // Get current usage count
+        Integer usedCount = offerUsageService.getUsageCount(orderDto.getOfferCode(), customerId);
+
+        int maximumRedemptionLimit = 0;
+        if (offer.getMaximumRedemptionLimit() != null) {
+            maximumRedemptionLimit = Integer.parseInt(offer.getMaximumRedemptionLimit());
+        }
+        if (usedCount >= maximumRedemptionLimit || createdOrderCount >= maximumRedemptionLimit) {
+            throw new Exception("Offer usage limit exceeded. Maximum 3 attempts allowed.");
+        }
+
+        // Discount Calculation
+        double discountValue = offer.getDiscountValue();
+
+        if ("PERCENTAGE".equalsIgnoreCase(offer.getOfferType().toString())) {
+            appliedOfferAmount = (itemTotalAmount * discountValue) / 100d;
+        } else {
+            appliedOfferAmount = discountValue;
+        }
+
+        if (appliedOfferAmount > itemTotalAmount) {
+            appliedOfferAmount = itemTotalAmount;
+        }
+
+        // Save or update after validation passes
+        saveOfferUsage(orderDto.getOfferCode(), customerId, partnerId, usedCount + 1);
+
+        return appliedOfferAmount;
+    }
+
+    private void saveOfferUsage(String offerCode, String customerId, String partnerId, Integer usedCount) {
+        OfferUsage existingUsage = offerUsageService.getCustomerIdAndOfferCode(customerId, offerCode);
+
+        if (existingUsage != null) {
+            existingUsage.setUsageCount(usedCount);
+            offerUsageService.save(existingUsage);
+        } else {
+            OfferUsage offerUsage = new OfferUsage();
+            offerUsage.setOfferCode(offerCode);
+            offerUsage.setCustomerId(customerId);
+            offerUsage.setPartnerId(partnerId);
+            offerUsage.setUsageCount(usedCount);
+            offerUsageService.save(offerUsage);
         }
     }
 
