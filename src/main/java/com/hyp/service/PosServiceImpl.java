@@ -2,15 +2,7 @@ package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.constants.Constants;
-import com.hyp.entity.AddonItem;
-import com.hyp.entity.Category;
-import com.hyp.entity.Customer;
-import com.hyp.entity.Delivery;
-import com.hyp.entity.Item;
-import com.hyp.entity.Order;
-import com.hyp.entity.OrderType;
-import com.hyp.entity.Restaurant;
-import com.hyp.entity.Variation;
+import com.hyp.entity.*;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
@@ -184,8 +176,12 @@ public class PosServiceImpl implements PosService {
                     .map(ItemRequest::getItemid)
                     .collect(Collectors.toList());
             List<Item> existingItems = itemService.findAllByIdIn(requestItemIds);
+            List<String> requestTaxIds = posDataRequest.getTaxes().stream()
+                    .map(PosDataRequest.TaxRequest::getTaxid)
+                    .toList();
+            List<Tax> existingTax = taxService.findAllByIdIn(requestTaxIds);
             long posDataTranslation = System.currentTimeMillis();
-            PosData posData = PosDataRequestTranslation.getPosData(posDataRequest, existingItems);
+            PosData posData = PosDataRequestTranslation.getPosData(posDataRequest, existingItems, existingTax);
             log.info("Time taken for posDataTranslation: {} ms", System.currentTimeMillis() - posDataTranslation);
             saveEntities(restaurant, posData);
 
