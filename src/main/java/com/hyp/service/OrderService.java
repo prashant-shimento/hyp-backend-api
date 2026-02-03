@@ -1,12 +1,12 @@
 package com.hyp.service;
 
+import static com.hyp.util.CommonUtils.roundToTwoDecimal;
 import static com.hyp.util.ValidationUtils.isWithinDeliveryHours;
 
 import com.hyp.constants.Constants;
 import com.hyp.dto.OrderDto;
 import com.hyp.dto.OrderDto.OrderAddonItem;
 import com.hyp.dto.OrderDto.OrderItem;
-import com.hyp.dto.OrderDto.OrderTax;
 import com.hyp.entity.*;
 import com.hyp.enums.*;
 import com.hyp.enums.OrderType;
@@ -27,9 +27,8 @@ import com.hyp.util.CommonUtils;
 import com.mongodb.client.result.UpdateResult;
 import io.micrometer.core.instrument.Timer;
 import java.time.*;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -128,39 +127,34 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 .orElseThrow(() ->
                         new EntityNotFoundException(Restaurant.class.getSimpleName(), orderDto.getRestaurantId()));
 
+        Partner partner;
         if (orderDto.getPartnerId() != null) {
-            Optional.ofNullable(partnerService.findById(orderDto.getPartnerId()))
+            partner = Optional.ofNullable(partnerService.findById(orderDto.getPartnerId()))
                     .orElseThrow(
                             () -> new EntityNotFoundException(Partner.class.getSimpleName(), orderDto.getPartnerId()));
         } else {
-            Partner partner =
-                    partnerService.findPartnersByRestaurantId(orderDto.getRestaurantId(), PartnerType.RESTAURANT);
+            partner = partnerService.findPartnersByRestaurantId(orderDto.getRestaurantId(), PartnerType.RESTAURANT);
             orderDto.setPartnerId(partner.getId());
         }
 
-        if (!restaurant.isServiceable()) {
-            throw new Exception("Restaurant is not serviceable");
-        }
-        if (!isWithinDeliveryHours(restaurant.getDeliveryHours())) {
-            throw new Exception("Order cannot be processed: Outside delivery hours.");
-        }
-        if (!restaurant.isActive()) {
-            throw new Exception("Restaurant is not active");
-        }
-        boolean isPreOrder = Boolean.TRUE.equals(orderDto.getPreOrder());
-        PreOrder preOrderConfig = getPreOrder(orderDto, restaurant, isPreOrder);
+        if (!restaurant.isServiceable()) throw new ValidationException("Restaurant is not serviceable");
 
-        if (isPreOrder) {
-            validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrderConfig, restaurant.getDeliveryHours());
-        }
+        if (!restaurant.isActive()) throw new ValidationException("Restaurant is not active");
+
+        if (!isWithinDeliveryHours(restaurant.getDeliveryHours()))
+            throw new ValidationException("Order cannot be processed: Outside delivery hours");
+
         Customer customer = Optional.ofNullable(customerService.findById(orderDto.getCustomerId()))
                 .orElseThrow(
                         () -> new EntityNotFoundException(Customer.class.getSimpleName(), orderDto.getCustomerId()));
 
-        Address address;
+        boolean isPreOrder = Boolean.TRUE.equals(orderDto.getPreOrder());
+        PreOrder preOrderConfig = getPreOrder(orderDto, restaurant, isPreOrder);
+        if (isPreOrder) {
+            validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrderConfig, restaurant.getDeliveryHours());
+        }
 
-        // TODO: Need to validate orderType from DB once front end accommodate the
-        // changes
+        Address address = null;
         if (OrderType.fromCode(orderDto.getOrderType()) == OrderType.H) {
             if (orderDto.getDeliveryDetails() != null) {
                 address = Optional.ofNullable(addressService.findById(
@@ -175,97 +169,163 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                         restaurant.getLocation().getLatitude(),
                         restaurant.getLocation().getLongitude(),
                         restaurant.getDeliveryRadius())) {
-                    throw new Exception("Location Not Deliverable");
+                    throw new ValidationException("Location not deliverable");
                 }
-            } else { // TODO: this has to be moved to orderType Dine and needs front end changes in
-                // mocoda
+            } else {
                 if (orderDto.getSeat() == null || orderDto.getScreen() == null) {
-                    throw new Exception("Delivery Details are missing, and both Seat and Screen must be provided.");
+                    throw new ValidationException("Delivery details missing: Seat and Screen required");
                 }
             }
         }
 
-        if (!isWithinDeliveryHours(restaurant.getDeliveryHours())) {
-            throw new Exception("Order cannot be processed: Outside delivery hours.");
-        }
+        List<String> itemIds = new ArrayList<>();
+        List<String> variationIds = new ArrayList<>();
+        List<String> addonIds = new ArrayList<>();
+        List<String> taxIds = new ArrayList<>();
 
-        if (orderDto.getOrderDiscount() != null) {
-            for (OrderDto.OrderDiscount discount : orderDto.getOrderDiscount()) {
-                if (!discountService.isExistsById(discount.getId())) {
-                    throw new Exception("Discount not found " + discount.getId());
-                }
+        for (OrderItem oi : orderDto.getOrderItems()) {
+            if (oi.getVariationId() != null) variationIds.add(oi.getId());
+            else itemIds.add(oi.getId());
+
+            if (oi.getOrderAddonItems() != null) {
+                oi.getOrderAddonItems().forEach(a -> addonIds.add(a.getAddonItemId()));
+            }
+
+            if (oi.getOrderItemTax() != null) {
+                oi.getOrderItemTax().forEach(t -> taxIds.add(t.getId()));
             }
         }
 
         if (orderDto.getOrderTax() != null) {
-            for (OrderTax ordertax : orderDto.getOrderTax()) {
-                if (!taxService.isExistsById(ordertax.getId())) {
-                    throw new Exception("Tax not found " + ordertax.getId());
-                }
-            }
+            orderDto.getOrderTax().forEach(t -> taxIds.add(t.getId()));
         }
 
-        double itemTotalAmount = 0;
-        double appliedOfferAmount = 0;
-        for (OrderItem orderItem : orderDto.getOrderItems()) {
-            if (orderItem.getVariationId() != null || orderItem.getVariationName() != null) {
-                if (!variationService.isExistsById(orderItem.getId())) {
-                    throw new Exception("Variation not found " + orderItem.getId());
-                }
-            } else if (!itemService.isExistsById(orderItem.getId())) {
-                throw new Exception("Item not found " + orderItem.getId());
+        Map<String, Item> itemMap =
+                itemService.findAllByIdIn(itemIds).stream().collect(Collectors.toMap(Item::getId, i -> i));
+
+        Map<String, Variation> variationMap = variationService.findAllByIdIn(variationIds).stream()
+                .collect(Collectors.toMap(Variation::getId, v -> v));
+
+        Map<String, AddonItem> addonMap =
+                addonItemService.findAllByIdIn(addonIds).stream().collect(Collectors.toMap(AddonItem::getId, a -> a));
+
+        Map<String, Tax> taxMap =
+                taxService.findAllByIdIn(taxIds).stream().collect(Collectors.toMap(Tax::getId, t -> t));
+
+        double itemTotalAmount = 0.0;
+        double taxTotalAmount = 0.0;
+
+        for (OrderItem oi : orderDto.getOrderItems()) {
+
+            boolean isVariation = oi.getVariationId() != null;
+            double basePrice;
+
+            if (isVariation) {
+                Variation v = variationMap.get(oi.getId());
+                if (v == null) throw new ValidationException("Variation not found: " + oi.getId());
+                basePrice = roundToTwoDecimal(Double.parseDouble(v.getPrice()));
+            } else {
+                Item item = itemMap.get(oi.getId());
+                if (item == null) throw new ValidationException("Item not found: " + oi.getId());
+                basePrice = roundToTwoDecimal(Double.parseDouble(item.getPrice()));
+                oi.setItemAttribute(item.getItemAttributeId());
             }
 
-            double addonTotal = 0;
-            if (orderItem.getOrderAddonItems() != null) {
-                for (OrderAddonItem orderAddonItem : orderItem.getOrderAddonItems()) {
-                    if (!addonItemService.isExistsById(orderAddonItem.getAddonItemId())) {
-                        throw new Exception("AddonItem not found " + orderAddonItem.getAddonItemId());
+            // Item price tampering check
+            if (roundToTwoDecimal(oi.getPrice()) != basePrice) {
+                log.warn("Invalid item price: {} restaurantId: {}", oi.getId(), orderDto.getRestaurantId());
+                //                throw new ValidationException("Invalid item price: " + oi.getId());
+            }
+
+            double lineTotal = roundToTwoDecimal(basePrice * oi.getQuantity());
+
+            // Addons
+            if (oi.getOrderAddonItems() != null) {
+                for (OrderAddonItem addon : oi.getOrderAddonItems()) {
+                    AddonItem dbAddon = addonMap.get(addon.getAddonItemId());
+                    if (dbAddon == null) throw new ValidationException("Addon not found: " + addon.getAddonItemId());
+
+                    double addonPrice = roundToTwoDecimal(Double.parseDouble(dbAddon.getAddonItemPrice()));
+
+                    if (roundToTwoDecimal(addon.getPrice()) != addonPrice) {
+                        log.warn(
+                                "Invalid addon price: {} restaurantId: {}",
+                                addon.getAddonItemId(),
+                                orderDto.getRestaurantId());
+                        //                        throw new ValidationException("Invalid addon price: " +
+                        // addon.getAddonItemId());
                     }
-                    addonTotal += orderAddonItem.getPrice() * orderAddonItem.getQuantity();
+
+                    lineTotal = roundToTwoDecimal(lineTotal + (addonPrice * addon.getQuantity()));
                 }
             }
-            if (orderItem.getVariationId() == null) {
-                orderItem.setItemAttribute(
-                        itemService.findById(orderItem.getId()).getItemAttributeId());
+
+            // ITEM LEVEL TAX
+            if (oi.getOrderItemTax() != null) {
+                for (OrderDto.OrderItemTax it : oi.getOrderItemTax()) {
+                    Tax tax = taxMap.get(it.getId());
+                    if (tax == null) throw new ValidationException("Tax not found: " + it.getId());
+
+                    double taxPercent = Double.parseDouble(tax.getTax());
+
+                    double expectedTax = roundToTwoDecimal((lineTotal * taxPercent) / 100);
+
+                    if (roundToTwoDecimal(it.getAmount()) != expectedTax) {
+                        log.warn(
+                                "Invalid item tax amount for: {} restaurantId: {}",
+                                tax.getTaxName(),
+                                orderDto.getRestaurantId());
+                        //                        throw new ValidationException("Invalid item tax amount for " +
+                        // tax.getTaxName());
+                    }
+
+                    taxTotalAmount = roundToTwoDecimal(taxTotalAmount + expectedTax);
+                }
             }
 
-            itemTotalAmount += (orderItem.getPrice() * orderItem.getQuantity()) + addonTotal;
-            appliedOfferAmount = validateAndApplyOffer(
-                    orderDto,
-                    itemTotalAmount,
-                    orderDto.getCustomerId(),
-                    orderDto.getPartnerId(),
+            itemTotalAmount = roundToTwoDecimal(itemTotalAmount + lineTotal);
+        }
+
+        if (roundToTwoDecimal(orderDto.getTaxAmount()) != taxTotalAmount) {
+            log.warn(
+                    "Invalid Order Tax amount: Request {}, Actual {} restaurantId: {}",
+                    roundToTwoDecimal(orderDto.getTaxAmount()),
+                    taxTotalAmount,
                     orderDto.getRestaurantId());
+            // throw new ValidationException("Invalid Order Tax amount");
         }
+
+        double grandTotalAmount =
+                roundToTwoDecimal(itemTotalAmount + taxTotalAmount + roundToTwoDecimal(orderDto.getDeliveryCharge()));
+
+        if (roundToTwoDecimal(orderDto.getGrandTotalAmount()) != grandTotalAmount) {
+            log.warn(
+                    "Invalid grand total amount: Request {}, Actual {} restaurantId: {}",
+                    roundToTwoDecimal(orderDto.getGrandTotalAmount()),
+                    grandTotalAmount,
+                    orderDto.getRestaurantId());
+            //            throw new ValidationException("Invalid grand total amount");
+        }
+
+        double appliedOfferAmount = validateAndApplyOffer(
+                orderDto,
+                itemTotalAmount,
+                orderDto.getCustomerId(),
+                orderDto.getPartnerId(),
+                orderDto.getRestaurantId());
+
+        double finalItemTotal = Math.max(0, itemTotalAmount - appliedOfferAmount);
+
         Order order = orderTranslation.getEntity(orderDto);
-        double finalItemTotal = itemTotalAmount;
-
-        if (appliedOfferAmount > 0) {
-            order.setOfferCode(orderDto.getOfferCode());
-
-            finalItemTotal = itemTotalAmount - appliedOfferAmount;
-            if (finalItemTotal < 0d) {
-                finalItemTotal = 0d;
-            }
-        }
         order.setStatus(OrderStatusType.CREATED);
         order.setOrderTime(LocalDateTime.now());
         order.setCreatedAt(LocalDateTime.now());
-        order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
         order.setItemTotalAmount(finalItemTotal);
-        order.setPlatformFee(paymentService.calculatePlatformFee(orderDto.getGrandTotalAmount(), restaurant));
 
-        // Handle referral attribution - token-only (trusted source)
-        // Token is NOT consumed here - only on successful PAID status
         ReferralToken referralToken = referralTokenService.validateTokenForOrder(orderDto.getReferralToken());
         if (referralToken != null) {
             order.setReferralCode(referralToken.getReferralCode());
             order.setReferralTokenId(referralToken.getId());
-            log.info(
-                    "Order referral set: code={}, token={} (pending payment)",
-                    referralToken.getReferralCode(),
-                    referralToken.getId());
         }
 
         order = save(order);

@@ -1,6 +1,7 @@
 package com.hyp.service;
 
 import java.util.List;
+import java.util.Set;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
@@ -42,4 +43,8 @@ public interface BaseService<T, ID> {
     T findByIdWithReference(ID id, Class<T> entityClass);
 
     List<T> findByRestaurant(Class<T> entityClass, Object value);
+
+    List<T> findAllByIdIn(List<ID> ids);
+
+    Set<String> findExistingIds(List<ID> ids);
 }

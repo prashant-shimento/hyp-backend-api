@@ -8,10 +8,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -205,5 +202,23 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
         mongoTemplate
                 .getCollection(getCollectionName(entityClass))
                 .bulkWrite(writeModels, new BulkWriteOptions().ordered(false));
+    }
+
+    @Override
+    public List<T> findAllByIdIn(List<ID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return repository.findAllById(ids);
+    }
+
+    @Override
+    public Set<String> findExistingIds(List<ID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return findAllByIdIn(ids).stream()
+                .map(entity -> ((BaseEntity) entity).getId())
+                .collect(Collectors.toSet());
     }
 }
