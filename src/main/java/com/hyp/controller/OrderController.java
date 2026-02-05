@@ -22,6 +22,8 @@ import com.hyp.service.SettlementService;
 import com.hyp.translation.OrderTranslation;
 import com.hyp.translation.PosOrderRequestTranslation;
 import io.swagger.v3.oas.annotations.Hidden;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Collections;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/order")
+@Tag(name = "Order", description = "Order management APIs")
 public class OrderController extends BaseListController<OrderDto, Order, String> {
 
     @Autowired
@@ -64,6 +67,11 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
     @Autowired
     SettlementService settlementService;
 
+    @Operation(
+            summary = "Create a new order",
+            description = "Creates an order with full price validation, offer application, and referral handling. "
+                    + "All catalog lookups (items, variations, addons, taxes) run in parallel for sub-500ms response. "
+                    + "After creation, call POST /payment/{orderId} to initiate payment.")
     @PostMapping()
     public ResponseEntity<Response> create(@RequestBody @Valid OrderDto orderDto) {
         Response response;

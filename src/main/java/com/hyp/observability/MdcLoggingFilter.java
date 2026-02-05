@@ -35,8 +35,7 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
     public static final String RESTAURANT_ID = "restaurant_id";
 
     // Order-related path prefixes (case-insensitive matching)
-    private static final Set<String> ORDER_FLOW_PATHS =
-            Set.of("/order", "/orders", "/pos", "/delivery", "/payment", "/checkout");
+    private static final Set<String> ORDER_FLOW_PATHS = Set.of("/order", "/orders", "/pos", "/delivery", "/payment");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
