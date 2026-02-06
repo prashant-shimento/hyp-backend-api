@@ -1,6 +1,7 @@
 package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +9,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.json.Path2;
+import redis.clients.jedis.params.SetParams;
 
 /**
  * Redis service using JedisPooled for all operations.
@@ -47,19 +49,6 @@ public class RedisService {
         } catch (Exception e) {
             log.error("Error fetching value from Redis for key: {}", key, e);
             return Optional.empty();
-        }
-    }
-
-    /**
-     * Set a string value in Redis with TTL.
-     */
-    @Async
-    public void setRedisStringData(String key, String value, long ttlSeconds) {
-        try {
-            jedis.setex(key, ttlSeconds, value);
-            log.info("Redis set operation completed for key: {}", key);
-        } catch (Exception e) {
-            log.error("Failed to set Redis data for key: {}", key, e);
         }
     }
 
@@ -159,6 +148,32 @@ public class RedisService {
             jedis.expire(key, ttlSeconds);
         } catch (Exception e) {
             log.error("Failed to set expiry on Redis key: {}", key, e);
+        }
+    }
+
+    /**
+     * Set a string value in Redis with TTL (synchronous).
+     * Use this when immediate persistence matters (e.g., status tracking).
+     */
+    public void setRedisStringDataSync(String key, String value, long ttlSeconds) {
+        try {
+            jedis.setex(key, ttlSeconds, value);
+            log.debug("Redis sync set operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to set Redis data synchronously for key: {}", key, e);
+        }
+    }
+
+    public boolean setIfAbsent(String key, String value, Duration ttl) {
+        try {
+            SetParams params = new SetParams().nx().ex((int) ttl.getSeconds());
+
+            String result = jedis.set(key, value, params);
+            return "OK".equals(result);
+
+        } catch (Exception e) {
+            log.error("Redis SET NX failed for key={}", key, e);
+            throw e;
         }
     }
 }

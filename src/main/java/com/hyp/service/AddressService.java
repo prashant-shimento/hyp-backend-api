@@ -10,4 +10,14 @@ public class AddressService extends BaseServiceImpl<Address, String> {
 
     @Autowired
     public AddressRepository addressRepository;
+
+    @Override
+    protected String cacheName() {
+        return "addresses";
+    }
+
+    @Override
+    protected Class<Address> entityType() {
+        return Address.class;
+    }
 }

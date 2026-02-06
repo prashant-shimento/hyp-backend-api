@@ -186,4 +186,21 @@ public class CommonUtils {
         SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
+
+    public static String maskMobile(String mobile) {
+        return maskData(mobile, 4, '*');
+    }
+
+    public static String maskData(String value, int visible, char maskChar) {
+        if (value == null || value.isBlank()) {
+            return "****";
+        }
+
+        int length = value.length();
+        if (length <= visible) {
+            return "*".repeat(length);
+        }
+
+        return String.valueOf(maskChar).repeat(length - visible) + value.substring(length - visible);
+    }
 }

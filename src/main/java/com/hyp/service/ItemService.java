@@ -248,11 +248,4 @@ public class ItemService extends BaseServiceImpl<Item, String> {
             log.info("Bulk write items completed in {} ms", System.currentTimeMillis() - bulkWriteStart);
         }
     }
-
-    public List<Item> findAllByIdIn(List<String> requestItemIds) {
-        if (requestItemIds == null || requestItemIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return itemRepository.findAllByIdIn(requestItemIds);
-    }
 }

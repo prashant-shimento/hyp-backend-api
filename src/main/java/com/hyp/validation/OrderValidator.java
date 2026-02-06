@@ -15,6 +15,9 @@ import com.hyp.service.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +32,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class OrderValidator {
+
+    /** Dedicated pool for Phase 1 parallel DB fetches — sized for I/O-bound work. */
+    private static final ExecutorService DB_FETCH_POOL = Executors.newFixedThreadPool(12);
 
     public record PriceWarning(String type, String message) {}
 
@@ -80,25 +86,6 @@ public class OrderValidator {
     @Autowired
     private ReferralTokenService referralTokenService;
 
-    // ─── orchestrator ─────────────────────────────────────────────────────────
-    /**
-     * Single entry-point: ALL DB fetches run in parallel (Phase 1), then pure
-     * CPU validation (Phase 2).  Returns everything the caller needs.
-     *
-     * Phase 1 parallel fetches:
-     *   - restaurant, customer, partner (core entities)
-     *   - items, variations, addons, taxes (catalog batch)
-     *   - address (if delivery order)
-     *   - offer + usage count (if offer code present)
-     *   - referral token (if token present)
-     *
-     * Phase 2 validation (pure CPU, no DB):
-     *   - entity validation
-     *   - pre-order window
-     *   - delivery address reachability
-     *   - price calculation
-     *   - offer application
-     */
     public OrderValidationResult validate(OrderDto orderDto) throws Exception {
         long startTime = System.currentTimeMillis();
         List<PriceWarning> warnings = new ArrayList<>();
@@ -106,12 +93,12 @@ public class OrderValidator {
         /* ═══════════════ PHASE 1 – PARALLEL DB FETCH ═══════════════ */
 
         CompletableFuture<Restaurant> restaurantFuture =
-                CompletableFuture.supplyAsync(() -> restaurantService.findById(orderDto.getRestaurantId()));
+                timed("restaurant", () -> restaurantService.findById(orderDto.getRestaurantId()));
 
         CompletableFuture<Customer> customerFuture =
-                CompletableFuture.supplyAsync(() -> customerService.findById(orderDto.getCustomerId()));
+                timed("customer", () -> customerService.findById(orderDto.getCustomerId()));
 
-        CompletableFuture<Partner> partnerFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Partner> partnerFuture = timed("partner", () -> {
             if (orderDto.getPartnerId() != null) {
                 return partnerService.findById(orderDto.getPartnerId());
             }
@@ -133,15 +120,18 @@ public class OrderValidator {
         }
         if (orderDto.getOrderTax() != null) orderDto.getOrderTax().forEach(t -> taxIds.add(t.getId()));
 
-        CompletableFuture<Map<String, Item>> itemsFuture = CompletableFuture.supplyAsync(
-                () -> itemService.findAllByIdIn(itemIds).stream().collect(Collectors.toMap(Item::getId, i -> i)));
-        CompletableFuture<Map<String, Variation>> variationsFuture =
-                CompletableFuture.supplyAsync(() -> variationService.findAllByIdIn(variationIds).stream()
+        CompletableFuture<Map<String, Item>> itemsFuture =
+                timed("items(" + itemIds.size() + ")", () -> itemService.findAllByIdIn(itemIds).stream()
+                        .collect(Collectors.toMap(Item::getId, i -> i)));
+        CompletableFuture<Map<String, Variation>> variationsFuture = timed(
+                "variations(" + variationIds.size() + ")", () -> variationService.findAllByIdIn(variationIds).stream()
                         .collect(Collectors.toMap(Variation::getId, v -> v)));
-        CompletableFuture<Map<String, AddonItem>> addonsFuture = CompletableFuture.supplyAsync(() ->
-                addonItemService.findAllByIdIn(addonIds).stream().collect(Collectors.toMap(AddonItem::getId, a -> a)));
-        CompletableFuture<Map<String, Tax>> taxesFuture = CompletableFuture.supplyAsync(
-                () -> taxService.findAllByIdIn(taxIds).stream().collect(Collectors.toMap(Tax::getId, t -> t)));
+        CompletableFuture<Map<String, AddonItem>> addonsFuture =
+                timed("addons(" + addonIds.size() + ")", () -> addonItemService.findAllByIdIn(addonIds).stream()
+                        .collect(Collectors.toMap(AddonItem::getId, a -> a)));
+        CompletableFuture<Map<String, Tax>> taxesFuture =
+                timed("taxes(" + taxIds.size() + ")", () -> taxService.findAllByIdIn(taxIds).stream()
+                        .collect(Collectors.toMap(Tax::getId, t -> t)));
 
         // ── Address (only if delivery order with addressId) ───────────────────
         String addressId = null;
@@ -150,7 +140,7 @@ public class OrderValidator {
             addressId = orderDto.getDeliveryDetails().getAddressId();
         }
         final String finalAddressId = addressId;
-        CompletableFuture<Address> addressFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Address> addressFuture = timed("address", () -> {
             if (finalAddressId != null) {
                 return addressService.findById(finalAddressId);
             }
@@ -159,21 +149,21 @@ public class OrderValidator {
 
         // ── Offer + usage count (only if offer code present) ──────────────────
         String offerCode = orderDto.getOfferCode();
-        CompletableFuture<Offer> offerFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Offer> offerFuture = timed("offer", () -> {
             if (offerCode != null && !offerCode.isBlank()) {
                 return offerService.findByOfferCode(offerCode);
             }
             return null;
         });
 
-        CompletableFuture<Long> orderCountFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Long> orderCountFuture = timed("orderCount", () -> {
             if (offerCode != null && !offerCode.isBlank()) {
                 return orderRepository.countByCustomerIdAndStatus(orderDto.getCustomerId(), "PAID");
             }
             return 0L;
         });
 
-        CompletableFuture<Integer> offerUsageCountFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Integer> offerUsageCountFuture = timed("offerUsage", () -> {
             if (offerCode != null && !offerCode.isBlank()) {
                 return offerUsageService.getUsageCount(offerCode, orderDto.getCustomerId());
             }
@@ -182,7 +172,7 @@ public class OrderValidator {
 
         // ── Referral token (only if token present) ────────────────────────────
         String referralTokenStr = orderDto.getReferralToken();
-        CompletableFuture<ReferralToken> referralTokenFuture = CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<ReferralToken> referralTokenFuture = timed("referralToken", () -> {
             if (referralTokenStr != null && !referralTokenStr.isBlank()) {
                 return referralTokenService.validateTokenForOrder(referralTokenStr);
             }
@@ -558,5 +548,21 @@ public class OrderValidator {
             throw new ValidationException("Restaurant cannot prepare this preorder. Fulfillment time ("
                     + fulfillmentTimeIST + " IST) is outside delivery hours.");
         }
+    }
+
+    private <T> CompletableFuture<T> timed(String label, Supplier<T> supplier) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    long start = System.currentTimeMillis();
+                    T result = supplier.get();
+                    long elapsed = System.currentTimeMillis() - start;
+                    if (elapsed > 100) {
+                        log.warn("Phase1 SLOW [{}] took {}ms", label, elapsed);
+                    } else {
+                        log.info("Phase1 [{}] took {}ms", label, elapsed);
+                    }
+                    return result;
+                },
+                DB_FETCH_POOL);
     }
 }

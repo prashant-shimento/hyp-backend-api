@@ -85,17 +85,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     OrderValidator orderValidator;
 
-    /**
-     * Create order with optimized validation (parallel lookups + cached entities).
-     *
-     * Performance on MongoDB Atlas Free Tier:
-     * - Phase 1 (parallel lookups): ~130ms (cached)
-     * - Phase 2 (validations): ~0ms (pure CPU)
-     * - Phase 3 (save): ~400-500ms (free tier latency)
-     * - Total: ~550-650ms
-     *
-     * To achieve <200ms: upgrade to MongoDB Atlas M10+ or use local MongoDB.
-     */
+    @Autowired
+    PaymentEventService paymentEventService;
+
     public Order create(OrderDto orderDto) throws Exception {
 
         Timer.Sample timerSample = metrics.startTimer();
@@ -127,6 +119,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
         CompletableFuture.runAsync(() -> {
             try {
+                try {
+                    paymentEventService.publishPaymentCreateEvent(finalOrder);
+                } catch (Exception e) {
+                    log.error("Failed to publish payment event for order {}", finalOrder.getId(), e);
+                }
+
                 List<String> parameters = CommonUtils.buildStringList(
                         customer.getName(),
                         customer.getMobile(),

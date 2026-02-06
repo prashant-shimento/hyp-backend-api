@@ -33,6 +33,16 @@ public class PartnerService extends BaseServiceImpl<Partner, String> {
 
     private final ExecutorService uploadExecutor = Executors.newFixedThreadPool(8);
 
+    @Override
+    protected String cacheName() {
+        return "partners";
+    }
+
+    @Override
+    protected Class<Partner> entityType() {
+        return Partner.class;
+    }
+
     public List<Partner> findByPartnerType(PartnerType type) {
         return partnerRepository.findByType(type);
     }

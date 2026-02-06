@@ -32,10 +32,60 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CacheService cacheService;
+
+    /** Return a cache namespace (e.g. "restaurants") to enable caching. Default: null (disabled). */
+    protected String cacheName() {
+        return null;
+    }
+
+    /** Return the entity class for JSON deserialization. Required when cacheName() is non-null. */
+    protected Class<T> entityType() {
+        return null;
+    }
+
+    /** Return extra cache keys to evict on save/update (e.g. "mobile:9876543210"). */
+    protected List<String> additionalEvictionKeys(T entity) {
+        return Collections.emptyList();
+    }
+
+    /** Accessor for subclasses that need custom cache lookups (e.g. findByMobile). */
+    protected CacheService cacheService() {
+        return cacheService;
+    }
+
+    private boolean isCacheEnabled() {
+        return cacheName() != null && entityType() != null;
+    }
+
+    private String entityId(T entity) {
+        if (entity instanceof BaseEntity be) return be.getId();
+        return null;
+    }
+
+    private void evictEntity(T entity) {
+        if (!isCacheEnabled() || entity == null) return;
+        String id = entityId(entity);
+        if (id != null) {
+            cacheService.evict(cacheName(), id);
+        }
+        for (String key : additionalEvictionKeys(entity)) {
+            cacheService.evict(cacheName(), key);
+        }
+    }
+
     @Override
     public T findById(ID id) {
-        Optional<T> optionalEntity = repository.findById(id);
-        return optionalEntity.orElse(null);
+        if (id == null) return null;
+        if (isCacheEnabled()) {
+            return cacheService.getOrLoad(cacheName(), id.toString(), entityType(), () -> loadFromDb(id));
+        }
+        return loadFromDb(id);
+    }
+
+    private T loadFromDb(ID id) {
+        return repository.findById(id).orElse(null);
     }
 
     @Override
@@ -50,7 +100,9 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Override
     public T save(T entity) {
-        return repository.save(entity);
+        T saved = repository.save(entity);
+        evictEntity(saved);
+        return saved;
     }
 
     @Override
@@ -68,12 +120,17 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Override
     public T update(T entity) {
-        return repository.save(entity);
+        T updated = repository.save(entity);
+        evictEntity(updated);
+        return updated;
     }
 
     @Override
     public void deleteById(ID id) {
         repository.deleteById(id);
+        if (isCacheEnabled() && id != null) {
+            cacheService.evict(cacheName(), id.toString());
+        }
     }
 
     @Override
@@ -116,16 +173,6 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
         return mongoTemplate.find(query, entityClass, collectionName);
     }
 
-    private <E> List<E> lookupByKey(Class<E> entityClass, String key, String value, String collectionName) {
-        Query query = Query.query(Criteria.where(key).is(value));
-        return mongoTemplate.find(query, entityClass, collectionName);
-    }
-
-    private <E> E lookupById(Class<E> entityClass, String id, String collectionName) {
-        Query query = Query.query(Criteria.where("_id").in(id));
-        return mongoTemplate.findOne(query, entityClass, collectionName);
-    }
-
     public List<T> findByQueryWithReferences(Class<T> entityClass, Query query) {
         List<T> entities = mongoTemplate.find(query, entityClass);
         return entities.stream().map(this::populateReferences).collect(Collectors.toList());
@@ -142,7 +189,7 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
         T entity = findById(id);
         if (entity instanceof BaseEntity) {
             ((BaseEntity) entity).setDeleted(true);
-            repository.save(entity);
+            save(entity);
         }
     }
 
@@ -210,15 +257,5 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
             return Collections.emptyList();
         }
         return repository.findAllById(ids);
-    }
-
-    @Override
-    public Set<String> findExistingIds(List<ID> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return findAllByIdIn(ids).stream()
-                .map(entity -> ((BaseEntity) entity).getId())
-                .collect(Collectors.toSet());
     }
 }

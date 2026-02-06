@@ -82,9 +82,7 @@ public class LoginController {
         });
 
         metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "login", MetricTag.RESULT, "attempt");
-        if (isInternalUser(customer.getMobile())) {
-            otpService.sendOtp(customer.getMobile());
-        }
+        otpService.sendOtp(customer.getMobile());
         return ResponseEntity.ok(new Response(null, false, "OTP Sent Successfully"));
     }
 
@@ -93,7 +91,6 @@ public class LoginController {
             throws EntityNotFoundException, BadRequestException {
         Customer customer = Optional.ofNullable(customerService.findByMobile(verificationRequest.getMobile()))
                 .orElseThrow(() -> {
-                    otpService.clearOtp(verificationRequest.getMobile());
                     metrics.count(
                             MetricsEvent.OTP,
                             MetricTag.ACTION,
@@ -106,7 +103,6 @@ public class LoginController {
                 });
 
         if (!restaurantService.isExistsById(verificationRequest.getRestaurantId())) {
-            otpService.clearOtp(verificationRequest.getMobile());
             metrics.count(
                     MetricsEvent.OTP,
                     MetricTag.ACTION,
@@ -117,25 +113,8 @@ public class LoginController {
                     "restaurant_not_found");
             throw new EntityNotFoundException("Restaurant", verificationRequest.getRestaurantId());
         }
-        if (isInternalUser(verificationRequest.getMobile())) {
-            int storedOtp = otpService.getOtp(verificationRequest.getMobile());
-            log.info("storedOTP {} requestedOTP {}", storedOtp, verificationRequest.getOtp());
-            if (verificationRequest.getOtp() != storedOtp) {
-                metrics.count(
-                        MetricsEvent.OTP,
-                        MetricTag.ACTION,
-                        "verify",
-                        MetricTag.RESULT,
-                        "failed",
-                        MetricTag.REASON,
-                        "otp_mismatch");
-                throw new BadRequestException("Login", "OTP Verification failed");
-            }
-            otpService.clearOtp(verificationRequest.getMobile());
-        }
-
-        // OTP verified successfully
-        metrics.count(MetricsEvent.OTP, MetricTag.ACTION, "verify", MetricTag.RESULT, "success");
+        // Verify OTP (clears on success, metrics handled in service)
+        otpService.verifyOtp(verificationRequest.getMobile(), String.valueOf(verificationRequest.getOtp()));
         metrics.count(MetricsEvent.CUSTOMER, MetricTag.ACTION, "login", MetricTag.RESULT, "success");
         customer.setVerified(true);
 
@@ -169,16 +148,9 @@ public class LoginController {
         return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
     }
 
-    private boolean isInternalUser(String mobile) {
-        return !redisService.getInternalUsers().contains(mobile);
-    }
-
     @PostMapping("/resend-otp/{mobile}")
-    public ResponseEntity<Response> resendOtp(@PathVariable String mobile) throws Exception {
-        if (isInternalUser(mobile)) {
-            otpService.clearOtp(mobile);
-            otpService.sendOtp(mobile);
-        }
+    public ResponseEntity<Response> resendOtp(@PathVariable String mobile) throws BadRequestException {
+        otpService.resendOtp(mobile);
         return ResponseEntity.ok(new Response(null, false, "OTP Resent Successfully"));
     }
 

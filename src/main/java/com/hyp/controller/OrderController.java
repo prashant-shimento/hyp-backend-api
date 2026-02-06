@@ -14,9 +14,7 @@ import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.response.Response;
 import com.hyp.service.DeliveryService;
 import com.hyp.service.OrderService;
-import com.hyp.service.PaymentService;
 import com.hyp.service.PosService;
-import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.SettlementService;
 import com.hyp.translation.OrderTranslation;
@@ -54,12 +52,6 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
 
     @Autowired
     DeliveryService deliveryService;
-
-    @Autowired
-    PaymentService paymentService;
-
-    @Autowired
-    RedisService redisService;
 
     @Autowired
     PosOrderRequestTranslation posOrderRequestTranslation;

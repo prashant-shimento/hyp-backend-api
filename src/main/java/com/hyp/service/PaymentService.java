@@ -37,7 +37,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -64,6 +63,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     @Autowired
     RedisService redisService;
+
+    @Autowired
+    CacheService cacheService;
+
+    private static final String PAYMENT_CONFIG_CACHE = "paymentConfig";
 
     @Autowired
     OrderWorkflowService orderWorkflowService;
@@ -425,8 +429,18 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
         }
     }
 
-    @Cacheable(value = "paymentConfigCache", key = "#restaurant.id")
-    private PaymentConfig getPaymentConfig(Restaurant restaurant) {
+    /**
+     * Get PaymentConfig for a restaurant using L1/L2 cache.
+     * L1 (Caffeine): 30s, L2 (Redis): 5min
+     */
+    private PaymentConfig getPaymentConfig(String restaurantId) {
+        return cacheService.getOrLoad(
+                PAYMENT_CONFIG_CACHE, restaurantId, PaymentConfig.class, () -> loadPaymentConfig(restaurantId));
+    }
+
+    private PaymentConfig loadPaymentConfig(String restaurantId) {
+        Restaurant restaurant = restaurantService.findById(restaurantId);
+
         return Optional.ofNullable(restaurant.getPaymentPartner())
                 .map(partnerService::findById)
                 .map(Partner::getApiConfigs)
@@ -435,7 +449,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                         .secret(apiConfig.getSecret())
                         .build())
                 .orElseGet(() -> {
-                    log.warn("Falling back to default payment config for restaurant: {}", restaurant.getId());
+                    log.debug("Using default payment config for restaurant: {}", restaurantId);
                     return PaymentConfig.builder()
                             .key(razorPayKey)
                             .secret(razorPaySecret)
@@ -443,23 +457,32 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 });
     }
 
+    /**
+     * Get RazorpayClient for an order.
+     * PaymentConfig is cached via L1/L2 cache.
+     */
     private RazorpayClient getRazorpayClient(String orderId) throws PaymentException {
         try {
-            Restaurant restaurant =
-                    restaurantService.findById(orderService.findById(orderId).getRestaurantId());
-            PaymentConfig paymentConfig = getPaymentConfig(restaurant);
+            String restaurantId = orderService.findById(orderId).getRestaurantId();
+            PaymentConfig config = getPaymentConfig(restaurantId);
             return new RazorpayClient(
-                    EncryptionUtils.decrypt(paymentConfig.getKey()),
-                    EncryptionUtils.decrypt(paymentConfig.getSecret()));
+                    EncryptionUtils.decrypt(config.getKey()), EncryptionUtils.decrypt(config.getSecret()));
         } catch (Exception e) {
             throw new PaymentException("Failed to initialize RazorpayClient", e);
         }
     }
 
+    /**
+     * Evict payment config cache for a restaurant (call when partner config changes).
+     */
+    public void evictPaymentConfigCache(String restaurantId) {
+        cacheService.evict(PAYMENT_CONFIG_CACHE, restaurantId);
+        log.info("Evicted payment config cache for restaurant: {}", restaurantId);
+    }
+
     private PaymentConfig getRazorpayPaymentConfig(String orderId) {
-        Restaurant restaurant =
-                restaurantService.findById(orderService.findById(orderId).getRestaurantId());
-        return getPaymentConfig(restaurant);
+        String restaurantId = orderService.findById(orderId).getRestaurantId();
+        return getPaymentConfig(restaurantId);
     }
 
     public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus)

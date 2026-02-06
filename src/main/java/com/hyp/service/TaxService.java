@@ -12,6 +12,16 @@ public class TaxService extends BaseServiceImpl<Tax, String> {
     @Autowired
     TaxRepository taxRepository;
 
+    @Override
+    protected String cacheName() {
+        return "taxes";
+    }
+
+    @Override
+    protected Class<Tax> entityType() {
+        return Tax.class;
+    }
+
     public List<Tax> findAllByIdIn(List<String> requestTaxIds) {
         if (requestTaxIds == null || requestTaxIds.isEmpty()) {
             return Collections.emptyList();

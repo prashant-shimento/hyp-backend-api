@@ -51,8 +51,21 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
     public ResponseEntity<Response> createPaymentOrder(@PathVariable String orderId) throws Exception {
         Order order = orderService.findById(orderId);
         if (order == null) {
-            throw new Exception("Order not found " + orderId);
+            throw new EntityNotFoundException("Order", orderId);
         }
+
+        // Check if payment already exists (may have been created by async consumer)
+        Payment existingPayment = paymentService.findByOrderId(orderId);
+        if (existingPayment != null) {
+            log.info("Payment already created for orderId={}, returning existing", orderId);
+            return ResponseEntity.ok(Response.builder()
+                    .data(Collections.singletonList(existingPayment))
+                    .error(false)
+                    .message("Payment Order Created")
+                    .build());
+        }
+
+        // Create payment synchronously
         Payment payment = paymentService.createPaymentOrder(order);
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(payment))
