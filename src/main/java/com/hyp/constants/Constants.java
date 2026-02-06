@@ -49,7 +49,7 @@ public interface Constants {
     List<String> CATEGORIES_API_PARAMS = Arrays.asList("id", "restaurantId", "categoryName", "active");
     List<String> PARTNER_API_PARAMS = Arrays.asList("id", "name", "domain", "active", "type");
     List<String> RESTAURANT_API_PARAMS = Arrays.asList(
-            "id", "restaurantName", "active", "serviceable", "menuSharingCode", "contact", "discoverable");
+            "id", "restaurantName", "active", "serviceable", "menuSharingCode", "contact", "discoverable", "pincode");
     List<String> PAYMENT_API_PARAMS =
             Arrays.asList("id", "orderId", "paymentOrderId", "paymentId", "provider", "status", "amount", "paymentId");
     List<String> ORDER_TYPE_API_PARAMS = Arrays.asList("id", "orderType", "orderTypeId", "restaurantId");
