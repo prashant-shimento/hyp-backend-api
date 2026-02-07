@@ -21,9 +21,9 @@ public class CacheService {
     private static final String KEY_VERSION = "v1";
     private static final String NULL_MARKER = "__NULL__";
 
-    private static final int L1_TTL_SECONDS = 30;
-    private static final int L2_TTL_SECONDS = 300;
-    private static final int NULL_TTL_SECONDS = 30;
+    private static final int L1_TTL_SECONDS = 300;
+    private static final int L2_TTL_SECONDS = 600;
+    private static final int NULL_TTL_SECONDS = 10;
     private static final int L1_MAX_SIZE = 1000;
 
     private final JedisPooled jedis;

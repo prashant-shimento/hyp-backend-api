@@ -30,7 +30,7 @@ public class CustomerService extends BaseServiceImpl<Customer, String> {
     @Override
     protected List<String> additionalEvictionKeys(Customer entity) {
         if (entity.getMobile() != null) {
-            return List.of(entity.getId(), "mobile:" + entity.getMobile());
+            return List.of("mobile:" + entity.getMobile());
         }
         return Collections.emptyList();
     }

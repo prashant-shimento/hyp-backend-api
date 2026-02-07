@@ -60,18 +60,21 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
     }
 
     private String entityId(T entity) {
-        if (entity instanceof BaseEntity be) return be.getId();
+        if (entity instanceof Identifiable<?> identifiable) {
+            Object id = identifiable.getId();
+            return id != null ? id.toString() : null;
+        }
         return null;
     }
 
-    private void evictEntity(T entity) {
+    private void refreshEntity(T entity) {
         if (!isCacheEnabled() || entity == null) return;
         String id = entityId(entity);
         if (id != null) {
-            cacheService.evict(cacheName(), id);
+            cacheService.put(cacheName(), id, entity);
         }
         for (String key : additionalEvictionKeys(entity)) {
-            cacheService.evict(cacheName(), key);
+            cacheService.put(cacheName(), key, entity);
         }
     }
 
@@ -101,7 +104,7 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
     @Override
     public T save(T entity) {
         T saved = repository.save(entity);
-        evictEntity(saved);
+        refreshEntity(saved);
         return saved;
     }
 
@@ -121,7 +124,7 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
     @Override
     public T update(T entity) {
         T updated = repository.save(entity);
-        evictEntity(updated);
+        refreshEntity(updated);
         return updated;
     }
 

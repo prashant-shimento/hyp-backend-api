@@ -30,7 +30,7 @@ public class RestaurantService extends BaseServiceImpl<Restaurant, String> {
     @Override
     protected List<String> additionalEvictionKeys(Restaurant entity) {
         if (entity.getMenuSharingCode() != null) {
-            return List.of(entity.getId(), "menuCode:" + entity.getMenuSharingCode());
+            return List.of("menuCode:" + entity.getMenuSharingCode());
         }
         return Collections.emptyList();
     }

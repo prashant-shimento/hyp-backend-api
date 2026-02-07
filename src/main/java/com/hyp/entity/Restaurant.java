@@ -24,7 +24,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "restaurants")
-public class Restaurant {
+public class Restaurant implements Identifiable<String> {
 
     @Id
     @Field("id")

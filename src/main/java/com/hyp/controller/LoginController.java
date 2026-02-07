@@ -137,13 +137,17 @@ public class LoginController {
             }
         }
 
-        if (customer.getRestaurants() == null) {
-            customer.setRestaurants(new HashSet<>());
+        Set<String> restaurants = Optional.ofNullable(customer.getRestaurants()).orElseGet(() -> {
+            Set<String> s = new HashSet<>();
+            customer.setRestaurants(s);
+            return s;
+        });
+
+        boolean added = restaurants.add(verificationRequest.getRestaurantId());
+
+        if (added) {
+            customerService.save(customer);
         }
-        customer.getRestaurants().add(verificationRequest.getRestaurantId());
-
-        customerService.save(customer);
-
         log.info("OTP verified successfully for customer, restaurantId={}", verificationRequest.getRestaurantId());
         return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
     }
