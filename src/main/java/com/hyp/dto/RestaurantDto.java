@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
+import com.hyp.entity.Restaurant.Subscription;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
@@ -83,4 +84,5 @@ public class RestaurantDto extends BaseDto {
     private String ingestionSource;
     private Boolean discoverable;
     private boolean launched;
+    private Subscription subscription;
 }
