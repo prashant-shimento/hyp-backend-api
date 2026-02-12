@@ -3,6 +3,7 @@ package com.hyp.entity;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.hyp.annotation.GenerateId;
+import com.hyp.enums.RoleType;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -40,11 +41,11 @@ public class User {
     @CreatedDate
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    ;
-
     @Field("updated_at")
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    private RoleType role;
 
     private Boolean active;
     private String restaurantId;
