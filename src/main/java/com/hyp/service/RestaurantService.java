@@ -1,7 +1,6 @@
 package com.hyp.service;
 
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.SubscriptionStatus;
 import com.hyp.repository.RestaurantRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -110,10 +109,8 @@ public class RestaurantService extends BaseServiceImpl<Restaurant, String> {
         }
 
         if (now.isAfter(sub.getSubscriptionEnd())) {
-            sub.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
             sub.setDaysLeftToSubscribe(0);
         } else {
-            sub.setSubscriptionStatus(com.hyp.enums.SubscriptionStatus.ACTIVE);
             long days = java.time.temporal.ChronoUnit.DAYS.between(
                     now.toLocalDate(), sub.getSubscriptionEnd().toLocalDate());
             sub.setDaysLeftToSubscribe((int) Math.max(days, 0));
