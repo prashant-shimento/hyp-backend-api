@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.SubscriptionPlan;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
@@ -209,6 +210,9 @@ public class Restaurant implements Identifiable<String> {
     @Field("launched")
     private boolean launched;
 
+    @Field("subscription")
+    private Subscription subscription;
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -225,5 +229,24 @@ public class Restaurant implements Identifiable<String> {
     public static class RestaurantTax {
         private String dcTaxesId;
         private String pcTaxesId;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Subscription {
+
+        @Field("subscription_start")
+        private LocalDateTime subscriptionStart;
+
+        @Field("subscription_end")
+        private LocalDateTime subscriptionEnd;
+
+        @Field("subscription_plan")
+        private SubscriptionPlan subscriptionPlan;
+
+        @Field("days_left_to_subscribe")
+        private Integer daysLeftToSubscribe;
     }
 }

@@ -4,6 +4,7 @@ import com.hyp.dto.RestaurantDto;
 import com.hyp.entity.Restaurant;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.request.SettlementRequest;
+import com.hyp.request.SubscriptionRequest;
 import com.hyp.response.Response;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.SettlementService;
@@ -82,5 +83,32 @@ public class RestaurantController extends BaseListController<RestaurantDto, Rest
                 .error(false)
                 .message("Settlement request will be processed")
                 .build());
+    }
+
+    @PatchMapping("/{restaurantId}/addsubscription")
+    public ResponseEntity<Response> computeAndSaveSubscriptionEnd(
+            @PathVariable String restaurantId, @RequestBody SubscriptionRequest subscriptionRequest) {
+
+        try {
+            Optional<Restaurant> restaurant = restaurantService.computeAndSaveSubscriptionEnd(
+                    restaurantId,
+                    subscriptionRequest.getSubscriptionStart(),
+                    subscriptionRequest.getSubscriptionPlan());
+
+            if (restaurant.isEmpty()) {
+                String message = "Restaurant not found with ID: " + restaurantId;
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new Response(null, true, message));
+            }
+
+            messageTemplate.convertAndSend("/topic/restaurant-subscription", restaurant);
+
+            Response response =
+                    new Response(Collections.singletonList(restaurant), false, "Subscription updated successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (Exception ex) {
+            Response response = new Response(null, true, ex.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 }
