@@ -28,7 +28,6 @@ public class TemporalWorkerRegistration {
 
     private final WorkerFactory factory;
 
-    // Inject all activities
     private final OrderPaymentActivitiesImpl paymentActivities;
     private final OrderFulfillmentActivitiesImpl orderFulfillmentActivities;
     private final RestaurantActivitiesImpl restaurantActivities;
@@ -37,31 +36,54 @@ public class TemporalWorkerRegistration {
 
     @PostConstruct
     public void registerWorkers() {
-        log.info("Registering Temporal workers...");
-
-        // Register Order workers
         Worker orderWorker = factory.newWorker(OrderWorkflowService.ORDER_TASK_QUEUE);
         orderWorker.registerWorkflowImplementationTypes(
                 OrderPaymentWorkflowImpl.class, OrderFulfillmentWorkflowImpl.class);
         orderWorker.registerActivitiesImplementations(paymentActivities, orderFulfillmentActivities);
 
-        // Register Restaurant workers
         Worker restaurantWorker = factory.newWorker(RestaurantWorkflowService.RESTAURANT_TASK_QUEUE);
         restaurantWorker.registerWorkflowImplementationTypes(RestaurantWorkflowImpl.class);
         restaurantWorker.registerActivitiesImplementations(restaurantActivities);
 
-        // Register Stock workers
         Worker stockWorker = factory.newWorker(StockWorkflowService.STOCK_TASK_QUEUE);
         stockWorker.registerWorkflowImplementationTypes(StockUpdateWorkflowImpl.class);
         stockWorker.registerActivitiesImplementations(stockUpdateActivities);
 
-        // Register order track workers
         Worker orderTrackWorker = factory.newWorker(OrderTrackWorkflowService.ORDER_TRACK_QUEUE);
         orderTrackWorker.registerWorkflowImplementationTypes(OrderTrackWorkFlowImpl.class);
         orderTrackWorker.registerActivitiesImplementations(orderTrackActivitiesImpl);
 
-        // Start the factory after all workers are registered
-        factory.start();
-        log.info("All Temporal workers registered and factory started.");
+        startWorkersWithRetry();
+    }
+
+    private void startWorkersWithRetry() {
+        Thread starter = new Thread(
+                () -> {
+                    int attempt = 0;
+                    while (!Thread.currentThread().isInterrupted()) {
+                        try {
+                            factory.start();
+                            log.info("Temporal workers started successfully");
+                            return;
+                        } catch (Exception e) {
+                            attempt++;
+                            long waitSeconds = Math.min(60, 5L * attempt); // cap at 60s
+                            log.warn(
+                                    "Temporal unavailable (attempt {}), retrying in {}s: {}",
+                                    attempt,
+                                    waitSeconds,
+                                    e.getMessage());
+                            try {
+                                Thread.sleep(waitSeconds * 1000);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                },
+                "temporal-worker-starter");
+
+        starter.setDaemon(true);
+        starter.start();
     }
 }

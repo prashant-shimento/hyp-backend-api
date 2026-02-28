@@ -2,12 +2,20 @@ name: CI/CD Production Pipeline
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to deploy or rollback to (e.g. v1.2.1)"
+        required: true
 
 jobs:
   build:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.ref_name }}
 
     steps:
     - name: Checkout code
@@ -103,5 +111,40 @@ jobs:
     - name: Build and push Docker image
       run: |
         docker build -t hyp-backend-api .
+        docker tag hyp-backend-api lognathp/hyp-backend-api:${{ env.VERSION }}
         docker tag hyp-backend-api lognathp/hyp-backend-api:production
+        docker push lognathp/hyp-backend-api:${{ env.VERSION }}
         docker push lognathp/hyp-backend-api:production
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+
+    steps:
+    - name: Determine version to deploy
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Deploy to Kubernetes
+      env:
+        VERSION: ${{ steps.version.outputs.VERSION }}
+      run: |
+        kubectl set image deployment/hyp-backend \
+          hyp-backend=lognathp/hyp-backend-api:${VERSION}
+        kubectl rollout status deployment/hyp-backend --timeout=120s
+        echo "Deployed version: ${VERSION}"

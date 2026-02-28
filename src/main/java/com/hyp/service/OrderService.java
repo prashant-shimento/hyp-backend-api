@@ -85,9 +85,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     OrderValidator orderValidator;
 
-    @Autowired
-    PaymentEventService paymentEventService;
-
     public Order create(OrderDto orderDto) throws Exception {
 
         Timer.Sample timerSample = metrics.startTimer();
@@ -119,12 +116,6 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
         CompletableFuture.runAsync(() -> {
             try {
-                //                try {
-                //                    paymentEventService.publishPaymentCreateEvent(finalOrder);
-                //                } catch (Exception e) {
-                //                    log.error("Failed to publish payment event for order {}", finalOrder.getId(), e);
-                //                }
-
                 List<String> parameters = CommonUtils.buildStringList(
                         customer.getName(),
                         customer.getMobile(),

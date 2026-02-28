@@ -1,5 +1,7 @@
 package com.hyp.translation;
 
+import static com.hyp.constants.Constants.*;
+
 import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
@@ -40,7 +42,6 @@ import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
 import com.hyp.service.PartnerService;
 import com.hyp.util.CommonUtils;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -196,6 +197,7 @@ public class PosOrderRequestTranslation {
     }
 
     public OrderRequest getOrderDetails(Order order, Restaurant restaurant) {
+
         OrderDetails orderDetails = new OrderDetails();
         orderDetails.setOrderId(order.getId());
         orderDetails.setOtp(CommonUtils.emptyIfNullOrZeroToString(0));
@@ -206,16 +208,16 @@ public class PosOrderRequestTranslation {
         orderDetails.setPcTaxAmount(CommonUtils.emptyIfNullOrZeroToString(order.getPcTaxAmount()));
         orderDetails.setOrderType(OrderType.fromCode(order.getOrderType()).toString());
         orderDetails.setAdvancedOrder("N");
-        orderDetails.setCreatedOn(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        orderDetails.setPreOrderDate(order.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        orderDetails.setPreOrderTime(order.getCreatedAt().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+        LocalDateTime createdAtIST = CommonUtils.convertUTCtoIST(order.getCreatedAt());
+
+        orderDetails.setCreatedOn(createdAtIST.format(DATE_TIME_FORMAT));
+        orderDetails.setPreOrderDate(createdAtIST.format(DATE_FORMAT));
+        orderDetails.setPreOrderTime(createdAtIST.format(TIME_FORMAT));
         if (order.isPreOrder()) {
             orderDetails.setAdvancedOrder("Y");
-            LocalDateTime preOrderDateTime = order.getPreOrderDateTime();
-            String dateStr = preOrderDateTime.toLocalDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            orderDetails.setPreOrderDate(dateStr);
-            String timeStr = preOrderDateTime.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-            orderDetails.setPreOrderTime(timeStr);
+            LocalDateTime preOrderIST = CommonUtils.convertUTCtoIST(order.getPreOrderDateTime());
+            orderDetails.setPreOrderDate(preOrderIST.format(DATE_FORMAT));
+            orderDetails.setPreOrderTime(preOrderIST.format(TIME_FORMAT));
         }
         orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
         orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));

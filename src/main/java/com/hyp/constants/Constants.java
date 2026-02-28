@@ -1,6 +1,7 @@
 package com.hyp.constants;
 
 import com.hyp.enums.OrderStatusType;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -126,4 +127,8 @@ public interface Constants {
             OrderStatusType.OUT_FOR_DELIVERY,
             OrderStatusType.REACHED_DELIVERY,
             OrderStatusType.DELIVERED);
+
+    DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 }

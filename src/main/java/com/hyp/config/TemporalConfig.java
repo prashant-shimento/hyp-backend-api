@@ -4,6 +4,7 @@ import io.temporal.client.WorkflowClient;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.serviceclient.WorkflowServiceStubsOptions;
 import io.temporal.worker.WorkerFactory;
+import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,7 @@ public class TemporalConfig {
     public WorkflowServiceStubs workflowServiceStubs() {
         return WorkflowServiceStubs.newServiceStubs(WorkflowServiceStubsOptions.newBuilder()
                 .setTarget(temporalHost + ":" + temporalPort)
+                .setConnectionBackoffResetFrequency(Duration.ofSeconds(10))
                 .build());
     }
 

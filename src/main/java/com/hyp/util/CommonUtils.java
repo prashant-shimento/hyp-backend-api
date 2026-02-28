@@ -1,6 +1,8 @@
 package com.hyp.util;
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -27,6 +29,9 @@ public class CommonUtils {
             "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
     private static final int CODE_LENGTH = 10;
     private static final int TOKEN_BYTES = 24;
+
+    private static final ZoneId UTC = ZoneId.of("UTC");
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
     public static String genId() {
         return NanoIdUtils.randomNanoId(SECURE_RANDOM, ALPHANUM, CODE_LENGTH);
@@ -57,17 +62,10 @@ public class CommonUtils {
     }
 
     public static String getISOAmount(double amount) {
-        String orderString = Double.toString(amount);
-        int indexOfDecimal = orderString.indexOf(".");
-        if (indexOfDecimal != -1) {
-            int decimalPlaces = orderString.length() - indexOfDecimal - 1;
-            if (decimalPlaces == 1) {
-                orderString = orderString.replace(".", "") + "0";
-            } else {
-                orderString = orderString.replace(".", "");
-            }
-        }
-        return orderString;
+        BigDecimal rupees = BigDecimal.valueOf(amount);
+        BigDecimal paise = rupees.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP);
+
+        return paise.toPlainString();
     }
 
     public static double parseISOAmount(int isoAmount) {
@@ -144,17 +142,9 @@ public class CommonUtils {
         return ttl;
     }
 
-    public static String generateMockDeliveryOrderId() {
-        String digits = String.valueOf(System.currentTimeMillis()).substring(2, 10);
-        String suffix =
-                UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5).toUpperCase();
-        return digits + suffix;
-    }
-
     public static LocalDateTime convertISTtoUTC(LocalDateTime istTime) {
-        ZonedDateTime istZoned = istTime.atZone(ZoneId.of("Asia/Kolkata"));
-        ZonedDateTime utcZoned = istZoned.withZoneSameInstant(ZoneId.of("UTC"));
-        return utcZoned.toLocalDateTime();
+        if (istTime == null) return null;
+        return istTime.atZone(IST).withZoneSameInstant(UTC).toLocalDateTime();
     }
 
     public static LocalDateTime parseAutoTurnOnTime(String turnOnTime) {
@@ -202,5 +192,10 @@ public class CommonUtils {
         }
 
         return String.valueOf(maskChar).repeat(length - visible) + value.substring(length - visible);
+    }
+
+    public static LocalDateTime convertUTCtoIST(LocalDateTime utcTime) {
+        if (utcTime == null) return null;
+        return utcTime.atZone(UTC).withZoneSameInstant(IST).toLocalDateTime();
     }
 }

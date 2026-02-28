@@ -164,6 +164,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             }
             if (delivery.getStatus() == DeliveryOrderStatusType.CANCELLED) {
                 orderService.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_CANCELLED);
+                delivery.setDeleted(true);
             }
             if (delivery.getStatus() == DeliveryOrderStatusType.FULFILLED
                     || delivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {

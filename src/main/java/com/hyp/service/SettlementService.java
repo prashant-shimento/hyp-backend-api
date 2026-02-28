@@ -179,7 +179,8 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         if (OrderType.H == OrderType.fromCode(order.getOrderType())) {
             Delivery delivery = deliveryService.findByOrderId(orderId);
             if (delivery != null) {
-                deliveryCharge = delivery.getFulfillment().getDeliveryCharge();
+                deliveryCharge = Optional.of(delivery.getFulfillment().getDeliveryCharge())
+                        .orElse(0.0);
             }
         }
 
