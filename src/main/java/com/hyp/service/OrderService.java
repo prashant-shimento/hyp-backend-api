@@ -98,7 +98,15 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         order.setStatus(OrderStatusType.CREATED);
         order.setOrderTime(LocalDateTime.now());
         order.setCreatedAt(LocalDateTime.now());
-        order.setItemTotalAmount(validation.finalItemTotal());
+        // Security: Override ALL client-supplied monetary values with server-calculated amounts
+        // This prevents payload tampering where attackers modify totals in transit
+        order.setItemTotalAmount(validation.itemTotalAmount());
+        order.setTotalAmount(validation.totalAmount());
+        order.setGrandTotalAmount(validation.grandTotalAmount());
+        order.setTaxAmount(validation.taxTotalAmount());
+        order.setDiscountAmount(validation.discountAmount());
+        order.setDeliveryCharge(validation.deliveryCharge());
+        order.getOrderLogs().add(new Order.OrderLog(OrderStatusType.CREATED.name()));
 
         // Referral token
         if (validation.referralToken() != null) {

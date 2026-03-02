@@ -250,7 +250,6 @@ public class PosDataRequestTranslation {
         restaurant.setMinimumOrderAmount(restaurantRequest.getDetails().getMinimumorderamount());
         restaurant.setPackagingApplicableOn(restaurantRequest.getDetails().getPackaging_applicable_on());
         restaurant.setCity(restaurantRequest.getDetails().getCity());
-        restaurant.setPackagingCharge(restaurantRequest.getDetails().getPackaging_charge());
         restaurant.setCalculateTaxOnDelivery(restaurantRequest.getDetails().getCalculatetaxondelivery());
         restaurant.setPackagingChargeType(restaurantRequest.getDetails().getPackaging_charge_type());
         restaurant.setState(restaurantRequest.getDetails().getState());
@@ -343,6 +342,12 @@ public class PosDataRequestTranslation {
                     restaurantRequest.getIngestionSource() != null
                             ? restaurantRequest.getIngestionSource()
                             : Constants.PET_POOJA);
+        }
+        String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;
+        if (existingCharge != null && !existingCharge.isEmpty()) {
+            restaurant.setPackagingCharge(existingCharge);
+        } else {
+            restaurant.setPackagingCharge(restaurantRequest.getDetails().getPackaging_charge());
         }
         return restaurant;
     }

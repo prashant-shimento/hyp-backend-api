@@ -215,8 +215,10 @@ public class PosOrderRequestTranslation {
         orderDetails.setPreOrderTime(createdAtIST.format(TIME_FORMAT));
         if (order.isPreOrder()) {
             orderDetails.setAdvancedOrder("Y");
-            orderDetails.setPreOrderDate(order.getPreOrderDateTime().toLocalDate().format(DATE_FORMAT));
-            orderDetails.setPreOrderTime(order.getPreOrderDateTime().toLocalTime().format(TIME_FORMAT));
+            orderDetails.setPreOrderDate(
+                    order.getPreOrderDateTime().toLocalDate().format(DATE_FORMAT));
+            orderDetails.setPreOrderTime(
+                    order.getPreOrderDateTime().toLocalTime().format(TIME_FORMAT));
         }
         orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
         orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));

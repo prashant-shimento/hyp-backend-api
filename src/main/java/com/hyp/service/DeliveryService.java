@@ -5,6 +5,7 @@ import com.hyp.constants.Constants;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
+import com.hyp.entity.DeliveryQuoteRecord;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.RiderRecord;
@@ -22,6 +23,7 @@ import com.hyp.model.DeliveryQuote.DeliveryNetworks;
 import com.hyp.model.DeliveryRiderLocation;
 import com.hyp.model.RiderLocation;
 import com.hyp.observability.*;
+import com.hyp.repository.DeliveryQuoteRepository;
 import com.hyp.repository.DeliveryRepository;
 import com.hyp.repository.RiderRecordRepository;
 import com.hyp.request.DeliveryOrderRequest;
@@ -46,6 +48,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     @Autowired
     DeliveryRepository deliveryRepository;
+
+    @Autowired
+    DeliveryQuoteRepository deliveryQuoteRepository;
 
     @Autowired
     RestaurantService restaurantService;
@@ -82,6 +87,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     public Delivery findByOrderId(String orderId) {
         return deliveryRepository.findByOrderIdAndIsDeletedFalse(orderId);
+    }
+
+    public Delivery findByOrderIdIncludingDeleted(String orderId) {
+        return deliveryRepository.findByOrderId(orderId);
     }
 
     public Delivery findByDeliveryOrderId(String deliveryOrderId) {
@@ -127,6 +136,19 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     public DeliveryQuote getDeliveryQuote(DeliveryQuoteRequest deliveryQuoteRequest) throws DeliveryException {
         return pidgeClient.getDeliveryQuote(deliveryQuoteRequest);
+    }
+
+    public DeliveryQuoteRecord saveDeliveryQuote(String restaurantId, String addressId, DeliveryNetworks network) {
+        DeliveryQuoteRecord record = new DeliveryQuoteRecord();
+        record.setRestaurantId(restaurantId);
+        record.setAddressId(addressId);
+        record.setNetwork(network);
+        record.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+        return deliveryQuoteRepository.save(record);
+    }
+
+    public DeliveryQuoteRecord findDeliveryQuoteById(String quoteId) {
+        return deliveryQuoteRepository.findById(quoteId).orElse(null);
     }
 
     public DeliveryQuote getServiceability(String deliveryOrderId) throws DeliveryException {

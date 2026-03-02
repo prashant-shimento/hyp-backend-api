@@ -217,6 +217,7 @@ public class OrderDto extends BaseDto {
         private String service;
         private String pickUpNow;
         private Double networkId;
+        private String deliveryQuoteId;
     }
 
     @Data

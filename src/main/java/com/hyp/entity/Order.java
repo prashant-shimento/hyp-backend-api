@@ -271,6 +271,9 @@ public class Order {
 
         @Field("network_id")
         private int networkId;
+
+        @Field("delivery_quote_id")
+        private String deliveryQuoteId;
     }
 
     @Data

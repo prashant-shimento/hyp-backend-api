@@ -3,10 +3,7 @@ package com.hyp.controller;
 import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.DeliveryDto;
-import com.hyp.entity.Address;
-import com.hyp.entity.Delivery;
-import com.hyp.entity.Order;
-import com.hyp.entity.Restaurant;
+import com.hyp.entity.*;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.DeliveryException;
@@ -68,7 +65,8 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     @PostMapping("/callback")
     public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
             throws EntityNotFoundException, DeliveryException {
-        Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(deliveryOrderData.getReferenceId()))
+        Delivery delivery = Optional.ofNullable(
+                        deliveryService.findByOrderIdIncludingDeleted(deliveryOrderData.getReferenceId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", deliveryOrderData.getId()));
         deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
         return ResponseEntity.ok(new Response(null, false, "Success"));
@@ -111,15 +109,18 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
             throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
         }
 
-        Optional<DeliveryQuote.DeliveryNetworks> filteredQuotes = deliveryQuote.getData().getItems().stream()
+        DeliveryQuote.DeliveryNetworks selectedQuote = deliveryQuote.getData().getItems().stream()
                 .filter(DeliveryQuote.DeliveryNetworks::isPickupNow)
-                .filter(items -> !items.getService().equalsIgnoreCase("loadshare"))
-                .min(Comparator.comparingDouble(item -> item.getQuote().getPrice()));
-        if (filteredQuotes.isEmpty()) {
-            throw new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND);
-        }
+                .filter(item -> !item.getService().equalsIgnoreCase("loadshare"))
+                .min(Comparator.comparingDouble(item -> item.getQuote().getPrice()))
+                .orElseThrow(() -> new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND));
+
+        DeliveryQuoteRecord quoteRecord = deliveryService.saveDeliveryQuote(restaurantId, addressId, selectedQuote);
+
+        selectedQuote.setDeliveryQuoteId(quoteRecord.getId());
+
         return ResponseEntity.ok(
-                new Response(Collections.singletonList(filteredQuotes.get()), false, "Delivery Quotes Fetched"));
+                new Response(Collections.singletonList(selectedQuote), false, "Delivery Quotes Fetched"));
     }
 
     @Hidden

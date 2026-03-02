@@ -17,6 +17,7 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RestaurantService;
 import com.hyp.translation.PaymentTranslation;
+import jakarta.validation.Valid;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -108,7 +109,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
 
     @PostMapping("/verify/{orderId}")
     public ResponseEntity<Response> verifyPayment(
-            @PathVariable String orderId, @RequestBody RazorpayVerifyDto razorPayDto)
+            @PathVariable String orderId, @RequestBody @Valid RazorpayVerifyDto razorPayDto)
             throws PaymentException, EntityNotFoundException {
         Order order = Optional.ofNullable(orderService.findById(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
@@ -128,7 +129,7 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
     }
 
     @PostMapping("/refund")
-    public ResponseEntity<Response> initiateRefund(@RequestBody RefundDto refundDto) throws PaymentException {
+    public ResponseEntity<Response> initiateRefund(@RequestBody @Valid RefundDto refundDto) throws PaymentException {
         Order order = orderService.findById(refundDto.getOrderId());
         if (order == null) {
             throw new PaymentException("Order not found " + refundDto.getOrderId());
@@ -141,6 +142,14 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
                 || order.getStatus().equals(OrderStatusType.REFUND_INITIATED)) {
             throw new PaymentException("Refund Already " + order.getStatus());
         }
+
+        // Security: Cap refund amount at the order's grand total to prevent over-refund
+        double maxRefundableAmount = order.getGrandTotalAmount();
+        if (refundDto.getAmount() > maxRefundableAmount) {
+            throw new PaymentException(
+                    "Refund amount " + refundDto.getAmount() + " exceeds order total " + maxRefundableAmount);
+        }
+
         Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
         payment = paymentService.createRefund(
                 refundDto.getOrderId(), refundDto.getAmount(), restaurant.isInstantRefund(), refundDto.getReason());

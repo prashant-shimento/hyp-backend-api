@@ -5,11 +5,13 @@ import static com.hyp.util.ValidationUtils.isWithinDeliveryHours;
 
 import com.hyp.dto.OrderDto;
 import com.hyp.entity.*;
+import com.hyp.enums.OfferType;
 import com.hyp.enums.OrderType;
 import com.hyp.enums.PartnerType;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.ValidationException;
 import com.hyp.model.PreOrder;
+import com.hyp.repository.DeliveryQuoteRepository;
 import com.hyp.repository.OrderRepository;
 import com.hyp.service.*;
 import java.time.*;
@@ -38,12 +40,17 @@ public class OrderValidator {
 
     public record PriceWarning(String type, String message) {}
 
-    public record PriceCalculation(double itemTotal, double grandTotal) {}
+    public record PriceCalculation(double itemTotal, double taxTotal) {}
 
     public record OrderValidationResult(
             Restaurant restaurant,
             Customer customer,
-            double finalItemTotal,
+            double itemTotalAmount,
+            double totalAmount,
+            double grandTotalAmount,
+            double taxTotalAmount,
+            double discountAmount,
+            double deliveryCharge,
             ReferralToken referralToken,
             List<PriceWarning> priceWarnings) {}
 
@@ -85,6 +92,9 @@ public class OrderValidator {
 
     @Autowired
     private ReferralTokenService referralTokenService;
+
+    @Autowired
+    private DeliveryQuoteRepository deliveryQuoteRepository;
 
     public OrderValidationResult validate(OrderDto orderDto) throws Exception {
         long startTime = System.currentTimeMillis();
@@ -179,6 +189,20 @@ public class OrderValidator {
             return null;
         });
 
+        // ── Delivery quote (only if quoteId present) ─────────────────────────
+        String deliveryQuoteId = null;
+        if (orderDto.getDeliveryDetails() != null
+                && orderDto.getDeliveryDetails().getDeliveryQuoteId() != null) {
+            deliveryQuoteId = orderDto.getDeliveryDetails().getDeliveryQuoteId();
+        }
+        final String finalDeliveryQuoteId = deliveryQuoteId;
+        CompletableFuture<DeliveryQuoteRecord> deliveryQuoteFuture = timed("deliveryQuote", () -> {
+            if (finalDeliveryQuoteId != null) {
+                return deliveryQuoteRepository.findById(finalDeliveryQuoteId).orElse(null);
+            }
+            return null;
+        });
+
         // ── Wait for ALL parallel fetches ─────────────────────────────────────
         CompletableFuture.allOf(
                         restaurantFuture,
@@ -192,7 +216,8 @@ public class OrderValidator {
                         offerFuture,
                         orderCountFuture,
                         offerUsageCountFuture,
-                        referralTokenFuture)
+                        referralTokenFuture,
+                        deliveryQuoteFuture)
                 .join();
 
         // ── Extract results ───────────────────────────────────────────────────
@@ -208,6 +233,7 @@ public class OrderValidator {
         long paidOrderCount = orderCountFuture.get();
         int offerUsageCount = offerUsageCountFuture.get();
         ReferralToken referralToken = referralTokenFuture.get();
+        DeliveryQuoteRecord deliveryQuoteRecord = deliveryQuoteFuture.get();
 
         log.info("Phase 1 (parallel lookups) completed in {}ms", System.currentTimeMillis() - startTime);
 
@@ -235,20 +261,122 @@ public class OrderValidator {
             validateDeliveryAddress(orderDto, restaurant, address);
         }
 
-        // server-side price calculation
+        // server-side price calculation (item prices, addon prices, item discounts, taxes)
         PriceCalculation priceCalculation =
                 validatePricesAndCalculate(orderDto, itemMap, variationMap, addonMap, taxMap, warnings);
         double itemTotalAmount = priceCalculation.itemTotal();
+        double serverTaxTotal = priceCalculation.taxTotal();
 
-        // offer application (using pre-fetched offer + counts)
+        // ── Restaurant discount (from restaurant entity's discountPercentage) ─
+        double restaurantDiscount = 0.0;
+        if (restaurant.getDiscountPercentage() != null && restaurant.getDiscountPercentage() > 0) {
+            restaurantDiscount = roundToTwoDecimal((itemTotalAmount * restaurant.getDiscountPercentage()) / 100);
+        }
+
+        // ── Delivery charge validation against saved quote ────────────────────
+        double serverDeliveryCharge = roundToTwoDecimal(orderDto.getDeliveryCharge());
+        if (deliveryQuoteRecord != null
+                && deliveryQuoteRecord.getNetwork() != null
+                && deliveryQuoteRecord.getNetwork().getQuote() != null) {
+            double quotedPrice = roundToTwoDecimal(
+                    deliveryQuoteRecord.getNetwork().getQuote().getPrice());
+            if (serverDeliveryCharge != quotedPrice) {
+                warnings.add(new PriceWarning(
+                        "DELIVERY_CHARGE_MISMATCH",
+                        "client=" + serverDeliveryCharge + " quoted=" + quotedPrice + " quoteId="
+                                + deliveryQuoteRecord.getId()));
+                serverDeliveryCharge = quotedPrice;
+            }
+            Double restaurantDeliveryDiscount = restaurant.getRestaurantDeliveryShare();
+            if (restaurantDeliveryDiscount != null) {
+                double deliveryDiscount = (serverDeliveryCharge * restaurantDeliveryDiscount) / 100;
+                serverDeliveryCharge = roundToTwoDecimal(serverDeliveryCharge - deliveryDiscount);
+                log.info(
+                        "Delivery charge after applying restaurant delivery share discount of {}% is {}",
+                        restaurantDeliveryDiscount, serverDeliveryCharge);
+            }
+        }
+        orderDto.setDeliveryCharge(serverDeliveryCharge);
+
+        // ── Offer/discount code application (using pre-fetched offer + counts) ─
         double appliedOfferAmount =
                 validateAndApplyOffer(orderDto, itemTotalAmount, offer, paidOrderCount, offerUsageCount);
 
-        double finalItemTotal = Math.max(0, itemTotalAmount - appliedOfferAmount);
+        // Total discount = restaurant discount + offer discount
+        double totalDiscount = roundToTwoDecimal(restaurantDiscount + appliedOfferAmount);
+
+        // Security: Override client discount amount with server-calculated value
+        double clientDiscountAmount = roundToTwoDecimal(orderDto.getDiscountAmount());
+        if (clientDiscountAmount != totalDiscount) {
+            warnings.add(new PriceWarning(
+                    "DISCOUNT_MISMATCH",
+                    "client=" + clientDiscountAmount + " server=" + totalDiscount + " (restaurant=" + restaurantDiscount
+                            + " offer=" + appliedOfferAmount + ")"));
+        }
+        orderDto.setDiscountAmount(totalDiscount);
+
+        // ── Final amount calculations ─────────────────────────────────────────
+        // totalAmount = itemTotalAmount + taxTotalAmount - discountAmount
+        double serverTotalAmount = roundToTwoDecimal(itemTotalAmount + serverTaxTotal - totalDiscount);
+        if (serverTotalAmount < 0) serverTotalAmount = 0;
+
+        if (roundToTwoDecimal(orderDto.getTotalAmount()) != serverTotalAmount) {
+            warnings.add(new PriceWarning(
+                    "TOTAL_AMOUNT_MISMATCH", "client=" + orderDto.getTotalAmount() + " server=" + serverTotalAmount));
+        }
+        orderDto.setTotalAmount(serverTotalAmount);
+
+        // ── Packaging charge validation ─────────────────────────
+        double serverPackagingCharge = Optional.ofNullable(restaurant.getPackagingCharge())
+                .filter(s -> !s.isBlank())
+                .map(Double::parseDouble)
+                .orElse(0.0);
+
+        serverPackagingCharge = roundToTwoDecimal(serverPackagingCharge);
+
+        double clientPackagingCharge = roundToTwoDecimal(orderDto.getPackagingCharge());
+
+        if (clientPackagingCharge != serverPackagingCharge) {
+            warnings.add(new PriceWarning(
+                    "PACKAGING_CHARGE_MISMATCH",
+                    "client=" + clientPackagingCharge + " server=" + serverPackagingCharge));
+        }
+
+        // Security: override client value
+        orderDto.setPackagingCharge(serverPackagingCharge);
+
+        double serverGrandTotal = roundToTwoDecimal(
+                itemTotalAmount + serverTaxTotal + serverDeliveryCharge + serverPackagingCharge - totalDiscount);
+        if (serverGrandTotal < 0) serverGrandTotal = 0;
+
+        if (roundToTwoDecimal(orderDto.getGrandTotalAmount()) != serverGrandTotal) {
+            warnings.add(new PriceWarning(
+                    "GRAND_TOTAL_MISMATCH",
+                    "client=" + orderDto.getGrandTotalAmount() + " server=" + serverGrandTotal));
+        }
+        orderDto.setGrandTotalAmount(serverGrandTotal);
+
+        // Override itemTotalAmount on DTO
+        orderDto.setItemTotalAmount(itemTotalAmount);
+
+        // Log all price corrections as warnings
+        if (!warnings.isEmpty()) {
+            log.warn("Price corrections applied for restaurantId={}: {}", orderDto.getRestaurantId(), warnings);
+        }
 
         log.info("Phase 2 (validations) completed in {}ms", System.currentTimeMillis() - validationStart);
 
-        return new OrderValidationResult(restaurant, customer, finalItemTotal, referralToken, warnings);
+        return new OrderValidationResult(
+                restaurant,
+                customer,
+                itemTotalAmount,
+                serverTotalAmount,
+                serverGrandTotal,
+                serverTaxTotal,
+                totalDiscount,
+                serverDeliveryCharge,
+                referralToken,
+                warnings);
     }
 
     // ─── individual validation gates (kept public for unit-test granularity) ─
@@ -316,16 +444,22 @@ public class OrderValidator {
         double itemTotalAmount = 0.0;
         double taxTotalAmount = 0.0;
 
+        // Accumulator for building order-level tax grouped by tax ID
+        // values: [0] = summed tax amount, [1] = summed taxable base (lineTotal)
+        Map<String, double[]> orderTaxAccumulator = new LinkedHashMap<>();
+        Map<String, String[]> orderTaxInfo = new LinkedHashMap<>();
+
         for (OrderDto.OrderItem oi : orderDto.getOrderItems()) {
             boolean isVariation = oi.getVariationId() != null;
             double basePrice;
+            Item item = null;
 
             if (isVariation) {
                 Variation v = variationMap.get(oi.getId());
                 if (v == null) throw new ValidationException("Variation not found: " + oi.getId());
                 basePrice = roundToTwoDecimal(Double.parseDouble(v.getPrice()));
             } else {
-                Item item = itemMap.get(oi.getId());
+                item = itemMap.get(oi.getId());
                 if (item == null) throw new ValidationException("Item not found: " + oi.getId());
                 basePrice = roundToTwoDecimal(Double.parseDouble(item.getPrice()));
                 oi.setItemAttribute(item.getItemAttributeId());
@@ -335,10 +469,12 @@ public class OrderValidator {
                         "ITEM_PRICE_MISMATCH",
                         "Item " + oi.getId() + " client=" + oi.getPrice() + " server=" + basePrice));
             }
+            // Security: Always override client price with server-verified catalog price
+            oi.setPrice(basePrice);
 
             double lineTotal = roundToTwoDecimal(basePrice * oi.getQuantity());
 
-            // Addons
+            // Addons — sum of (addonPrice * addonQty)
             if (oi.getOrderAddonItems() != null) {
                 for (OrderDto.OrderAddonItem addon : oi.getOrderAddonItems()) {
                     AddonItem dbAddon = addonMap.get(addon.getAddonItemId());
@@ -351,11 +487,26 @@ public class OrderValidator {
                                         + addon.getPrice() + " server="
                                         + addonPrice));
                     }
+                    // Security: Always override client addon price with server-verified catalog price
+                    addon.setPrice(addonPrice);
                     lineTotal = roundToTwoDecimal(lineTotal + (addonPrice * addon.getQuantity()));
                 }
             }
 
-            // Item level tax
+            // Security: Override client finalPrice with server-calculated value (base*qty + addons)
+            oi.setFinalPrice(lineTotal);
+
+            // ── Item-level discount (from Item entity's offer fields) ─────────
+            double serverItemDiscount = calculateItemDiscount(item, oi.getQuantity(), lineTotal);
+            double clientItemDiscount = oi.getItemDiscount() != null ? roundToTwoDecimal(oi.getItemDiscount()) : 0.0;
+            if (clientItemDiscount != serverItemDiscount) {
+                warnings.add(new PriceWarning(
+                        "ITEM_DISCOUNT_MISMATCH",
+                        "Item " + oi.getId() + " client=" + clientItemDiscount + " server=" + serverItemDiscount));
+            }
+            oi.setItemDiscount(serverItemDiscount);
+
+            // ── Item-level tax (calculated on lineTotal = itemValue + addonValue) ─
             if (oi.getOrderItemTax() != null) {
                 for (OrderDto.OrderItemTax it : oi.getOrderItemTax()) {
                     Tax tax = taxMap.get(it.getId());
@@ -367,27 +518,77 @@ public class OrderValidator {
                                 "ITEM_TAX_MISMATCH",
                                 tax.getTaxName() + " client=" + it.getAmount() + " server=" + expectedTax));
                     }
+                    // Security: Always override client tax amount with server-calculated value
+                    it.setAmount(expectedTax);
                     taxTotalAmount = roundToTwoDecimal(taxTotalAmount + expectedTax);
-                }
-                if (roundToTwoDecimal(orderDto.getTaxAmount()) != taxTotalAmount) {
-                    warnings.add(new PriceWarning(
-                            "ITEM_TAX_MISMATCH", " client=" + orderDto.getTaxAmount() + " server=" + taxTotalAmount));
+
+                    // Accumulate for order-level tax grouping
+                    orderTaxAccumulator.merge(it.getId(), new double[] {expectedTax, lineTotal}, (a, b) -> {
+                        a[0] += b[0];
+                        a[1] += b[1];
+                        return a;
+                    });
+                    orderTaxInfo.putIfAbsent(
+                            it.getId(), new String[] {tax.getTaxName(), tax.getTaxType(), tax.getTax()});
                 }
             }
 
             itemTotalAmount = roundToTwoDecimal(itemTotalAmount + lineTotal);
         }
-        double grandTotalAmount =
-                roundToTwoDecimal(itemTotalAmount + taxTotalAmount + roundToTwoDecimal(orderDto.getDeliveryCharge()));
 
-        if (roundToTwoDecimal(orderDto.getGrandTotalAmount()) != grandTotalAmount) {
-            log.warn(
-                    "Invalid grand total amount: Request {}, Actual {} restaurantId: {}",
-                    roundToTwoDecimal(orderDto.getGrandTotalAmount()),
-                    grandTotalAmount,
-                    orderDto.getRestaurantId());
+        List<OrderDto.OrderTax> serverOrderTax = new ArrayList<>();
+        for (Map.Entry<String, double[]> entry : orderTaxAccumulator.entrySet()) {
+            String taxId = entry.getKey();
+            double[] values = entry.getValue();
+            String[] info = orderTaxInfo.get(taxId);
+
+            OrderDto.OrderTax ot = new OrderDto.OrderTax();
+            ot.setId(taxId);
+            ot.setTitle(info != null ? info[0] : null);
+            ot.setType(info != null ? info[1] : null);
+            ot.setPrice(Double.valueOf(info != null ? info[2] : null));
+            ot.setTax(roundToTwoDecimal(values[0])); // summed tax amount
+            ot.setRestaurantLiableAmt(roundToTwoDecimal(values[0])); // same as tax
+            serverOrderTax.add(ot);
         }
-        return new PriceCalculation(itemTotalAmount, grandTotalAmount);
+        orderDto.setOrderTax(serverOrderTax);
+
+        // ── Order-level tax total validation ─────────────────────────────────
+        if (roundToTwoDecimal(orderDto.getTaxAmount()) != taxTotalAmount) {
+            warnings.add(new PriceWarning(
+                    "TAX_TOTAL_MISMATCH", "client=" + orderDto.getTaxAmount() + " server=" + taxTotalAmount));
+        }
+        orderDto.setTaxAmount(taxTotalAmount);
+
+        return new PriceCalculation(itemTotalAmount, taxTotalAmount);
+    }
+
+    /**
+     * Calculate item-level discount from the Item entity's offer fields.
+     * Only applies to non-variation items (variations don't have offer fields).
+     */
+    private double calculateItemDiscount(Item item, int quantity, double lineTotal) {
+        if (item == null) return 0.0; // variation items — no item-level discount
+
+        // Check if offer is enabled
+        if (!Boolean.TRUE.equals(item.getOfferEnabled())) return 0.0;
+        if (item.getOfferType() == null || item.getOfferValue() == null || item.getOfferValue() <= 0) return 0.0;
+
+        double discount;
+        if (item.getOfferType() == OfferType.PERCENTAGE) {
+            discount = roundToTwoDecimal((lineTotal * item.getOfferValue()) / 100);
+        } else if (item.getOfferType() == OfferType.FLAT) {
+            discount = roundToTwoDecimal(item.getOfferValue());
+        } else if (item.getOfferType() == OfferType.FIXED_PRICE) {
+            // FIXED_PRICE means the item is sold at offerValue; discount is the difference
+            double fixedTotal = roundToTwoDecimal(item.getOfferValue() * quantity);
+            discount = roundToTwoDecimal(Math.max(0, lineTotal - fixedTotal));
+        } else {
+            discount = 0.0;
+        }
+
+        // Discount cannot exceed line total
+        return Math.min(discount, lineTotal);
     }
 
     /**

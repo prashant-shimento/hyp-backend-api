@@ -40,6 +40,8 @@ public class DeliveryQuote {
         private String error;
 
         private String token;
+
+        private String deliveryQuoteId;
     }
 
     @Data
