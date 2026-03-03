@@ -215,9 +215,8 @@ public class PosOrderRequestTranslation {
         orderDetails.setPreOrderTime(createdAtIST.format(TIME_FORMAT));
         if (order.isPreOrder()) {
             orderDetails.setAdvancedOrder("Y");
-            LocalDateTime preOrderIST = CommonUtils.convertUTCtoIST(order.getPreOrderDateTime());
-            orderDetails.setPreOrderDate(preOrderIST.format(DATE_FORMAT));
-            orderDetails.setPreOrderTime(preOrderIST.format(TIME_FORMAT));
+            orderDetails.setPreOrderDate(order.getPreOrderDateTime().toLocalDate().format(DATE_FORMAT));
+            orderDetails.setPreOrderTime(order.getPreOrderDateTime().toLocalTime().format(TIME_FORMAT));
         }
         orderDetails.setPaymentType(String.valueOf(order.getPaymentType()));
         orderDetails.setDiscountTotal(CommonUtils.emptyIfNullOrZeroToString(order.getDiscountAmount()));
@@ -226,7 +225,7 @@ public class PosOrderRequestTranslation {
             orderDetails.setDiscountType(DiscountType.fromCode(order.getDiscountType()));
         }
         orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
-        orderDetails.setDescription(order.getDescription());
+        orderDetails.setDescription(order.getSpecialInstructions());
         orderDetails.setEnableDelivery(
                 restaurant.getDeliveryPartner() == DeliveryPartner.SELF
                         ? Constants.RESTAURANT_HANDLE_DELIVERY
