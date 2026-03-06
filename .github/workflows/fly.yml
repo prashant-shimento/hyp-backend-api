@@ -1,73 +1,60 @@
-name: CI/CD Fly.io Test Pipeline
+name: Fly Deploy Manual
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy"
+        required: true
+        default: "main"
+      tag:
+        description: "Docker image tag"
+        required: true
+        default: "latest"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+
+      - name: Checkout selected branch
         uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
         with:
-          distribution: 'liberica'
-          java-version: '17'
+          ref: ${{ github.event.inputs.branch }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven-
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build with Maven
-        run: mvn clean install -DskipTests
+      - name: Login Fly Registry
+        run: echo ${{ secrets.FLY_TOKEN }} | docker login registry.fly.io -u x --password-stdin
 
-      - name: Create .env file
+      - name: Build Docker Image
         run: |
-          echo "ENV=staging" >> .env
-          echo "GOOGLE_KEY=${{ secrets.GOOGLE_KEY }}" >> .env
-          echo "APP_DOMAIN=${{ secrets.STAGING_APP_DOMAIN }}" >> .env
-          echo "DELIVERY_PIDGE_PASSWORD=${{ secrets.STAGING_DELIVERY_PIDGE_PASSWORD }}" >> .env
-          echo "DELIVERY_PIDGE_SMARTID=${{ secrets.STAGING_DELIVERY_PIDGE_SMARTID }}" >> .env
-          echo "DELIVERY_PIDGE_TOKEN=${{ secrets.STAGING_DELIVERY_PIDGE_TOKEN }}" >> .env
-          echo "DELIVERY_PIDGE_URL=${{ secrets.STAGING_DELIVERY_PIDGE_URL }}" >> .env
-          echo "DELIVERY_PIDGE_USERNAME=${{ secrets.STAGING_DELIVERY_PIDGE_USERNAME }}" >> .env
-          echo "MONGODB_CLUSTER=${{ secrets.STAGING_MONGODB_CLUSTER }}" >> .env
-          echo "MONGODB_DATABASE=${{ secrets.STAGING_MONGODB_DATABASE }}" >> .env
-          echo "MONGODB_PASSWORD=${{ secrets.STAGING_MONGODB_PASSWORD }}" >> .env
-          echo "MONGODB_USERNAME=${{ secrets.STAGING_MONGODB_USERNAME }}" >> .env
-          echo "POS_PETPOOJA_KEY=${{ secrets.STAGING_POS_PETPOOJA_KEY }}" >> .env
-          echo "POS_PETPOOJA_SECRET=${{ secrets.STAGING_POS_PETPOOJA_SECRET }}" >> .env
-          echo "POS_PETPOOJA_TOKEN=${{ secrets.STAGING_POS_PETPOOJA_TOKEN }}" >> .env
-          echo "POS_PETPOOJA_URL=${{ secrets.STAGING_POS_PETPOOJA_URL }}" >> .env
-          echo "RAZORPAY_KEY=${{ secrets.STAGING_RAZORPAY_KEY }}" >> .env
-          echo "RAZORPAY_SECRET=${{ secrets.STAGING_RAZORPAY_SECRET }}" >> .env
-          echo "SMS_KEY=${{ secrets.STAGING_SMS_KEY }}" >> .env
-          echo "CHAT_IO_URL=${{ secrets.CHAT_IO_URL }}" >> .env
-          echo "FACEBOOK_ACCESS_TOKEN=${{ secrets.FACEBOOK_ACCESS_TOKEN }}" >> .env
-          echo "FACEBOOK_GRAPH_API_URL=${{ secrets.FACEBOOK_GRAPH_API_URL }}" >> .env
-          echo "APP_SECRET_KEY=${{ secrets.APP_SECRET_KEY }}" >> .env
-          echo "NOTIFICATION_META_TOKEN=${{ secrets.NOTIFICATION_META_TOKEN }}" >> .env
-          echo "MAIL_APP_PASSWORD=${{ secrets.MAIL_APP_PASSWORD }}" >> .env
-          echo "BUCKET_KEY=${{ secrets.BUCKET_KEY }}" >> .env
-          echo "REDIS_HOST=${{ secrets.STAGING_REDIS_HOST }}" >> .env
-          echo "REDIS_PORT=${{ secrets.STAGING_REDIS_PORT }}" >> .env
-          echo "REDIS_PASSWORD=${{ secrets.STAGING_REDIS_PASSWORD }}" >> .env
-          echo "ONE_SIGNAL_KEY=${{ secrets.ONE_SIGNAL_KEY }}" >> .env
-          echo "ONE_SIGNAL_PARTNER_KEY=${{ secrets.ONE_SIGNAL_PARTNER_KEY }}" >> .env
-          echo "TEMPORAL_HOST=${{ secrets.STAGING_TEMPORAL_HOST }}" >> .env
-          echo "TEMPORAL_PORT=${{ secrets.STAGING_TEMPORAL_PORT }}" >> .env
-          echo "PORTER_RIDER_LOCATION_API_URL=https://porter.in/api/public/orders/order_details?order_id={orderId}&customer_uuid={customerUuid}" >> .env
+          docker buildx build \
+            --platform linux/amd64 \
+            -f Dockerfile.fly \
+            -t lognathp/hyp-backend-api:${{ github.event.inputs.tag }} \
+            -t registry.fly.io/hyp-backend:${{ github.event.inputs.tag }} \
+            --push .
 
-      - name: Set up flyctl
+      - name: Push to Docker Hub
+        run: |
+          docker push lognathp/hyp-backend-api:${{ github.event.inputs.tag }}
+
+      - name: Deploy to Fly
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy to Fly.io
+      - name: Fly Deploy
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_TOKEN }}
-        run: flyctl deploy --app hyp-backend-staging --remote-only
+        run: |
+          flyctl deploy \
+            --app hyp-backend \
+            --image registry.fly.io/hyp-backend:${{ github.event.inputs.tag }}
