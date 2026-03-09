@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class SaasDashboardDto {
+public class AffiliateDto {
 
     private String id;
 

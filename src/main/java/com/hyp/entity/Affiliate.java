@@ -18,12 +18,12 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-@Document(collection = "saas_dashboard")
-public class SaasDashboard {
+@Document(collection = "affiliates")
+public class Affiliate {
 
     @Id
     @Field("id")
-    @GenerateId(sequenceName = "saas_dashboard_sequence")
+    @GenerateId(sequenceName = "affiliate_sequence")
     private String id;
 
     @Field("name")

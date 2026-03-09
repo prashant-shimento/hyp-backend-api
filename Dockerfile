@@ -14,4 +14,4 @@ ENV $(cat .env | xargs)
 COPY target/hyp-backend-api.jar /app/hyp-backend-api.jar
 
 # Specify the command to run your Spring Boot application when the container starts
-ENTRYPOINT ["java", "-jar", "-Dserver.port=9090", "/app/hyp-backend-api.jar"]
+ENTRYPOINT ["java", "-jar", "-Dserver.port=9090", "-Djava.net.preferIPv4Stack=true", "/app/hyp-backend-api.jar"]
