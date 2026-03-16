@@ -67,6 +67,7 @@ public interface Constants {
             "id", "token", "referralCode", "restaurantId", "source", "createdAt", "updatedAt", "usedOrder");
     List<String> TAX_API_PARAMS = Arrays.asList("id", "restaurantId");
     List<String> USERS_PARAM = Arrays.asList("id", "restaurantId", "partnerId", "email");
+    List<String> RIDER_RECORD_PARAM = Arrays.asList("id", "riderName", "riderContact");
 
     static Map<String, String> getContentTypes() {
         Map<String, String> contentTypes = new HashMap<>();
