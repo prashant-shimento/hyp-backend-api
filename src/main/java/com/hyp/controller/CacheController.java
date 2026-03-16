@@ -2,12 +2,14 @@ package com.hyp.controller;
 
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.response.Response;
+import com.hyp.service.CacheService;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ public class CacheController {
 
     @Autowired
     private JedisPooled jedisPooled;
+
+    @Autowired
+    private CacheService cacheService;
 
     @GetMapping
     public ResponseEntity<Response> listAllCaches() {
@@ -170,6 +175,28 @@ public class CacheController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new Response(null, true, "Failed to get Redis pool stats: " + e.getMessage()));
         }
+    }
+
+    /**
+     * Get partner IDs with server correction enabled.
+     */
+    @GetMapping("/config/server-correction")
+    public ResponseEntity<Response> getServerCorrectionPartners() {
+        Set<String> partnerIds = cacheService.getServerCorrectionPartnerIds();
+        return ResponseEntity.ok(
+                new Response(Collections.singletonList(partnerIds), false, "Server correction partner IDs retrieved"));
+    }
+
+    /**
+     * Set partner IDs with server correction enabled.
+     * Body: { "partnerIds": ["partner1", "partner2"] }
+     */
+    @PutMapping("/config/server-correction")
+    public ResponseEntity<Response> setServerCorrectionPartners(@RequestBody Map<String, Set<String>> body) {
+        Set<String> partnerIds = body.getOrDefault("partnerIds", Set.of());
+        cacheService.setServerCorrectionPartnerIds(partnerIds);
+        return ResponseEntity.ok(
+                new Response(Collections.singletonList(partnerIds), false, "Server correction partner IDs updated"));
     }
 
     /**

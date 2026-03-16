@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -125,6 +128,49 @@ public class CacheService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // ==================== Server Correction Feature Flag ====================
+
+    private static final String SERVER_CORRECTION_CACHE = "config:orderCorrection";
+    private static final String SERVER_CORRECTION_KEY = "partnerIds";
+
+    /**
+     * Check if server-side price correction is enabled for a given partner.
+     * When enabled, the OrderValidator will override client-submitted amounts
+     * with server-calculated values. When disabled, only mismatch warnings are logged.
+     */
+    public boolean isServerCorrectionEnabled(String partnerId) {
+        if (partnerId == null) return false;
+        Set<String> enabledPartners = getServerCorrectionPartnerIds();
+        return enabledPartners.contains(partnerId);
+    }
+
+    /**
+     * Get the set of partner IDs with server correction enabled.
+     * Cached in L1/L2; returns empty set if not configured.
+     */
+    @SuppressWarnings("unchecked")
+    public Set<String> getServerCorrectionPartnerIds() {
+        try {
+            Object cached = getOrLoad(SERVER_CORRECTION_CACHE, SERVER_CORRECTION_KEY, Set.class, HashSet::new);
+            if (cached instanceof Set) {
+                return (Set<String>) cached;
+            }
+            return Collections.emptySet();
+        } catch (Exception e) {
+            log.error("Failed to load server correction partner IDs", e);
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Set the partner IDs that have server correction enabled.
+     * Called from admin endpoint; updates both L1 and L2 cache.
+     */
+    public void setServerCorrectionPartnerIds(Set<String> partnerIds) {
+        put(SERVER_CORRECTION_CACHE, SERVER_CORRECTION_KEY, partnerIds != null ? partnerIds : new HashSet<>());
+        log.info("Updated server correction partner IDs: {}", partnerIds);
     }
 
     /* ================= INTERNAL HELPERS ================= */
