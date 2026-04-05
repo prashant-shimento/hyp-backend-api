@@ -282,9 +282,12 @@ public class PosDataRequestTranslation {
         if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
             restaurant.setLocation(existingRestaurant.getLocation());
         } else {
-            restaurant.setLocation(new Location(
-                    Double.valueOf(restaurantRequest.getDetails().getLatitude()),
-                    Double.valueOf(restaurantRequest.getDetails().getLongitude())));
+            if (restaurantRequest.getDetails().getLatitude() != null
+                    && restaurantRequest.getDetails().getLongitude() != null) {
+                restaurant.setLocation(new Location(
+                        Double.valueOf(restaurantRequest.getDetails().getLatitude()),
+                        Double.valueOf(restaurantRequest.getDetails().getLongitude())));
+            }
         }
         if (existingRestaurant != null && existingRestaurant.getDeliveryHours() != null) {
             restaurant.setDeliveryHours(existingRestaurant.getDeliveryHours());
