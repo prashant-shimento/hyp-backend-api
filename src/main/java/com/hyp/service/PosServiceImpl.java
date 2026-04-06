@@ -30,9 +30,7 @@ import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,6 +50,15 @@ public class PosServiceImpl implements PosService {
 
     @Value("${pos.petpooja.url}")
     private String baseUrl;
+
+    @Value("${pos.urbanpiper.url:https://api.urbanpiper.com/external/api/v1/}")
+    private String upBaseUrl;
+
+    @Value("${pos.urbanpiper.username:}")
+    private String upUsername;
+
+    @Value("${pos.urbanpiper.apikey:}")
+    private String upApiKey;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -367,6 +374,13 @@ public class PosServiceImpl implements PosService {
     public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
         try {
             log.info("updatePosRiderStatus Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
+            Restaurant restaurant = restaurantService.findById(posRiderUpdateRequest.getRestaurantId());
+
+            if (restaurant != null && "urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+                log.info("Updating rider status for UrbanPiper");
+                return updateUrbanPiperRiderStatus(posRiderUpdateRequest);
+            }
+
             WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
             String endpoint = "/rider_status_update";
             String riderUpdateResponse = webClient
@@ -380,6 +394,54 @@ public class PosServiceImpl implements PosService {
             return riderUpdateResponse;
         } catch (Exception e) {
             log.error("Error occurred during updatePosRiderStatus {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String updateUrbanPiperRiderStatus(PosRiderUpdateRequest request) {
+        try {
+            String externalOrderId = request.getExternalOrderId();
+            if (externalOrderId == null || externalOrderId.isEmpty() || "0".equals(externalOrderId)) {
+                // If external_order_id is not provided, use our internal order_id
+                externalOrderId = request.getOrderId();
+            }
+
+            String endpoint = String.format("orders/%s/rider-status/", externalOrderId);
+            Map<String, Object> payload = new HashMap<>();
+            if (request.getRiderData() != null) {
+                payload.put("rider_name", request.getRiderData().getRiderName());
+                payload.put("rider_phone", request.getRiderData().getRiderContact());
+            }
+
+            // Map internal status to UrbanPiper status
+            String status = request.getStatus();
+            String upStatus = switch (status) {
+                case "rider-assigned", "rider_assigned" -> "rider_assigned";
+                case "rider-arrived", "rider_arrived" -> "rider_arrived";
+                case "pickedup", "picked_up" -> "picked_up";
+                case "delivered" -> "delivered";
+                default -> status;
+            };
+            payload.put("status", upStatus);
+
+            log.info("UrbanPiper Rider Status Update Payload: {}", objectMapper.writeValueAsString(payload));
+
+            WebClient webClient = WebClient.builder()
+                    .baseUrl(upBaseUrl)
+                    .defaultHeader("Authorization", "apikey " + upUsername + ":" + upApiKey)
+                    .build();
+
+            String response = webClient.post()
+                    .uri(endpoint)
+                    .body(BodyInserters.fromValue(payload))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            log.info("UrbanPiper Rider Status Update Response: {}", response);
+            return response;
+        } catch (Exception e) {
+            log.error("Error updating UrbanPiper rider status: {}", e.getMessage());
             return null;
         }
     }
