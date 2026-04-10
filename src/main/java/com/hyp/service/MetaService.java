@@ -41,7 +41,7 @@ public class MetaService {
             log.info("sendMessage Request {}", objectMapper.writeValueAsString(facebookMessage));
             WebClient webClient = WebClient.builder()
                     .baseUrl(baseUrl)
-                    .defaultHeader(HttpHeaders.AUTHORIZATION, token)
+                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .build();
             String endpoint = "/" + phoneId + "/messages";
             Mono<FacebookMessageResponse> quoteResponseMono = webClient

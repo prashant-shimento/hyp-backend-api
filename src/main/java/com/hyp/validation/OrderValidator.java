@@ -296,22 +296,16 @@ public class OrderValidator {
         // partners that are enabled via the server correction feature flag.
         boolean applyCorrection = cacheService.isServerCorrectionEnabled(orderDto.getPartnerId());
 
+        double clientDeliveryCharge = roundToTwoDecimal(orderDto.getDeliveryCharge());
+        double finalDeliveryCharge = clientDeliveryCharge;
+
         // ── Delivery charge validation against saved quote ────────────────────
-        double serverDeliveryCharge = roundToTwoDecimal(orderDto.getDeliveryCharge());
         if (deliveryQuoteRecord != null
                 && deliveryQuoteRecord.getNetwork() != null
                 && deliveryQuoteRecord.getNetwork().getQuote() != null) {
-            double quotedPrice = roundToTwoDecimal(
+            double quotedDeliveryCharge = roundToTwoDecimal(
                     deliveryQuoteRecord.getNetwork().getQuote().getPrice());
-            if (serverDeliveryCharge != quotedPrice) {
-                warnings.add(new PriceWarning(
-                        "DELIVERY_CHARGE_MISMATCH",
-                        "client=" + serverDeliveryCharge + " quoted=" + quotedPrice + " quoteId="
-                                + deliveryQuoteRecord.getId()));
-                serverDeliveryCharge = quotedPrice;
-            }
-            // Use totalDeliveryShare (restaurantDeliveryShare + platformDeliveryShare).
-            // Fall back to summing the individual shares if totalDeliveryShare is not set.
+
             Double totalDeliveryShare = restaurant.getTotalDeliveryShare();
             if (totalDeliveryShare == null || totalDeliveryShare <= 0) {
                 double restShare =
@@ -320,16 +314,29 @@ public class OrderValidator {
                         restaurant.getPlatformDeliveryShare() != null ? restaurant.getPlatformDeliveryShare() : 0.0;
                 totalDeliveryShare = restShare + platShare;
             }
+            double discountedDeliveryCharge = quotedDeliveryCharge;
             if (totalDeliveryShare > 0) {
-                double deliveryDiscount = (serverDeliveryCharge * totalDeliveryShare) / 100;
-                serverDeliveryCharge = roundToTwoDecimal(serverDeliveryCharge - deliveryDiscount);
+                double discount = (quotedDeliveryCharge * totalDeliveryShare) / 100;
+                discountedDeliveryCharge = roundToTwoDecimal(quotedDeliveryCharge - discount);
                 log.info(
                         "Delivery charge after applying totalDeliveryShare discount of {}% is {}",
-                        totalDeliveryShare, serverDeliveryCharge);
+                        totalDeliveryShare, discountedDeliveryCharge);
+            }
+            if (clientDeliveryCharge != discountedDeliveryCharge) {
+                warnings.add(new PriceWarning(
+                        "DELIVERY_CHARGE_MISMATCH",
+                        "client=" + clientDeliveryCharge + " expected="
+                                + discountedDeliveryCharge + " quoteId="
+                                + deliveryQuoteRecord.getId()));
+
+                finalDeliveryCharge = discountedDeliveryCharge;
+            } else {
+                finalDeliveryCharge = discountedDeliveryCharge;
             }
         }
+
         if (applyCorrection) {
-            orderDto.setDeliveryCharge(serverDeliveryCharge);
+            orderDto.setDeliveryCharge(finalDeliveryCharge);
         }
 
         // ── Delivery charge tax (dcTaxAmount) ────────────────────────────────
@@ -343,7 +350,7 @@ public class OrderValidator {
             }
             if (dcTax != null) {
                 double dcTaxRate = Double.parseDouble(dcTax.getTax());
-                serverDcTaxAmount = roundToTwoDecimal((serverDeliveryCharge * dcTaxRate) / 100);
+                serverDcTaxAmount = roundToTwoDecimal((finalDeliveryCharge * dcTaxRate) / 100);
             }
         }
         double clientDcTaxAmount =
@@ -436,7 +443,7 @@ public class OrderValidator {
 
         double serverGrandTotal = roundToTwoDecimal(itemTotalAmount
                 + serverTaxTotal
-                + serverDeliveryCharge
+                + finalDeliveryCharge
                 + serverDcTaxAmount
                 + serverPackagingCharge
                 + serverPcTaxAmount
@@ -473,7 +480,7 @@ public class OrderValidator {
                 serverGrandTotal,
                 serverTaxTotal,
                 totalDiscount,
-                serverDeliveryCharge,
+                finalDeliveryCharge,
                 referralToken,
                 warnings,
                 applyCorrection);
