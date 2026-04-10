@@ -1,6 +1,8 @@
 package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderRequest;
+import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderTransformer;
 import com.hyp.constants.Constants;
 import com.hyp.entity.*;
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -104,6 +106,9 @@ public class PosServiceImpl implements PosService {
     @Autowired
     ApplicationMetrics metrics;
 
+    @Autowired
+    UrbanPiperOrderTransformer urbanPiperOrderTransformer;
+
     public PosServiceImpl(
             AttributeService attributeService,
             CategoryService categoryService,
@@ -133,6 +138,15 @@ public class PosServiceImpl implements PosService {
     public void processPosOrder(Order order) {
         Customer customer = customerService.findById(order.getCustomerId());
         Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+        
+        // Check if this is an UrbanPiper order
+        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+            log.info("Processing UrbanPiper order - Order ID: {}, Restaurant ID: {}, Restaurant Name: {}", 
+                    order.getId(), restaurant.getId(), restaurant.getRestaurantName());
+            processUrbanPiperOrder(order, customer, restaurant);
+            return;
+        }
+        
         try {
             PosOrderRequest posOrderRequest =
                     posOrderRequestTranslation.getPosOrderRequest(restaurant, order, customer);
@@ -157,6 +171,73 @@ public class PosServiceImpl implements PosService {
                     e.getMessage());
         } catch (PosException e) {
             log.error("Error occurred on PosException for order {} cause: {}", order.getId(), e.getMessage());
+        }
+    }
+
+    private void processUrbanPiperOrder(Order order, Customer customer, Restaurant restaurant) {
+        try {
+            log.info("=== UrbanPiper Order Processing ===");
+            log.info("Order ID: {}", order.getId());
+            log.info("Customer ID: {}, Customer Name: {}", customer.getId(), customer.getName());
+            log.info("Restaurant ID: {}, Restaurant Name: {}", restaurant.getId(), restaurant.getRestaurantName());
+            
+            UrbanPiperOrderRequest urbanPiperRequest = urbanPiperOrderTransformer.transform(order, customer, restaurant);
+            
+            log.info("Transformed UrbanPiper Order Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
+            
+            createUrbanPiperOrder(urbanPiperRequest);
+            
+            log.info("UrbanPiper order created successfully for order: {}", order.getId());
+            log.info("===================================");
+            
+        } catch (Exception e) {
+            log.error("Error processing UrbanPiper order {}: {}", order.getId(), e.getMessage(), e);
+            throw new RuntimeException("Failed to process UrbanPiper order: " + e.getMessage(), e);
+        }
+    }
+
+    private void createUrbanPiperOrder(UrbanPiperOrderRequest urbanPiperRequest) throws PosException {
+        try {
+            log.info("Creating UrbanPiper order - Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
+            
+            WebClient webClient = WebClient.builder()
+                    .baseUrl("http://localhost:1000")
+                    .build();
+            
+            String endpoint = "/ext/api/v1/ha/order/";
+            
+            String response = webClient
+                    .post()
+                    .uri(endpoint)
+                    .body(BodyInserters.fromValue(urbanPiperRequest))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            
+            log.info("UrbanPiper Order Creation Response: {}", response);
+            
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    "URBANPIPER",
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "success");
+            
+        } catch (Exception e) {
+            log.error("Error occurred during createUrbanPiperOrder: {}", e.getMessage(), e);
+            
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    "URBANPIPER",
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "failed");
+            
+            throw new PosException("UrbanPiper Order Creation failed: " + e.getMessage());
         }
     }
 

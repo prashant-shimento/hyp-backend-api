@@ -79,13 +79,20 @@ public class OrderEventListener {
         log.info("Order Event listener handleProcessOrder");
         Order order = event.getOrder();
         log.info("Order Type {}", order.getOrderType());
+        if (OrderType.fromCode(order.getOrderType()) == OrderType.H && !order.isPreOrder()) {
+            orderEventPublisher.publishDeliveryOrderEvent(order);
+        }
+        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 
-        if (restaurantService
-                .findById(order.getRestaurantId())
-                .getPosPartner()
-                .equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
+        if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
             orderEventPublisher.publishPosOrderEvent(order);
         }
+
+        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+            log.info("Publishing UrbanPiper POS order event for order: {}", order.getId());
+            orderEventPublisher.publishPosOrderEvent(order);
+        }
+
         if (order.isPreOrder()) {
             LocalDateTime preOrderTime = order.getPreOrderDateTime();
             LocalDateTime preOrderUTC = CommonUtils.convertISTtoUTC(preOrderTime);
