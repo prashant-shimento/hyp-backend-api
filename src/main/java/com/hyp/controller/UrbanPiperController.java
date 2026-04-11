@@ -7,6 +7,7 @@ import com.hyp.adapter.urbanpiper.order.OrderStatusTransformer;
 import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderStatusRequest;
 import com.hyp.entity.Order;
 import com.hyp.enums.OrderStatusType;
+import com.hyp.request.OrderStatusUpdateRequest;
 import com.hyp.request.urbanpiper.InventoryRequest;
 import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import com.hyp.adapter.urbanpiper.inventory.InventoryTransformer;
@@ -54,9 +55,6 @@ public class UrbanPiperController {
 
     @Autowired
     private SimpMessagingTemplate messageTemplate;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @PostMapping("/menu")
     public ResponseEntity<PosResponse> receiveMenu(@RequestBody UrbanPiperMenuRequest request) {
@@ -186,5 +184,98 @@ public class UrbanPiperController {
                 .success("1")
                 .message("Store status received successfully")
                 .build());
+    }
+
+    @PostMapping("/order/status/exchange")
+    public ResponseEntity<PosResponse> updateOrderStatusExchange(@RequestBody OrderStatusUpdateRequest request) {
+        log.info("Order status exchange request received for order: {}, status: {}", 
+                request.getOrderNo(), request.getNewStatus());
+        
+        try {
+            // Validate the request
+            if (request.getOrderNo() == null || request.getOrderNo().isEmpty()) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .success("0")
+                        .message("order_no is required")
+                        .status("failed")
+                        .build());
+            }
+            
+            if (request.getNewStatus() == null || request.getNewStatus().isEmpty()) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .success("0")
+                        .message("new_status is required")
+                        .status("failed")
+                        .build());
+            }
+            
+            // Validate reason is mandatory for cancelled or rejected
+            String status = request.getNewStatus().toLowerCase();
+            if ((status.equals("cancelled") || status.equals("rejected")) 
+                    && (request.getReason() == null || request.getReason().isEmpty())) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .success("0")
+                        .message("reason is mandatory when new_status is cancelled or rejected")
+                        .status("failed")
+                        .build());
+            }
+            
+            Order order = orderService.findById(request.getOrderNo());
+            if (order == null) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.NOT_FOUND.value())
+                        .success("0")
+                        .message("Order not found")
+                        .status("failed")
+                        .build());
+            }
+            
+            // Map external status to internal enum and update
+            OrderStatusType newStatus = orderStatusTransformer.mapUrbanPiperStatus(request.getNewStatus());
+            OrderStatusType oldStatus = order.getStatus();
+            
+            // Log reason if provided
+            if (request.getReason() != null && !request.getReason().isEmpty()) {
+                log.info("Order {} status changing to {} with reason: {}", 
+                        request.getOrderNo(), newStatus, request.getReason());
+            }
+            
+            orderService.updateOrderStatus(request.getOrderNo(), newStatus);
+            
+            // Trigger fulfillment workflow if accepted
+            if (newStatus == OrderStatusType.ACCEPTED && oldStatus != OrderStatusType.ACCEPTED) {
+                log.info("Order {} acknowledged, triggering fulfillment workflow", request.getOrderNo());
+                orderService.startOrderFulfillmentWorkflow(request.getOrderNo(), 0);
+            }
+            
+            return ResponseEntity.ok(PosResponse.builder()
+                    .code(HttpStatus.OK.value())
+                    .success("1")
+                    .message("Order status updated successfully")
+                    .status("success")
+                    .build());
+                    
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid status value: {}", e.getMessage());
+            return ResponseEntity.ok(PosResponse.builder()
+                    .code(HttpStatus.BAD_REQUEST.value())
+                    .success("0")
+                    .error(e.getMessage())
+                    .message("Invalid status value")
+                    .status("failed")
+                    .build());
+        } catch (Exception e) {
+            log.error("Error processing order status exchange", e);
+            return ResponseEntity.ok(PosResponse.builder()
+                    .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .success("0")
+                    .error(e.getMessage())
+                    .message("Error processing order status")
+                    .status("failed")
+                    .build());
+        }
     }
 }
