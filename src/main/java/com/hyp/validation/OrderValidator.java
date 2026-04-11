@@ -173,7 +173,7 @@ public class OrderValidator {
 
         CompletableFuture<Long> orderCountFuture = timed("orderCount", () -> {
             if (offerCode != null && !offerCode.isBlank()) {
-                return orderRepository.countByCustomerIdAndStatus(orderDto.getCustomerId(), "PAID");
+                return orderRepository.countByCustomerIdAndStatus(orderDto.getCustomerId(), "DELIVERED");
             }
             return 0L;
         });
@@ -825,12 +825,25 @@ public class OrderValidator {
             throw new Exception("Offer not valid for this restaurant");
         }
 
-        int maximumRedemptionLimit = 0;
-        if (offer.getMaximumRedemptionLimit() != null) {
-            maximumRedemptionLimit = Integer.parseInt(offer.getMaximumRedemptionLimit());
+        int maximumRedemptionLimit;
+
+        if (offer.getMaximumRedemptionLimit() == null) {
+            throw new Exception("Maximum redemption limit is not configured.");
         }
-        if (offerUsageCount >= maximumRedemptionLimit || paidOrderCount >= maximumRedemptionLimit) {
-            throw new Exception("Offer usage limit exceeded. Maximum " + maximumRedemptionLimit + " attempts allowed.");
+
+        try {
+            maximumRedemptionLimit = Integer.parseInt(offer.getMaximumRedemptionLimit());
+        } catch (NumberFormatException e) {
+            throw new Exception("Invalid maximum redemption limit value.");
+        }
+
+        if (maximumRedemptionLimit <= 0) {
+            throw new Exception("This coupon is not available.");
+        }
+
+        if (paidOrderCount >= maximumRedemptionLimit) {
+            throw new Exception(
+                    "Offer usage limit exceeded. Maximum " + maximumRedemptionLimit + " paid redemptions allowed.");
         }
 
         // Discount Calculation
