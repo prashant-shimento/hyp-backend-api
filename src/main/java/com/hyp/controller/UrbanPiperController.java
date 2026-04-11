@@ -1,14 +1,14 @@
 package com.hyp.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.adapter.UrbanPiperAdapter;
 import com.hyp.adapter.urbanpiper.order.OrderStatusTransformer;
 import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderStatusRequest;
 import com.hyp.entity.Order;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.request.OrderStatusUpdateRequest;
+import com.hyp.request.PosStatusRequest;
 import com.hyp.request.urbanpiper.InventoryRequest;
+import com.hyp.request.urbanpiper.StoreStatusRequest;
 import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import com.hyp.adapter.urbanpiper.inventory.InventoryTransformer;
 import com.hyp.entity.Restaurant;
@@ -178,12 +178,63 @@ public class UrbanPiperController {
     }
 
     @PostMapping("/store/status")
-    public ResponseEntity<PosResponse> receiveStoreStatus(@RequestBody JsonNode payload) {
-        log.info("UrbanPiper store status payload received: {}", payload);
-        return ResponseEntity.ok(PosResponse.builder()
-                .success("1")
-                .message("Store status received successfully")
-                .build());
+    public ResponseEntity<PosResponse> receiveStoreStatus(@RequestBody StoreStatusRequest request) {
+        log.info("UrbanPiper store status update received: location_ref_id={}, ordering_enabled={}", 
+                request.getLocationRefId(), request.getOrderingEnabled());
+        
+        try {
+            // Validate request
+            if (request.getLocationRefId() == null || request.getLocationRefId().isEmpty()) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .success("0")
+                        .message("location_ref_id is required")
+                        .status("failed")
+                        .build());
+            }
+            
+            if (request.getOrderingEnabled() == null) {
+                return ResponseEntity.ok(PosResponse.builder()
+                        .code(HttpStatus.BAD_REQUEST.value())
+                        .success("0")
+                        .message("ordering_enabled is required")
+                        .status("failed")
+                        .build());
+            }
+            
+            // Convert to PosStatusRequest to reuse existing logic
+            PosStatusRequest posStatusRequest = new PosStatusRequest();
+            posStatusRequest.setMenuSharingCode(request.getLocationRefId());
+            posStatusRequest.setStoreStatus(request.getOrderingEnabled() ? "1" : "0");
+            posStatusRequest.setReason(request.getOrderingEnabled() ? null : "Store disabled via UrbanPiper");
+            
+            // Use existing PosService method which handles:
+            // - Restaurant lookup
+            // - Status update
+            // - Auto turn-on scheduling
+            // - Cache eviction
+            posService.updateRestaurant(posStatusRequest);
+            
+            // Send WebSocket notification for real-time updates
+            messageTemplate.convertAndSend("/topic/restaurant-status", posStatusRequest);
+            
+            return ResponseEntity.ok(PosResponse.builder()
+                    .code(HttpStatus.OK.value())
+                    .success("1")
+                    .message("Store Toggle Details Successfully Updated")
+                    .status("success")
+                    .build());
+                    
+        } catch (Exception e) {
+            log.error("Error processing store status update", e);
+            return ResponseEntity.ok(PosResponse.builder()
+                    .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .success("0")
+                    .error(e.getMessage())
+                    .message("Error processing store status")
+                    .status("failed")
+                    .build());
+        }
     }
 
     @PostMapping("/order/status/exchange")
