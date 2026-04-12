@@ -45,6 +45,9 @@ public class UrbanPiperController {
     private OrderStatusTransformer orderStatusTransformer;
 
     @Autowired
+    private com.hyp.adapter.urbanpiper.order.UrbanPiperCallbackTranslator urbanPiperCallbackTranslator;
+
+    @Autowired
     private PosService posService;
 
     @Autowired
@@ -85,7 +88,6 @@ public class UrbanPiperController {
         
         try {
             PosStockRequest stockRequest = inventoryTransformer.transform(request);
-            
             Restaurant restaurant = restaurantService.findByMenuSharingCode(stockRequest.getRestaurantId());
 
             if (restaurant == null) {
@@ -124,39 +126,12 @@ public class UrbanPiperController {
                 request.getExternalOrderId(), request.getStatus());
         
         try {
-            String orderId = request.getExternalOrderId();
-            if (orderId == null || orderId.isEmpty()) {
-                orderId = request.getOrderId();
-            }
+            // Translate UrbanPiper request to PosCallbackRequest
+            com.hyp.request.PosCallbackRequest posCallbackRequest = 
+                    urbanPiperCallbackTranslator.translateToPosCallback(request, request.getLocationRefId());
             
-            if (orderId == null || orderId.isEmpty()) {
-                return ResponseEntity.ok(PosResponse.builder()
-                        .code(HttpStatus.BAD_REQUEST.value())
-                        .success("0")
-                        .message("Order ID is required")
-                        .status("failed")
-                        .build());
-            }
-            
-            Order order = orderService.findById(orderId);
-            if (order == null) {
-                return ResponseEntity.ok(PosResponse.builder()
-                        .code(HttpStatus.NOT_FOUND.value())
-                        .success("0")
-                        .message("Order not found")
-                        .status("failed")
-                        .build());
-            }
-            
-            OrderStatusType newStatus = orderStatusTransformer.mapUrbanPiperStatus(request.getStatus());
-            OrderStatusType oldStatus = order.getStatus();
-            
-            orderService.updateOrderStatus(orderId, newStatus);
-            
-            if (newStatus == OrderStatusType.ACCEPTED && oldStatus != OrderStatusType.ACCEPTED) {
-                log.info("Order {} acknowledged, triggering fulfillment workflow", orderId);
-                orderService.startOrderFulfillmentWorkflow(orderId, 0);
-            }
+            // Use the same processOrderCallback method as PetPooja
+            orderService.processOrderCallback(posCallbackRequest);
             
             return ResponseEntity.ok(PosResponse.builder()
                     .code(HttpStatus.OK.value())
@@ -183,7 +158,6 @@ public class UrbanPiperController {
                 request.getLocationRefId(), request.getOrderingEnabled());
         
         try {
-            // Validate request
             if (request.getLocationRefId() == null || request.getLocationRefId().isEmpty()) {
                 return ResponseEntity.ok(PosResponse.builder()
                         .code(HttpStatus.BAD_REQUEST.value())
@@ -192,7 +166,7 @@ public class UrbanPiperController {
                         .status("failed")
                         .build());
             }
-            
+
             if (request.getOrderingEnabled() == null) {
                 return ResponseEntity.ok(PosResponse.builder()
                         .code(HttpStatus.BAD_REQUEST.value())
@@ -201,21 +175,14 @@ public class UrbanPiperController {
                         .status("failed")
                         .build());
             }
-            
-            // Convert to PosStatusRequest to reuse existing logic
+
             PosStatusRequest posStatusRequest = new PosStatusRequest();
             posStatusRequest.setMenuSharingCode(request.getLocationRefId());
             posStatusRequest.setStoreStatus(request.getOrderingEnabled() ? "1" : "0");
             posStatusRequest.setReason(request.getOrderingEnabled() ? null : "Store disabled via UrbanPiper");
-            
-            // Use existing PosService method which handles:
-            // - Restaurant lookup
-            // - Status update
-            // - Auto turn-on scheduling
-            // - Cache eviction
+
             posService.updateRestaurant(posStatusRequest);
-            
-            // Send WebSocket notification for real-time updates
+
             messageTemplate.convertAndSend("/topic/restaurant-status", posStatusRequest);
             
             return ResponseEntity.ok(PosResponse.builder()
@@ -274,33 +241,22 @@ public class UrbanPiperController {
                         .build());
             }
             
-            Order order = orderService.findById(request.getOrderNo());
-            if (order == null) {
-                return ResponseEntity.ok(PosResponse.builder()
-                        .code(HttpStatus.NOT_FOUND.value())
-                        .success("0")
-                        .message("Order not found")
-                        .status("failed")
-                        .build());
-            }
-            
-            // Map external status to internal enum and update
-            OrderStatusType newStatus = orderStatusTransformer.mapUrbanPiperStatus(request.getNewStatus());
-            OrderStatusType oldStatus = order.getStatus();
-            
             // Log reason if provided
             if (request.getReason() != null && !request.getReason().isEmpty()) {
                 log.info("Order {} status changing to {} with reason: {}", 
-                        request.getOrderNo(), newStatus, request.getReason());
+                        request.getOrderNo(), request.getNewStatus(), request.getReason());
             }
             
-            orderService.updateOrderStatus(request.getOrderNo(), newStatus);
+            // Create PosCallbackRequest for translation
+            UrbanPiperOrderStatusRequest urbanPiperStatusRequest = new UrbanPiperOrderStatusRequest();
+            urbanPiperStatusRequest.setExternalOrderId(request.getOrderNo());
+            urbanPiperStatusRequest.setStatus(request.getNewStatus());
             
-            // Trigger fulfillment workflow if accepted
-            if (newStatus == OrderStatusType.ACCEPTED && oldStatus != OrderStatusType.ACCEPTED) {
-                log.info("Order {} acknowledged, triggering fulfillment workflow", request.getOrderNo());
-                orderService.startOrderFulfillmentWorkflow(request.getOrderNo(), 0);
-            }
+            // Translate and use processOrderCallback
+            com.hyp.request.PosCallbackRequest posCallbackRequest = 
+                    urbanPiperCallbackTranslator.translateToPosCallback(urbanPiperStatusRequest, null);
+            
+            orderService.processOrderCallback(posCallbackRequest);
             
             return ResponseEntity.ok(PosResponse.builder()
                     .code(HttpStatus.OK.value())

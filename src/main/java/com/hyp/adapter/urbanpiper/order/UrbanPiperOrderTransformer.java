@@ -4,6 +4,8 @@ import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
+import com.hyp.service.AddressService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,11 +16,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class UrbanPiperOrderTransformer {
+
+    private final AddressService addressService;
 
     public UrbanPiperOrderRequest transform(Order order, Customer customer, Restaurant restaurant) {
         return UrbanPiperOrderRequest.builder()
-                .customer(buildCustomer(customer))
+                .customer(buildCustomer(customer, order))
                 .items(buildItems(order))
                 .meta(buildMeta(order, restaurant))
                 .discounts(buildOrderLevelDiscounts(order))
@@ -26,10 +31,16 @@ public class UrbanPiperOrderTransformer {
                 .build();
     }
 
-    private UrbanPiperOrderRequest.Customer buildCustomer(Customer customer) {
-        Address address = customer.getAddresses() != null && !customer.getAddresses().isEmpty()
-                ? customer.getAddresses().get(0)
-                : null;
+    private UrbanPiperOrderRequest.Customer buildCustomer(Customer customer, Order order) {
+        // Fetch address from order's delivery details
+        Address address = null;
+        if (order.getDeliveryDetails() != null && order.getDeliveryDetails().getAddressId() != null) {
+            try {
+                address = addressService.findById(order.getDeliveryDetails().getAddressId());
+            } catch (Exception e) {
+                log.warn("Failed to fetch address for order {}: {}", order.getId(), e.getMessage());
+            }
+        }
 
         return UrbanPiperOrderRequest.Customer.builder()
                 .name(customer.getName())
@@ -45,15 +56,15 @@ public class UrbanPiperOrderTransformer {
         }
 
         return UrbanPiperOrderRequest.Address.builder()
-                .line1(address.getAddressLine1())
-                .line2(address.getAddressLine2())
+                .line1(address.getAddressOne())
+                .line2(address.getAddressTwo())
                 .city(address.getCity())
                 .pincode(address.getPincode())
                 .country("India")
                 .landmark(address.getLandmark())
-                .latitude(address.getLatitude())
-                .longitude(address.getLongitude())
-                .instructions(address.getDeliveryInstructions())
+                .latitude(address.getLocation() != null ? address.getLocation().getLatitude() : null)
+                .longitude(address.getLocation() != null ? address.getLocation().getLongitude() : null)
+                .instructions(null)
                 .build();
     }
 
@@ -64,14 +75,14 @@ public class UrbanPiperOrderTransformer {
 
         return order.getOrderItems().stream()
                 .map(orderItem -> UrbanPiperOrderRequest.Item.builder()
-                        .refId(orderItem.getItemId())
+                        .refId(orderItem.getId())
                         .title(orderItem.getName())
                         .quantity(orderItem.getQuantity())
                         .pricePerUnit(orderItem.getPrice())
                         .subtotal(orderItem.getPrice() * orderItem.getQuantity())
                         .total(orderItem.getFinalPrice())
-                        .discount(orderItem.getDiscountAmount())
-                        .instructions(orderItem.getSpecialInstructions())
+                        .discount(orderItem.getItemDiscount())
+                        .instructions(null)
                         .addons(buildAddons(orderItem))
                         .taxes(buildItemTaxes(orderItem))
                         .discounts(new ArrayList<>())
@@ -97,15 +108,15 @@ public class UrbanPiperOrderTransformer {
     }
 
     private List<UrbanPiperOrderRequest.Tax> buildItemTaxes(Order.OrderItem orderItem) {
-        if (orderItem.getOrderItemTaxes() == null) {
+        if (orderItem.getOrderItemTax() == null) {
             return new ArrayList<>();
         }
 
-        return orderItem.getOrderItemTaxes().stream()
+        return orderItem.getOrderItemTax().stream()
                 .map(tax -> UrbanPiperOrderRequest.Tax.builder()
                         .title(tax.getName())
                         .value(tax.getAmount())
-                        .percentage(tax.getRate())
+                        .percentage(0.0)
                         .liabilityOn("merchant")
                         .build())
                 .collect(Collectors.toList());
@@ -118,9 +129,9 @@ public class UrbanPiperOrderTransformer {
 
         return order.getOrderDiscount().stream()
                 .map(discount -> UrbanPiperOrderRequest.Discount.builder()
-                        .title(discount.getName())
+                        .title(discount.getTitle())
                         .code(discount.getId())
-                        .value(discount.getAmount())
+                        .value(Double.parseDouble(discount.getPrice()))
                         .type("fixed")
                         .merchantSponsored(true)
                         .build())

@@ -139,9 +139,17 @@ public class PosServiceImpl implements PosService {
         Customer customer = customerService.findById(order.getCustomerId());
         Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
         
-        // Check if this is an UrbanPiper order
-        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+        // Check if this is an UrbanPiper order (using PosPartner enum)
+        if (restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name())) {
             log.info("Processing UrbanPiper order - Order ID: {}, Restaurant ID: {}, Restaurant Name: {}", 
+                    order.getId(), restaurant.getId(), restaurant.getRestaurantName());
+            processUrbanPiperOrder(order, customer, restaurant);
+            return;
+        }
+        
+        // Backward compatibility: support ingestionSource for existing restaurants
+        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+            log.info("Processing UrbanPiper order (via ingestionSource) - Order ID: {}, Restaurant ID: {}, Restaurant Name: {}", 
                     order.getId(), restaurant.getId(), restaurant.getRestaurantName());
             processUrbanPiperOrder(order, customer, restaurant);
             return;
@@ -201,10 +209,11 @@ public class PosServiceImpl implements PosService {
             log.info("Creating UrbanPiper order - Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
             
             WebClient webClient = WebClient.builder()
-                    .baseUrl("http://localhost:1000")
+                    .baseUrl(upBaseUrl)
+                    .defaultHeader("Authorization", "apikey " + upUsername + ":" + upApiKey)
                     .build();
             
-            String endpoint = "/ext/api/v1/ha/order/";
+            String endpoint = "orders/";
             
             String response = webClient
                     .post()
@@ -457,7 +466,9 @@ public class PosServiceImpl implements PosService {
             log.info("updatePosRiderStatus Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
             Restaurant restaurant = restaurantService.findById(posRiderUpdateRequest.getRestaurantId());
 
-            if (restaurant != null && "urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+            if (restaurant != null && 
+                    (restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name()) ||
+                     "urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource()))) {
                 log.info("Updating rider status for UrbanPiper");
                 return updateUrbanPiperRiderStatus(posRiderUpdateRequest);
             }

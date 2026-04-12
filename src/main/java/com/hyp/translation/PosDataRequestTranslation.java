@@ -346,6 +346,25 @@ public class PosDataRequestTranslation {
                             ? restaurantRequest.getIngestionSource()
                             : Constants.PET_POOJA);
         }
+        
+        // Set posPartner based on ingestionSource
+        if (existingRestaurant != null && existingRestaurant.getPosPartner() != null) {
+            restaurant.setPosPartner(existingRestaurant.getPosPartner());
+        } else {
+            if (restaurantRequest.getPosPartner() != null) {
+                restaurant.setPosPartner(restaurantRequest.getPosPartner());
+            } else {
+                String ingestionSource = restaurant.getIngestionSource();
+                if ("urbanpiper".equalsIgnoreCase(ingestionSource)) {
+                    restaurant.setPosPartner(com.hyp.enums.PosPartner.URBAN_PIPER.name());
+                } else if (Constants.PET_POOJA.equalsIgnoreCase(ingestionSource)) {
+                    restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
+                } else {
+                    restaurant.setPosPartner(com.hyp.enums.PosPartner.SELF.name());
+                }
+            }
+        }
+        
         String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;
         if (existingCharge != null && !existingCharge.isEmpty()) {
             restaurant.setPackagingCharge(existingCharge);
