@@ -88,8 +88,15 @@ public class OrderEventListener {
             orderEventPublisher.publishPosOrderEvent(order);
         }
 
-        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
+        if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.URBAN_PIPER.name())) {
             log.info("Publishing UrbanPiper POS order event for order: {}", order.getId());
+            orderEventPublisher.publishPosOrderEvent(order);
+        }
+        
+        // Backward compatibility: support ingestionSource for existing restaurants
+        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource()) 
+                && !restaurant.getPosPartner().equalsIgnoreCase(PosPartner.URBAN_PIPER.name())) {
+            log.info("Publishing UrbanPiper POS order event for order: {} (via ingestionSource)", order.getId());
             orderEventPublisher.publishPosOrderEvent(order);
         }
 
