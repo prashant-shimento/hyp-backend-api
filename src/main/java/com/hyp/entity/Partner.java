@@ -4,6 +4,7 @@ import com.hyp.annotation.GenerateId;
 import com.hyp.enums.PartnerType;
 import com.hyp.model.ApiConfig;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.AllArgsConstructor;
@@ -85,7 +86,7 @@ public class Partner {
     private String themeColor;
 
     @Field("location_config")
-    private Map<String, String> locationConfigs;
+    private LinkedHashMap<String, String> locationConfigs = new LinkedHashMap<>();
 
     @Field("google_analytics")
     private String googleAnalytics;
