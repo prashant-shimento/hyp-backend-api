@@ -872,7 +872,8 @@ class OrderValidatorTest {
 
         stubBasicServices(dto, basicRestaurant("rest1"), List.of(dbItem("i1", 100.0)), List.of());
         when(offerService.findByOfferCode("EXPIRED10")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(0L);
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus("cust1", "PAID", ""))
+                .thenReturn(0L);
         when(offerUsageService.getUsageCount("EXPIRED10", "cust1")).thenReturn(0);
 
         assertThatThrownBy(() -> validator.validate(dto)).hasMessageContaining("expired");
@@ -889,7 +890,8 @@ class OrderValidatorTest {
 
         stubBasicServices(dto, basicRestaurant("rest1"), List.of(dbItem("i1", 100.0)), List.of());
         when(offerService.findByOfferCode("INACTIVE")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(0L);
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus("cust1", "PAID", ""))
+                .thenReturn(0L);
         when(offerUsageService.getUsageCount("INACTIVE", "cust1")).thenReturn(0);
 
         assertThatThrownBy(() -> validator.validate(dto)).hasMessageContaining("not active");
@@ -908,7 +910,8 @@ class OrderValidatorTest {
         when(partnerService.findPartnersByRestaurantId(eq(dto.getRestaurantId()), eq(PartnerType.RESTAURANT)))
                 .thenReturn(buildPartner("p1"));
         when(offerService.findByOfferCode("ONCE")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(5L); // already 5 paid orders
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus("cust1", "PAID", ""))
+                .thenReturn(5L); // already 5 paid orders
         when(offerUsageService.getUsageCount("ONCE", "cust1")).thenReturn(1); // already used once
 
         assertThatThrownBy(() -> validator.validate(dto)).hasMessageContaining("limit exceeded");
@@ -925,7 +928,8 @@ class OrderValidatorTest {
 
         stubBasicServices(dto, basicRestaurant("rest1"), List.of(dbItem("i1", 100.0)), List.of());
         when(offerService.findByOfferCode("PARTNER_ONLY")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(0L);
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus("cust1", "PAID", ""))
+                .thenReturn(0L);
         when(offerUsageService.getUsageCount("PARTNER_ONLY", "cust1")).thenReturn(0);
 
         assertThatThrownBy(() -> validator.validate(dto)).hasMessageContaining("not valid for this partner");
@@ -945,7 +949,8 @@ class OrderValidatorTest {
 
         stubBasicServices(dto, basicRestaurant("rest1"), List.of(dbItem("i1", 100.0)), List.of());
         when(offerService.findByOfferCode("SAVE10")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(0L);
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus("cust1", "PAID", ""))
+                .thenReturn(0L);
         when(offerUsageService.getUsageCount("SAVE10", "cust1")).thenReturn(0);
         when(offerUsageService.getCustomerIdAndOfferCode("cust1", "SAVE10")).thenReturn(null);
         when(offerUsageService.save(any())).thenReturn(null);
@@ -970,7 +975,8 @@ class OrderValidatorTest {
 
         stubBasicServices(dto, basicRestaurant("rest1"), List.of(dbItem("i1", 100.0)), List.of());
         when(offerService.findByOfferCode("FLAT25")).thenReturn(offer);
-        when(orderRepository.countByCustomerIdAndStatus("cust1", "PAID")).thenReturn(0L);
+        when(orderRepository.countByCustomerIdAndOfferCodeAndStatus(any(), any(), any()))
+                .thenReturn(0L);
         when(offerUsageService.getUsageCount("FLAT25", "cust1")).thenReturn(0);
         when(offerUsageService.getCustomerIdAndOfferCode("cust1", "FLAT25")).thenReturn(null);
         when(offerUsageService.save(any())).thenReturn(null);
