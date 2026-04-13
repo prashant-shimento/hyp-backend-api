@@ -775,7 +775,7 @@ public class OrderValidator {
 
         int maxLimit =
                 offer.getMaximumRedemptionLimit() != null ? Integer.parseInt(offer.getMaximumRedemptionLimit()) : 0;
-        if (offerUsageCount >= maxLimit || paidOrderCount >= maxLimit)
+        if (paidOrderCount >= maxLimit)
             throw new Exception("Offer usage limit exceeded. Maximum " + maxLimit + " attempts allowed.");
     }
 
