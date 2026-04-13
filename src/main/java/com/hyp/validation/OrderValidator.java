@@ -171,9 +171,10 @@ public class OrderValidator {
             return null;
         });
 
-        CompletableFuture<Long> orderCountFuture = timed("orderCount", () -> {
+        CompletableFuture<Long> orderCountFuture = timed("offerUsageCount", () -> {
             if (offerCode != null && !offerCode.isBlank()) {
-                return orderRepository.countByCustomerIdAndStatus(orderDto.getCustomerId(), "DELIVERED");
+                return orderRepository.countByCustomerIdAndOfferCodeAndStatus(
+                        orderDto.getCustomerId(), offerCode, "DELIVERED");
             }
             return 0L;
         });
