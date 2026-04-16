@@ -30,6 +30,7 @@ import com.hyp.request.PosDataRequest.VariationRequest;
 import com.hyp.util.CommonUtils;
 import com.hyp.util.ValidationUtils;
 import io.micrometer.common.util.StringUtils;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -106,10 +107,14 @@ public class PosDataRequestTranslation {
 
         if (existingTax != null && existingTax.getTaxName() != null) {
             tax.setTaxName(existingTax.getTaxName());
+            tax.setTax(resolveTax(taxRequest.getTax()));
         } else {
-            tax.setTaxName(taxRequest.getTaxname());
+            String incomingTaxName = taxRequest.getTaxname();
+            boolean isValidTax = "CGST".equalsIgnoreCase(incomingTaxName) || "SGST".equalsIgnoreCase(incomingTaxName);
+            tax.setTaxName(isValidTax ? incomingTaxName : "CGST");
+            tax.setTax(resolveTax(taxRequest.getTax()));
         }
-        tax.setTax(taxRequest.getTax());
+
         tax.setTaxType(taxRequest.getTaxtype());
         tax.setTaxCoreOrTotal(taxRequest.getTax_coreortotal());
         tax.setTaxTaxType(taxRequest.getTax_taxtype());
@@ -119,6 +124,20 @@ public class PosDataRequestTranslation {
         tax.setConsiderInCoreAmount(taxRequest.getConsider_in_core_amount());
         tax.setActive(taxRequest.getActive());
         return tax;
+    }
+
+    private static String resolveTax(String taxValue) {
+        try {
+            if (taxValue != null && !taxValue.trim().isEmpty()) {
+                BigDecimal value = new BigDecimal(taxValue.trim());
+                if (value.compareTo(BigDecimal.ZERO) > 0) {
+                    return taxValue.trim();
+                }
+            }
+        } catch (NumberFormatException e) {
+            // non-numeric → fallback
+        }
+        return "5.00";
     }
 
     public static List<Tax> translateToTaxList(List<TaxRequest> taxRequestList, List<Tax> existingTaxes) {

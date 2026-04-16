@@ -162,6 +162,9 @@ public class Order {
     @Field("offer_id")
     private String offerCode;
 
+    @Field("discount_value")
+    private Double discountValue;
+
     @Data
     @NoArgsConstructor
     public static class OrderItem {
