@@ -15,7 +15,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,8 +28,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.util.Pool;
 
 @Slf4j
 @RestController
@@ -38,10 +38,10 @@ public class CacheController {
     private CacheManager cacheManager;
 
     @Autowired
-    private JedisConnectionFactory jedisConnectionFactory;
+    private LettuceConnectionFactory lettuceConnectionFactory;
 
     @Autowired
-    private JedisPooled jedisPooled;
+    private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     private CacheService cacheService;
@@ -111,61 +111,30 @@ public class CacheController {
 
     /**
      * Get Redis connection pool statistics.
-     * JedisPooled is the primary pool for all operations.
-     * JedisConnectionFactory is a minimal pool used only for pub/sub.
+     * Lettuce pool configuration and connection info.
      */
     @GetMapping("/redis/pool-stats")
     public ResponseEntity<Response> getRedisPoolStats() {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         try {
-            // Get JedisPooled pool stats (PRIMARY pool for all operations)
-            Pool<?> pool = jedisPooled.getPool();
-            if (pool != null) {
-                Map<String, Object> jedisPoolStats = new LinkedHashMap<>();
-                jedisPoolStats.put("description", "Primary pool for all Redis operations");
-                jedisPoolStats.put("numActive", pool.getNumActive());
-                jedisPoolStats.put("numIdle", pool.getNumIdle());
-                jedisPoolStats.put("numWaiters", pool.getNumWaiters());
-                jedisPoolStats.put("maxTotal", pool.getMaxTotal());
-                jedisPoolStats.put("maxIdle", pool.getMaxIdle());
-                jedisPoolStats.put("minIdle", pool.getMinIdle());
-                jedisPoolStats.put("meanBorrowWaitTimeMillis", pool.getMeanBorrowWaitTimeMillis());
-                jedisPoolStats.put("maxBorrowWaitTimeMillis", pool.getMaxBorrowWaitTimeMillis());
+            Map<String, Object> poolStats = new LinkedHashMap<>();
+            poolStats.put("description", "Lettuce connection pool for all Redis operations");
+            poolStats.put("hostName", lettuceConnectionFactory.getHostName());
+            poolStats.put("port", lettuceConnectionFactory.getPort());
 
-                // Calculate utilization percentage
-                int maxTotal = pool.getMaxTotal();
-                int active = pool.getNumActive();
-                double utilizationPercent = maxTotal > 0 ? (active * 100.0 / maxTotal) : 0;
-                jedisPoolStats.put("utilizationPercent", String.format("%.2f%%", utilizationPercent));
-
-                // Health status
-                String healthStatus = "HEALTHY";
-                if (utilizationPercent >= 90) {
-                    healthStatus = "CRITICAL";
-                } else if (utilizationPercent >= 75) {
-                    healthStatus = "WARNING";
-                }
-                jedisPoolStats.put("healthStatus", healthStatus);
-
-                stats.put("jedisPooled", jedisPoolStats);
+            if (lettuceConnectionFactory.getClientConfiguration()
+                    instanceof LettucePoolingClientConfiguration poolingConfig) {
+                var poolConfig = poolingConfig.getPoolConfig();
+                poolStats.put("maxTotal", poolConfig.getMaxTotal());
+                poolStats.put("maxIdle", poolConfig.getMaxIdle());
+                poolStats.put("minIdle", poolConfig.getMinIdle());
+                poolStats.put("maxWaitMillis", poolConfig.getMaxWaitDuration().toMillis());
+                poolStats.put(
+                        "commandTimeout", poolingConfig.getCommandTimeout().toMillis());
             }
 
-            // Get JedisConnectionFactory info (minimal pool for pub/sub only)
-            Map<String, Object> connectionFactoryStats = new LinkedHashMap<>();
-            connectionFactoryStats.put("description", "Minimal pool for pub/sub listeners only");
-            connectionFactoryStats.put("hostName", jedisConnectionFactory.getHostName());
-            connectionFactoryStats.put("port", jedisConnectionFactory.getPort());
-            connectionFactoryStats.put("usePool", jedisConnectionFactory.getUsePool());
-            connectionFactoryStats.put("maxTotal", 4);
-            stats.put("pubSubPool", connectionFactoryStats);
-
-            // Summary
-            Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("totalMaxConnections", pool != null ? pool.getMaxTotal() + 4 : 4);
-            summary.put("redisMaxClients", 30);
-            summary.put("availableBuffer", pool != null ? 30 - pool.getMaxTotal() - 4 : 26);
-            stats.put("summary", summary);
+            stats.put("lettucePool", poolStats);
 
             return ResponseEntity.ok(
                     new Response(Collections.singletonList(stats), false, "Redis pool stats retrieved successfully"));
@@ -207,24 +176,16 @@ public class CacheController {
         Map<String, Object> health = new LinkedHashMap<>();
 
         try {
-            // Ping Redis
             long startTime = System.currentTimeMillis();
-            String pingResponse = jedisPooled.ping();
+            String pingResponse =
+                    stringRedisTemplate.getConnectionFactory().getConnection().ping();
             long latency = System.currentTimeMillis() - startTime;
 
             health.put("status", "UP");
             health.put("ping", pingResponse);
             health.put("latencyMs", latency);
-            health.put("host", jedisConnectionFactory.getHostName());
-            health.put("port", jedisConnectionFactory.getPort());
-
-            // Pool info
-            Pool<?> pool = jedisPooled.getPool();
-            if (pool != null) {
-                health.put("activeConnections", pool.getNumActive());
-                health.put("idleConnections", pool.getNumIdle());
-                health.put("maxConnections", pool.getMaxTotal());
-            }
+            health.put("host", lettuceConnectionFactory.getHostName());
+            health.put("port", lettuceConnectionFactory.getPort());
 
             return ResponseEntity.ok(new Response(Collections.singletonList(health), false, "Redis is healthy"));
 

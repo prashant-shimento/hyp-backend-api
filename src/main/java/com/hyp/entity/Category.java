@@ -17,8 +17,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Document(collection = "categories")
 public class Category extends BaseEntity {
 
-    private static final long serialVersionUID = 1L;
-
     @Field("parent_category_id")
     private String parentCategoryId;
 

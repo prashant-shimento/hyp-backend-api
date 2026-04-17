@@ -33,6 +33,9 @@ public class LocationService {
     private RedisService redisService;
 
     @Autowired
+    private CacheService cacheService;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     public boolean isLocationDeliverable(
@@ -124,25 +127,16 @@ public class LocationService {
     }
 
     public String getPlaceDetails(String placeId) {
-        String key = "google:map:details:" + placeId;
-        Optional<String> cachedDetails = redisService.getRedisJsonData(key, String.class);
-        if (cachedDetails.isPresent()) {
-            redisService.increment("metrics:places:details:cache_hits");
-            log.info("Returning cached PlaceDetails for placeId: {}", placeId);
-            return cachedDetails.get();
-        }
+        return cacheService.getOrLoad("placeDetails", placeId, String.class, () -> fetchPlaceDetailsFromApi(placeId));
+    }
 
+    private String fetchPlaceDetailsFromApi(String placeId) {
         try {
-
-            // String tokenKey = "google:map:session:" + placeId; //TODO: Need to set the session token from front end
-            // Optional<String> sessionToken = redisService.getRedisData(tokenKey);
             String url = "https://places.googleapis.com/v1/places/" + placeId;
             WebClient.Builder builder = WebClient.builder()
                     .baseUrl(url)
                     .defaultHeader("X-Goog-Api-Key", googleApiKey)
                     .defaultHeader("X-Goog-FieldMask", "addressComponents,location");
-
-            // sessionToken.ifPresent(s -> builder.defaultHeader("X-Goog-Session-Token", s));
 
             WebClient webClient = builder.build();
             Mono<String> placeResponse = webClient
@@ -153,11 +147,6 @@ public class LocationService {
                             e -> log.error("Error in getPlaceDetails on placeId {} : {}", placeId, e.getMessage(), e));
             String response = placeResponse.block();
             redisService.increment("metrics:places:details:api_hits");
-
-            if (response != null) {
-                redisService.setRedisJsonData(
-                        key, response, Duration.ofHours(12).toSeconds());
-            }
             return response;
         } catch (Exception e) {
             log.error("Error in getPlaceDetails {}", e.getMessage());

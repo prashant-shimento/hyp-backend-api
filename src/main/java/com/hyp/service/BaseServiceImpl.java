@@ -149,7 +149,7 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Override
     public List<T> findByRestaurant(Class<T> entityClass, Object value) {
-        Query query = new Query(Criteria.where("restaurantId").is(value));
+        Query query = new Query(Criteria.where("restaurant_id").is(value));
         return mongoTemplate.find(query, entityClass);
     }
 
@@ -178,7 +178,53 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     public List<T> findByQueryWithReferences(Class<T> entityClass, Query query) {
         List<T> entities = mongoTemplate.find(query, entityClass);
-        return entities.stream().map(this::populateReferences).collect(Collectors.toList());
+        populateReferencesBatch(entities);
+        return entities;
+    }
+
+    private void populateReferencesBatch(List<T> entities) {
+        // Batch Item taxes: collect all tax IDs → 1 query → distribute
+        Set<String> allTaxIds = new HashSet<>();
+        for (T entity : entities) {
+            if (entity instanceof Item item && item.getItemTax() != null) {
+                allTaxIds.addAll(item.getItemTax());
+            }
+        }
+        if (!allTaxIds.isEmpty()) {
+            Map<String, Tax> taxMap =
+                    mongoTemplate.find(Query.query(Criteria.where("_id").in(allTaxIds)), Tax.class, "taxes").stream()
+                            .collect(Collectors.toMap(Tax::getId, t -> t));
+            for (T entity : entities) {
+                if (entity instanceof Item item && item.getItemTax() != null) {
+                    item.setTaxes(item.getItemTax().stream()
+                            .map(taxMap::get)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList()));
+                }
+            }
+        }
+
+        // Batch Partner restaurants: collect all restaurant IDs → 1 query → distribute
+        Set<String> allRestaurantIds = new HashSet<>();
+        for (T entity : entities) {
+            if (entity instanceof Partner partner && partner.getRestaurants() != null) {
+                allRestaurantIds.addAll(partner.getRestaurants());
+            }
+        }
+        if (!allRestaurantIds.isEmpty()) {
+            Map<String, Restaurant> restaurantMap = mongoTemplate
+                    .find(Query.query(Criteria.where("_id").in(allRestaurantIds)), Restaurant.class, "restaurants")
+                    .stream()
+                    .collect(Collectors.toMap(Restaurant::getId, r -> r));
+            for (T entity : entities) {
+                if (entity instanceof Partner partner && partner.getRestaurants() != null) {
+                    partner.setRestaurantDetails(partner.getRestaurants().stream()
+                            .map(restaurantMap::get)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList()));
+                }
+            }
+        }
     }
 
     @Override

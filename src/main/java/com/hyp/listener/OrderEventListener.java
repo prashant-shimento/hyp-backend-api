@@ -15,6 +15,7 @@ import com.hyp.enums.PosPartner;
 import com.hyp.event.OrderEvent;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.event.OrderStatusChangeEvent;
+import com.hyp.event.PaymentEvent;
 import com.hyp.exception.OneSignalException;
 import com.hyp.request.OneSignalNotificationAlias;
 import com.hyp.request.OneSignalNotificationRequest;
@@ -294,5 +295,12 @@ public class OrderEventListener {
             default:
                 break;
         }
+    }
+
+    @Async
+    @EventListener
+    public void handlePaymentSuccessEvent(PaymentEvent event) {
+        log.info("Order Event listener handlePaymentSuccessEvent");
+        paymentService.processSuccessPayment(event.getOrder(), event.getPayment(), event.getPaymentStatus());
     }
 }

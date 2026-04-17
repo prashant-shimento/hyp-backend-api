@@ -40,7 +40,7 @@ public class Variation extends BaseEntity {
     private List<String> addonGroupId;
 
     @Field("variation_allow_addon")
-    private int variationAllowAddon;
+    private Integer variationAllowAddon;
 
     @Field("variation_id")
     private String variationId;

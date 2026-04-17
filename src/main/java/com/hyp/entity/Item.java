@@ -19,8 +19,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Document(collection = "items")
 public class Item extends BaseEntity {
 
-    private static final long serialVersionUID = 1L;
-
     @Field("itemdescription")
     private String itemDescription;
 

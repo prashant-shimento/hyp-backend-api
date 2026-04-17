@@ -150,7 +150,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         if (delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
                 || delivery.getService().equalsIgnoreCase("porter")) {
             log.info("Getting Porter Rider location of the order {}", orderId);
-            riderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+            riderLocation = deliveryService.getPorterRiderLocation(delivery);
         } else {
             log.info("Getting Rider location of the order {}", orderId);
             riderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());

@@ -48,7 +48,14 @@ public class PartnerService extends BaseServiceImpl<Partner, String> {
     }
 
     public Partner findPartnersByRestaurantId(String restaurantId, PartnerType type) {
-        return partnerRepository.findByRestaurantsContainingAndType(restaurantId, type);
+        if (restaurantId == null) return null;
+        String cacheKey = "restaurant:" + restaurantId + ":" + type.name();
+        return cacheService()
+                .getOrLoad(
+                        "partners",
+                        cacheKey,
+                        Partner.class,
+                        () -> partnerRepository.findByRestaurantsContainingAndType(restaurantId, type));
     }
 
     public void uploadAndSavePartnerImages(String partnerId, MultiValueMap<String, MultipartFile> filesByField) {

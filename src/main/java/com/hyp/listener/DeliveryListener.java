@@ -173,7 +173,7 @@ public class DeliveryListener implements MessageListener {
                 if (delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
                         || delivery.getService().equalsIgnoreCase("porter")) {
                     log.info("Getting Porter Rider location of the order {}", orderId);
-                    currentRiderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+                    currentRiderLocation = deliveryService.getPorterRiderLocation(delivery);
                 } else {
                     log.info("Getting Rider location of the order {}", orderId);
                     currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());

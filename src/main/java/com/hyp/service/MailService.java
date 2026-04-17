@@ -18,10 +18,14 @@ public class MailService {
     @Autowired
     PartnerService partnerService;
 
+    @Value("${notification.enabled:true}")
+    private boolean notificationEnabled;
+
     @Value("${notification.email.address}")
     private String groupEmailAddress;
 
     public void sendNotificationEmail(MailNotificationRequest notificationRequest) {
+        if (!notificationEnabled) return;
         if (groupEmailAddress == null || groupEmailAddress.isEmpty()) {
             log.warn("No valid email address found in application properties.");
             return;

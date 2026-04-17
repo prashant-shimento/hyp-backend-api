@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
@@ -13,8 +14,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import redis.clients.jedis.JedisPooled;
 
 @Slf4j
 @Service
@@ -29,7 +30,7 @@ public class CacheService {
     private static final int NULL_TTL_SECONDS = 10;
     private static final int L1_MAX_SIZE = 1000;
 
-    private final JedisPooled jedis;
+    private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
     private final ConcurrentHashMap<String, Cache<String, Object>> l1Caches = new ConcurrentHashMap<>();
@@ -54,8 +55,10 @@ public class CacheService {
         @SuppressWarnings("unchecked")
         T l1Value = (T) l1Cache.getIfPresent(key);
         if (l1Value != null) {
+            log.trace("cache HIT L1 [{}/{}]", cacheName, key);
             return l1Value;
         }
+        log.debug("cache MISS L1 [{}/{}] — checking L2 (Redis)", cacheName, key);
 
         // -------- SINGLE FLIGHT --------
         Object lock = keyLocks.computeIfAbsent(buildKey(cacheName, key), k -> new Object());
@@ -65,19 +68,22 @@ public class CacheService {
                 @SuppressWarnings("unchecked")
                 T retryValue = (T) l1Cache.getIfPresent(key);
                 if (retryValue != null) {
+                    log.trace("cache HIT L1 [{}/{}] (after lock)", cacheName, key);
                     return retryValue;
                 }
 
                 // -------- L2 --------
                 String redisKey = buildKey(cacheName, key);
                 try {
-                    String redisValue = jedis.get(redisKey);
+                    String redisValue = stringRedisTemplate.opsForValue().get(redisKey);
                     if (redisValue != null) {
                         if (NULL_MARKER.equals(redisValue)) {
+                            log.debug("cache HIT L2 (null) [{}/{}]", cacheName, key);
                             return null;
                         }
                         T value = objectMapper.readValue(redisValue, type);
                         l1Cache.put(key, value);
+                        log.debug("cache HIT L2 [{}/{}] — promoted to L1", cacheName, key);
                         return value;
                     }
                 } catch (Exception e) {
@@ -85,7 +91,11 @@ public class CacheService {
                 }
 
                 // -------- DB --------
+                log.debug("cache MISS L2 [{}/{}] — loading from DB", cacheName, key);
+                long dbStart = System.currentTimeMillis();
                 T loaded = loader.get();
+                log.debug("cache DB load [{}/{}] took {}ms", cacheName, key, System.currentTimeMillis() - dbStart);
+
                 if (loaded == null) {
                     cacheNull(cacheName, key);
                     return null;
@@ -113,7 +123,7 @@ public class CacheService {
         l1Cache.invalidate(key);
 
         try {
-            jedis.del(buildKey(cacheName, key));
+            stringRedisTemplate.unlink(buildKey(cacheName, key));
         } catch (Exception e) {
             log.warn("Redis eviction failed [{}]: {}", key, e.getMessage());
         }
@@ -124,7 +134,7 @@ public class CacheService {
         if (l1Cache.getIfPresent(key) != null) return true;
 
         try {
-            return jedis.exists(buildKey(cacheName, key));
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(buildKey(cacheName, key)));
         } catch (Exception e) {
             return false;
         }
@@ -153,9 +163,9 @@ public class CacheService {
     @SuppressWarnings("unchecked")
     public Set<String> getServerCorrectionPartnerIds() {
         try {
-            Object cached = getOrLoad(SERVER_CORRECTION_CACHE, SERVER_CORRECTION_KEY, Set.class, HashSet::new);
-            if (cached instanceof Set) {
-                return (Set<String>) cached;
+            Set<String> cached = getOrLoad(SERVER_CORRECTION_CACHE, SERVER_CORRECTION_KEY, Set.class, HashSet::new);
+            if (cached != null) {
+                return cached;
             }
             return Collections.emptySet();
         } catch (Exception e) {
@@ -180,7 +190,12 @@ public class CacheService {
         l1Cache.put(key, value);
 
         try {
-            jedis.setex(buildKey(cacheName, key), L2_TTL_SECONDS, objectMapper.writeValueAsString(value));
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(
+                            buildKey(cacheName, key),
+                            objectMapper.writeValueAsString(value),
+                            Duration.ofSeconds(L2_TTL_SECONDS));
         } catch (Exception e) {
             log.warn("Redis write failed [{}]: {}", key, e.getMessage());
         }
@@ -190,7 +205,9 @@ public class CacheService {
         Cache<String, Object> l1Cache = getL1Cache(cacheName);
         l1Cache.invalidate(key);
         try {
-            jedis.setex(buildKey(cacheName, key), NULL_TTL_SECONDS, NULL_MARKER);
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(buildKey(cacheName, key), NULL_MARKER, Duration.ofSeconds(NULL_TTL_SECONDS));
         } catch (Exception e) {
             log.warn("Redis NULL cache failed [{}]: {}", key, e.getMessage());
         }

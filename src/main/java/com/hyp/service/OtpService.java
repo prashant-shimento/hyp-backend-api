@@ -26,7 +26,7 @@ public class OtpService {
     @Value("${sms.key}")
     private String smsKey;
 
-    private static final Duration OTP_TTL = Duration.ofMinutes(1);
+    private static final Duration OTP_TTL = Duration.ofSeconds(100);
     private static final String OTP_KEY_PREFIX = "otp:";
 
     private final RedisService redisService;

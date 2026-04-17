@@ -20,6 +20,7 @@ import com.hyp.service.NotificationService;
 import com.hyp.service.OneSignalAlertService;
 import com.hyp.service.RedisService;
 import com.hyp.util.LoggingUtils;
+import jakarta.annotation.PostConstruct;
 import java.time.Duration;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
@@ -52,15 +54,27 @@ public class PidgeClient {
     @Value("${delivery.pidge.smart.id}")
     private Integer smartId;
 
+    @Value("${porter.rider.location.api.url}")
+    private String porterApiUrl;
+
+    @Value("${porter.api.uuid}")
+    private String porterApiUuid;
+
     private static final int MAX_RETRIES = 3;
     private static final Duration BACKOFF_DURATION = Duration.ofSeconds(2);
     private static final Duration MAX_BACKOFF_DURATION = Duration.ofSeconds(6);
+    private static final Duration BLOCK_TIMEOUT = Duration.ofSeconds(10);
 
     @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
     private RedisService redisService;
+
+    @Autowired
+    private com.hyp.service.CacheService cacheService;
+
+    private static final String TOKEN_CACHE = "pidgeToken";
 
     @Autowired
     RetryTemplate retryTemplate;
@@ -77,40 +91,52 @@ public class PidgeClient {
     @Autowired
     private OneSignalAlertService oneSignalAlertService;
 
-    private String getToken() throws DeliveryException {
-        return redisService.getRedisData(Constants.REDIS_KEY_PIDGE_TOKEN).orElseThrow(() -> {
-            log.error("Token not found in Redis for key: pidgeToken");
-            return new DeliveryException("Token not found in Redis");
-        });
+    private WebClient webClient;
+
+    // Debounce guard: prevents concurrent 401 failures from triggering multiple simultaneous refreshes
+    private volatile long lastRefreshEpoch = 0;
+    private static final long REFRESH_DEBOUNCE_MS = 2_000;
+
+    @PostConstruct
+    private void initWebClient() {
+        this.webClient = WebClient.builder().baseUrl(baseUrl).build();
     }
 
-    private WebClient getClient() throws DeliveryException {
-        return WebClient.builder()
-                .baseUrl(baseUrl)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, getToken())
-                .build();
+    private String getAuthToken() {
+        return cacheService.getOrLoad(TOKEN_CACHE, "token", String.class, () -> redisService
+                .getRedisData(Constants.REDIS_KEY_PIDGE_TOKEN)
+                .orElseThrow(() -> new RuntimeException("Pidge token not found in Redis")));
     }
 
     private <T> Mono<T> executeWithRetry(Mono<T> mono) {
         return mono.retryWhen(Retry.backoff(MAX_RETRIES, BACKOFF_DURATION)
                 .maxBackoff(MAX_BACKOFF_DURATION)
-                .filter(throwable -> throwable instanceof WebClientResponseException.Unauthorized)
+                .filter(throwable -> throwable instanceof WebClientResponseException.Unauthorized
+                        || throwable instanceof WebClientRequestException)
                 .doBeforeRetry(signal -> {
-                    log.warn("Retrying due to Unauthorized error, attempt {}", signal.totalRetries() + 1);
-                    refreshToken();
+                    if (signal.failure() instanceof WebClientResponseException.Unauthorized) {
+                        log.warn("Retrying due to Unauthorized error, attempt {}", signal.totalRetries() + 1);
+                        refreshToken();
+                    } else {
+                        log.warn(
+                                "Retrying due to connection error, attempt {}: {}",
+                                signal.totalRetries() + 1,
+                                signal.failure().getMessage());
+                    }
                 }));
     }
 
-    public Mono<String> createDeliveryOrder(DeliveryOrderRequest deliveryOrderRequest) throws DeliveryException {
+    public Mono<String> createDeliveryOrder(DeliveryOrderRequest deliveryOrderRequest) {
         String endpoint = "/v1.0/store/channel/vendor/order";
         LoggingUtils.logRequest("createDeliveryOrder", deliveryOrderRequest);
-        return executeWithRetry(getClient()
+        return executeWithRetry(Mono.defer(() -> webClient
                         .post()
                         .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(BodyInserters.fromValue(deliveryOrderRequest))
                         .retrieve()
-                        .bodyToMono(String.class))
+                        .bodyToMono(String.class)))
                 .flatMap(response -> extractOrderId(response, deliveryOrderRequest))
                 .doOnSuccess(orderId -> log.info("createDeliveryOrder successful for DeliveryOrderId: {}", orderId))
                 .onErrorResume(e -> {
@@ -121,17 +147,18 @@ public class PidgeClient {
                 });
     }
 
-    public Mono<Void> fulfillDeliveryOrder(DeliveryFulfillRequest deliveryFulfillRequest) throws DeliveryException {
+    public Mono<Void> fulfillDeliveryOrder(DeliveryFulfillRequest deliveryFulfillRequest) {
         String endpoint = "/v1.0/store/channel/vendor/order/fulfill";
         LoggingUtils.logRequest("fulfillDeliveryOrder", deliveryFulfillRequest);
 
-        return executeWithRetry(getClient()
+        return executeWithRetry(Mono.defer(() -> webClient
                         .post()
                         .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(BodyInserters.fromValue(deliveryFulfillRequest))
                         .retrieve()
-                        .bodyToMono(Void.class))
+                        .bodyToMono(Void.class)))
                 .doOnSuccess(unused -> log.info(
                         "fulfillDeliveryOrder completed successfully for DeliveryOrderId: {}",
                         deliveryFulfillRequest.getIds().toString()))
@@ -146,14 +173,15 @@ public class PidgeClient {
                 });
     }
 
-    public Mono<Void> cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
+    public Mono<Void> cancelDeliveryOrder(String deliveryOrderId) {
         String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/cancel";
         LoggingUtils.logRequest("cancelDeliveryOrder", endpoint);
-        return executeWithRetry(getClient()
-                .post()
-                .uri(endpoint)
-                .retrieve()
-                .bodyToMono(Void.class)
+        return executeWithRetry(Mono.defer(() -> webClient
+                        .post()
+                        .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, getAuthToken())
+                        .retrieve()
+                        .bodyToMono(Void.class)))
                 .doOnSuccess(unused ->
                         log.info("cancelDeliveryOrder completed successfully for DeliveryOrderId: {}", deliveryOrderId))
                 .doOnError(e -> log.error(
@@ -166,31 +194,31 @@ public class PidgeClient {
                             new DeliveryException("cancelDeliveryOrder" + " " + deliveryOrderId, e.getMessage());
                     sendAlert(deliveryException);
                     return deliveryException;
-                }));
+                });
     }
 
-    public Mono<Object> smartFulfillDeliveryOrder(DeliveryFulfillRequest deliveryFulfillRequest)
-            throws DeliveryException {
+    public Mono<Object> smartFulfillDeliveryOrder(DeliveryFulfillRequest deliveryFulfillRequest) {
         String endpoint = "/v1.0/store/channel/vendor/order/fulfill/smart";
         deliveryFulfillRequest.setSmartId(smartId);
         LoggingUtils.logRequest("smartFulfillDeliveryOrder", deliveryFulfillRequest);
 
-        return executeWithRetry(getClient()
-                .post()
-                .uri(endpoint)
-                .body(BodyInserters.fromValue(deliveryFulfillRequest))
-                .retrieve()
-                .bodyToMono(DeliveryFulfillResponse.class)
-                .flatMap(response -> {
-                    LoggingUtils.logResponse("smartFulfillDeliveryOrder", response);
-                    if (!"Allocation successful"
-                            .equalsIgnoreCase(response.getData().getMessage())) {
-                        String errorMessage = "Order not fulfilled for IDs: " + deliveryFulfillRequest.getIds();
-                        log.error(errorMessage);
-                        return Mono.error(new DeliveryException(errorMessage));
-                    }
-                    return Mono.empty();
-                })
+        return executeWithRetry(Mono.defer(() -> webClient
+                        .post()
+                        .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, getAuthToken())
+                        .body(BodyInserters.fromValue(deliveryFulfillRequest))
+                        .retrieve()
+                        .bodyToMono(DeliveryFulfillResponse.class)
+                        .flatMap(response -> {
+                            LoggingUtils.logResponse("smartFulfillDeliveryOrder", response);
+                            if (!"Allocation successful"
+                                    .equalsIgnoreCase(response.getData().getMessage())) {
+                                String errorMessage = "Order not fulfilled for IDs: " + deliveryFulfillRequest.getIds();
+                                log.error(errorMessage);
+                                return Mono.error(new DeliveryException(errorMessage));
+                            }
+                            return Mono.empty();
+                        })))
                 .doOnError(e ->
                         log.error("Error in smartFulfillDeliveryOrder for IDs: {}", deliveryFulfillRequest.getIds(), e))
                 .onErrorResume(e -> {
@@ -201,17 +229,18 @@ public class PidgeClient {
                             e.getMessage());
                     sendAlert(deliveryException);
                     return Mono.error(deliveryException);
-                }));
+                });
     }
 
-    public Mono<Void> unallocateDeliveryOrder(String deliveryOrderId) throws DeliveryException {
+    public Mono<Void> unallocateDeliveryOrder(String deliveryOrderId) {
         String endpoint = "/v1.0/store/channel/vendor/" + deliveryOrderId + "/fulfillment/cancel";
         LoggingUtils.logRequest("unallocateDeliveryOrder", endpoint);
-        return executeWithRetry(getClient()
-                .put()
-                .uri(endpoint)
-                .retrieve()
-                .bodyToMono(Void.class)
+        return executeWithRetry(Mono.defer(() -> webClient
+                        .put()
+                        .uri(endpoint)
+                        .header(HttpHeaders.AUTHORIZATION, getAuthToken())
+                        .retrieve()
+                        .bodyToMono(Void.class)))
                 .doOnSuccess(unused -> log.info(
                         "unallocateDeliveryOrder completed successfully for DeliveryOrderId: {}", deliveryOrderId))
                 .doOnError(
@@ -224,7 +253,7 @@ public class PidgeClient {
                             new DeliveryException("unallocateDeliveryOrder " + deliveryOrderId, e.getMessage());
                     sendAlert(deliveryException);
                     return deliveryException;
-                }));
+                });
     }
 
     private Mono<String> extractOrderId(String response, DeliveryOrderRequest deliveryOrderRequest) {
@@ -249,14 +278,15 @@ public class PidgeClient {
         String endpoint = "/v1.0/store/channel/vendor/quote";
         try {
             LoggingUtils.logRequest("getDeliveryQuote", deliveryQuoteRequest);
-            DeliveryQuote response = getClient()
+            DeliveryQuote response = webClient
                     .post()
                     .uri(endpoint)
+                    .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                     .body(BodyInserters.fromValue(deliveryQuoteRequest))
                     .retrieve()
                     .bodyToMono(DeliveryQuote.class)
                     .doOnNext(res -> LoggingUtils.logResponse("getDeliveryQuote", res))
-                    .block();
+                    .block(BLOCK_TIMEOUT);
             return response;
         } catch (WebClientResponseException.Unauthorized e) {
             log.warn("Unauthorized error. Refreshing token...");
@@ -277,16 +307,17 @@ public class PidgeClient {
 
     @Retryable(retryFor = {WebClientResponseException.Unauthorized.class})
     public DeliveryQuote getServiceability(String deliveryOrderId) throws DeliveryException {
-        String endpoint = "v1.0/store/channel/vendor/order/fulfillment/services?ids=" + deliveryOrderId;
+        String endpoint = "/v1.0/store/channel/vendor/order/fulfillment/services?ids=" + deliveryOrderId;
         try {
             LoggingUtils.logRequest("getServiceability", endpoint);
-            DeliveryQuote response = getClient()
+            DeliveryQuote response = webClient
                     .get()
                     .uri(endpoint)
+                    .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                     .retrieve()
                     .bodyToMono(DeliveryQuote.class)
                     .doOnNext(res -> LoggingUtils.logResponse("getServiceability", res))
-                    .block();
+                    .block(BLOCK_TIMEOUT);
             return response;
         } catch (WebClientResponseException.Unauthorized e) {
             log.warn("Unauthorized error. Refreshing token...");
@@ -311,13 +342,14 @@ public class PidgeClient {
         String endpoint = "/v1.0/store/channel/vendor/order/" + deliveryOrderId + "/fulfillment/tracking";
         try {
             LoggingUtils.logRequest("getRiderCurrentLocation", endpoint);
-            DeliveryRiderLocation response = getClient()
+            DeliveryRiderLocation response = webClient
                     .get()
                     .uri(endpoint)
+                    .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                     .retrieve()
                     .bodyToMono(DeliveryRiderLocation.class)
                     .doOnNext(res -> LoggingUtils.logResponse("getRiderCurrentLocation", res))
-                    .block();
+                    .block(BLOCK_TIMEOUT);
             return response;
         } catch (WebClientResponseException.Unauthorized e) {
             log.warn("Unauthorized error. Refreshing token...");
@@ -341,16 +373,17 @@ public class PidgeClient {
 
     @Retryable(retryFor = {WebClientResponseException.Unauthorized.class})
     public DeliveryOrderStatus getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
-        String endpoint = "v1.0/store/channel/vendor/order/" + deliveryOrderId;
+        String endpoint = "/v1.0/store/channel/vendor/order/" + deliveryOrderId;
         LoggingUtils.logRequest("getDeliveryOrderStatus", endpoint);
         try {
-            DeliveryOrderStatus response = getClient()
+            DeliveryOrderStatus response = webClient
                     .get()
                     .uri(endpoint)
+                    .header(HttpHeaders.AUTHORIZATION, getAuthToken())
                     .retrieve()
                     .bodyToMono(DeliveryOrderStatus.class)
                     .doOnNext(res -> LoggingUtils.logResponse("getDeliveryOrderStatus", res))
-                    .block();
+                    .block(BLOCK_TIMEOUT);
             return response;
 
         } catch (WebClientResponseException.Unauthorized e) {
@@ -372,13 +405,20 @@ public class PidgeClient {
         }
     }
 
-    public void refreshToken() {
+    public synchronized void refreshToken() {
+        long now = System.currentTimeMillis();
+        if (now - lastRefreshEpoch < REFRESH_DEBOUNCE_MS) {
+            log.debug("Token refresh debounced — another thread refreshed {}ms ago", now - lastRefreshEpoch);
+            return;
+        }
         try {
             String newToken = generateToken();
             if (newToken == null || newToken.isEmpty()) {
                 throw new DeliveryException("Failed to refresh token: Received empty token");
             }
             redisService.setRedisData(Constants.REDIS_KEY_PIDGE_TOKEN, newToken, 0);
+            cacheService.evict(TOKEN_CACHE, "token");
+            lastRefreshEpoch = System.currentTimeMillis();
             log.info("Token refreshed successfully");
         } catch (Exception e) {
             log.error("Error refreshing token: {}", e.getMessage(), e);
@@ -421,47 +461,46 @@ public class PidgeClient {
         oneSignalAlertService.notifyErrorResponseAlert(e.getAction(), e.getMessage(), "DELIVERY");
     }
 
-    @Retryable(retryFor = {WebClientResponseException.Unauthorized.class})
     public RiderLocation getRiderLocation(String deliveryOrderId) throws DeliveryException {
-        String endpoint = "v1.0/store/tracking/rider-location?id=" + deliveryOrderId;
+        String endpoint = "/v1.0/store/tracking/rider-location?id=" + deliveryOrderId;
         try {
             LoggingUtils.logRequest("getRiderLocation", endpoint);
-            RiderLocation response = getClient()
-                    .get()
-                    .uri(endpoint)
-                    .retrieve()
-                    .bodyToMono(RiderLocation.class)
-                    .doOnNext(res -> LoggingUtils.logResponse("getRiderLocation", res))
-                    .block();
-            return response;
+            return executeWithRetry(Mono.defer(() -> webClient
+                            .get()
+                            .uri(endpoint)
+                            .header(HttpHeaders.AUTHORIZATION, getAuthToken())
+                            .retrieve()
+                            .bodyToMono(RiderLocation.class)
+                            .doOnNext(res -> LoggingUtils.logResponse("getRiderLocation", res))))
+                    .block(BLOCK_TIMEOUT);
         } catch (Exception e) {
             log.error("Error in getRiderLocation: {}", e.getMessage(), e);
             throw new DeliveryException("Error in getRiderLocation: " + e.getMessage());
         }
     }
 
-    @Retryable(retryFor = {WebClientResponseException.Unauthorized.class})
     public RiderLocation getPorterRiderLocation(String orderId) throws DeliveryException {
-        String customerUuid = "c64094ca-5f13-4aeb-9a81-f9f0af5e43c1";
-        String endpoint = String.format(
-                "https://porter.in/api/public/orders/order_details?order_id=%s&customer_uuid=%s",
-                orderId, customerUuid);
+        String endpoint = porterApiUrl.replace("{orderId}", orderId).replace("{customerUuid}", porterApiUuid);
 
         try {
             LoggingUtils.logRequest("getPorterRiderLocation", endpoint);
-
-            JsonNode root = getClient()
-                    .get()
-                    .uri(endpoint)
-                    .headers(headers -> {
-                        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                        headers.set("Accept", "application/json, text/plain, */*");
-                    })
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .doOnNext(res -> LoggingUtils.logResponse("getPorterRiderLocation", res))
-                    .block();
-
+            long startTime = System.currentTimeMillis();
+            JsonNode root = executeWithRetry(Mono.defer(() -> webClient
+                            .get()
+                            .uri(endpoint)
+                            .headers(headers -> {
+                                headers.set(HttpHeaders.AUTHORIZATION, getAuthToken());
+                                headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                                headers.set("Accept", "application/json, text/plain, */*");
+                            })
+                            .retrieve()
+                            .bodyToMono(JsonNode.class)
+                            .doOnNext(res -> LoggingUtils.logResponse("getPorterRiderLocation", res))))
+                    .block(BLOCK_TIMEOUT);
+            log.info(
+                    "getPorterRiderLocation API call completed in {} ms for orderId: {}",
+                    System.currentTimeMillis() - startTime,
+                    orderId);
             if (root == null || root.isMissingNode()) {
                 log.warn("Null or missing response for orderId: {}", orderId);
                 return null;

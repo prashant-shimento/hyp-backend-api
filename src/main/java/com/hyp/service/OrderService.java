@@ -132,15 +132,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                         finalOrder.getId(),
                         finalOrder.getStatus(),
                         restaurant.getRestaurantName());
-                if (redisService.isNotificationServiceEnabled()) {
-                    notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
-                    oneSignalAlertService.notifyNewOrder(
-                            customer.getName(),
-                            customer.getMobile(),
-                            finalOrder.getId(),
-                            finalOrder.getStatus(),
-                            restaurant.getRestaurantName());
-                }
+                notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+                oneSignalAlertService.notifyNewOrder(
+                        customer.getName(),
+                        customer.getMobile(),
+                        finalOrder.getId(),
+                        finalOrder.getStatus(),
+                        restaurant.getRestaurantName());
 
                 metrics.stopTimer(timerSample, MetricsEvent.ORDER, MetricTag.ACTION, "create");
                 metrics.count(
@@ -175,10 +173,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             if (restaurant == null) {
                 throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
             }
-            if (!this.isExistsById(orderId)) {
+            Order order = this.findById(orderId);
+            if (order == null) {
                 throw new Exception("Order not found " + orderId);
             }
-            Order order = this.findById(orderId);
 
             if (order.getPaymentType() != PaymentType.COD) {
                 if (paymentService.findByOrderId(orderId) == null) {
@@ -187,9 +185,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
 
             OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
-            updateOrderStatus(orderId, newOrderStatus);
-
-            order = this.findById(orderId);
+            order = updateOrderStatus(orderId, newOrderStatus);
 
             if (newOrderStatus == OrderStatusType.ACCEPTED && !order.isPreOrder()) {
                 order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());

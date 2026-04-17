@@ -11,7 +11,6 @@ import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.RefundType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.PaymentException;
-import com.hyp.exception.ValidationException;
 import com.hyp.model.PaymentConfig;
 import com.hyp.model.PaymentRoute;
 import com.hyp.observability.ApplicationMetrics;
@@ -88,15 +87,17 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     public Payment createPaymentOrder(com.hyp.entity.Order order) throws PaymentException {
         long startTime = System.currentTimeMillis();
         try {
-            if (order == null || !OrderStatusType.CREATED.equals(order.getStatus())) {
-                throw new ValidationException(
-                        "Order is in Invalid Status: " + (order != null ? order.getStatus() : "null"));
+            String orderId = order.getId();
+            // Idempotency: return existing payment if already created
+            Payment existing = findByOrderId(orderId);
+            if (existing != null) {
+                log.info("Payment already exists for orderId={}, returning existing", orderId);
+                return existing;
             }
 
-            String orderId = order.getId();
             double amount = order.getGrandTotalAmount();
             Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-            RazorpayClient razorpayClient = getRazorpayClient(orderId);
+            RazorpayClient razorpayClient = createRazorpayClient(restaurant.getId());
 
             Payment payment;
             if (restaurant.isPaymentRoutingEnabled()) {
@@ -109,6 +110,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             } else {
                 payment = createStandardOrder(razorpayClient, orderId, amount, restaurant);
             }
+
+            // Save payment FIRST — closes the race window for concurrent callers
+            payment = save(payment);
+            orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
             setPaymentCheck(orderId);
             log.info("Payment created amount={} routing={}", amount, restaurant.isPaymentRoutingEnabled());
             log.info("Payment creation time : {} ms", System.currentTimeMillis() - startTime);
@@ -123,7 +128,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                     payment.getStatus(),
                     MetricTag.RESULT,
                     "success");
-            return save(payment);
+            return payment;
         } catch (Exception e) {
             log.error("Payment creation failed", e);
             metrics.count(
@@ -195,7 +200,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
         orderRequest.put("transfers", transfers);
         Order paymentOrder = razorpayClient.orders.create(orderRequest);
-        return buildPaymentFromOrder(paymentOrder, orderId);
+        return buildPaymentFromOrder(paymentOrder, orderId, restaurant.getId());
     }
 
     private Payment createStandardOrder(
@@ -210,10 +215,10 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
         notes.put("restaurant", restaurant.getId() + ":" + restaurant.getRestaurantName());
         orderRequest.put("notes", notes);
         Order paymentOrder = razorpayClient.orders.create(orderRequest);
-        return buildPaymentFromOrder(paymentOrder, orderId);
+        return buildPaymentFromOrder(paymentOrder, orderId, restaurant.getId());
     }
 
-    private Payment buildPaymentFromOrder(Order razorpayOrder, String orderId) {
+    private Payment buildPaymentFromOrder(Order razorpayOrder, String orderId, String restaurantId) {
         Payment payment = new Payment();
         payment.setId(CommonUtils.genId());
         payment.setPaymentOrderId(razorpayOrder.get("id"));
@@ -223,8 +228,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
         payment.setCurrency(razorpayOrder.get("currency"));
         payment.setProvider(Constants.RAZOR_PAY);
         payment.setOrderId(orderId);
-
-        orderService.updateOrderStatus(orderId, OrderStatusType.PAYMENT_PENDING);
+        payment.setRestaurantId(restaurantId);
         return payment;
     }
 
@@ -282,7 +286,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
                 .orElse(0.0);
     }
 
-    public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String orderId) throws PaymentException {
+    public boolean verifySignature(RazorpayVerifyDto razorPayVerifyDto, String restaurantId) throws PaymentException {
         try {
             log.info("Verifying payment signature");
             JSONObject verifyRequest = new JSONObject();
@@ -291,7 +295,7 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
             verifyRequest.put("razorpay_signature", razorPayVerifyDto.getRazorpaySignature());
             return Utils.verifyPaymentSignature(
                     verifyRequest,
-                    EncryptionUtils.decrypt(getRazorpayPaymentConfig(orderId).getSecret()));
+                    EncryptionUtils.decrypt(getPaymentConfig(restaurantId).getSecret()));
         } catch (Exception e) {
             log.error("Payment signature verification failed", e);
             throw new PaymentException("Error in verifySignature: " + e.getMessage(), e);
@@ -300,8 +304,11 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public String fetchPaymentOrderStatus(String orderId) throws PaymentException {
         try {
-            RazorpayClient razorpayClient = getRazorpayClient(orderId);
             Payment payment = findByOrderId(orderId);
+            String restaurantId = payment.getRestaurantId() == null
+                    ? orderService.findById(orderId).getRestaurantId()
+                    : payment.getRestaurantId();
+            RazorpayClient razorpayClient = createRazorpayClient(restaurantId);
             Order order = razorpayClient.orders.fetch(payment.getPaymentOrderId());
             return order.get("status");
         } catch (Exception e) {
@@ -312,9 +319,15 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
 
     public String fetchPaymentId(String orderId) {
         try {
-            RazorpayClient razorpayClient = getRazorpayClient(orderId);
             Payment payment = findByOrderId(orderId);
-
+            if (payment == null) {
+                log.warn("No payment found for orderId={}", orderId);
+                return null;
+            }
+            String restaurantId = payment.getRestaurantId() == null
+                    ? orderService.findById(orderId).getRestaurantId()
+                    : payment.getRestaurantId();
+            RazorpayClient razorpayClient = createRazorpayClient(restaurantId);
             List<com.razorpay.Payment> payments = razorpayClient.orders.fetchPayments(payment.getPaymentOrderId());
 
             com.razorpay.Payment matchedPayment = payments.stream()
@@ -355,8 +368,13 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
         log.info("Creating refund amount={} instant={}", amount, instantRefund);
         try {
             Payment payment = paymentRepository.findByOrderId(orderId);
-
-            RazorpayClient razorpayClient = getRazorpayClient(orderId);
+            if (payment == null) {
+                throw new PaymentException("No payment found for order: " + orderId);
+            }
+            String restaurantId = payment.getRestaurantId() == null
+                    ? orderService.findById(orderId).getRestaurantId()
+                    : payment.getRestaurantId();
+            RazorpayClient razorpayClient = createRazorpayClient(restaurantId);
             JSONObject refundRequest = new JSONObject();
             refundRequest.put("amount", CommonUtils.getISOAmount(amount));
             if (instantRefund) {
@@ -406,8 +424,16 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     public RefundDto fetchRefund(String orderId) throws PaymentException {
         try {
             Payment payment = paymentRepository.findByOrderId(orderId);
-
-            RazorpayClient razorpayClient = getRazorpayClient(orderId);
+            if (payment == null) {
+                throw new PaymentException("No payment found for order: " + orderId);
+            }
+            if (payment.getRefund() == null || payment.getRefund().getId() == null) {
+                throw new PaymentException("No refund found for order: " + orderId);
+            }
+            String restaurantId = payment.getRestaurantId() == null
+                    ? orderService.findById(orderId).getRestaurantId()
+                    : payment.getRestaurantId();
+            RazorpayClient razorpayClient = createRazorpayClient(restaurantId);
 
             Refund refund = razorpayClient.payments.fetchRefund(
                     payment.getPaymentId(), payment.getRefund().getId());
@@ -458,31 +484,26 @@ public class PaymentService extends BaseServiceImpl<Payment, String> {
     }
 
     /**
-     * Get RazorpayClient for an order.
-     * PaymentConfig is cached via L1/L2 cache.
-     */
-    private RazorpayClient getRazorpayClient(String orderId) throws PaymentException {
-        try {
-            String restaurantId = orderService.findById(orderId).getRestaurantId();
-            PaymentConfig config = getPaymentConfig(restaurantId);
-            return new RazorpayClient(
-                    EncryptionUtils.decrypt(config.getKey()), EncryptionUtils.decrypt(config.getSecret()));
-        } catch (Exception e) {
-            throw new PaymentException("Failed to initialize RazorpayClient", e);
-        }
-    }
-
-    /**
-     * Evict payment config cache for a restaurant (call when partner config changes).
+     * Evict payment config cache for a restaurant.
+     * Call this when a partner's API key/secret is rotated so the new config is loaded immediately.
      */
     public void evictPaymentConfigCache(String restaurantId) {
         cacheService.evict(PAYMENT_CONFIG_CACHE, restaurantId);
         log.info("Evicted payment config cache for restaurant: {}", restaurantId);
     }
 
-    private PaymentConfig getRazorpayPaymentConfig(String orderId) {
-        String restaurantId = orderService.findById(orderId).getRestaurantId();
-        return getPaymentConfig(restaurantId);
+    /**
+     * Get RazorpayClient for an order.
+     * PaymentConfig is cached via L1/L2 cache.
+     */
+    private RazorpayClient createRazorpayClient(String restaurantId) throws PaymentException {
+        try {
+            PaymentConfig config = getPaymentConfig(restaurantId);
+            return new RazorpayClient(
+                    EncryptionUtils.decrypt(config.getKey()), EncryptionUtils.decrypt(config.getSecret()));
+        } catch (Exception e) {
+            throw new PaymentException("Failed to initialize RazorpayClient", e);
+        }
     }
 
     public void processPayment(com.hyp.entity.Order order, Payment payment, String paymentStatus)
