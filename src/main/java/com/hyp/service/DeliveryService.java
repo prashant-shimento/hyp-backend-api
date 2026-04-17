@@ -175,18 +175,15 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             throws DeliveryException {
         ObservabilityContext.setOrderId(delivery.getOrderId());
         log.info(
-                "Delivery callback received orderId={} deliveryStatus={}",
+                "Delivery callback received orderId={} deliveryStatus={} fulfillmentStatus={}",
                 delivery.getOrderId(),
-                deliveryOrderData.getStatus());
+                deliveryOrderData.getStatus(),
+                deliveryOrderData.getFulfillment() != null
+                        ? deliveryOrderData.getFulfillment().getStatus()
+                        : "N/A");
         try {
             DeliveryOrderStatusType newStatus =
                     DeliveryOrderStatusType.getDeliveryOrderStatus(deliveryOrderData.getStatus());
-
-            // Idempotency: skip if delivery already has this status
-            if (newStatus == delivery.getStatus()) {
-                log.info("Duplicate callback orderId={} status={}, skipping", delivery.getOrderId(), newStatus);
-                return;
-            }
 
             Order order = orderService.findById(delivery.getOrderId());
             delivery.setStatus(newStatus);
@@ -529,7 +526,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         return pidgeClient.getDeliveryOrderStatus(deliveryOrderId);
     }
 
-    public void unallocateDeliveryOrder(String deliveryOrderId) throws DeliveryException {
+    public void unallocateDeliveryOrder(String deliveryOrderId) {
         pidgeClient.unallocateDeliveryOrder(deliveryOrderId).subscribe();
         Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
         delivery.setStatus(DeliveryOrderStatusType.PENDING);
