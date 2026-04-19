@@ -213,6 +213,25 @@ public class Restaurant implements Identifiable<String> {
     @Field("subscription")
     private Subscription subscription;
 
+    @Field("order_types")
+    private List<String> orderTypes;
+
+    @Field("rider_availability_config")
+    private RiderAvailabilityConfig riderAvailabilityConfig;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RiderAvailabilityConfig {
+        private boolean enabled;
+        private int threshold;
+        private int max;
+
+        @Field("alert_message")
+        private String alertMessage;
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor

@@ -1,5 +1,6 @@
 package com.hyp.config;
 
+import com.hyp.listener.BroadcastExpiryListener;
 import com.hyp.listener.DeliveryListener;
 import com.hyp.listener.ItemStockListener;
 import com.hyp.listener.OrderListener;
@@ -100,12 +101,14 @@ public class RedisConfig {
             RedisConnectionFactory connectionFactory,
             MessageListenerAdapter orderListenerAdapter,
             MessageListenerAdapter itemStockListenerAdapter,
-            MessageListenerAdapter deliveryListenerAdapter) {
+            MessageListenerAdapter deliveryListenerAdapter,
+            MessageListenerAdapter broadcastExpiryListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(orderListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         container.addMessageListener(itemStockListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         container.addMessageListener(deliveryListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
+        container.addMessageListener(broadcastExpiryListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         return container;
     }
 
@@ -122,5 +125,10 @@ public class RedisConfig {
     @Bean
     MessageListenerAdapter deliveryListenerAdapter(DeliveryListener deliveryListener) {
         return new MessageListenerAdapter(deliveryListener);
+    }
+
+    @Bean
+    MessageListenerAdapter broadcastExpiryListenerAdapter(BroadcastExpiryListener broadcastExpiryListener) {
+        return new MessageListenerAdapter(broadcastExpiryListener);
     }
 }

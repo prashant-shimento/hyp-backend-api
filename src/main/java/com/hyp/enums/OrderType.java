@@ -8,7 +8,7 @@ import lombok.Getter;
 public enum OrderType {
     H("1"), // Home Delivery
     D("2"), // Dine In
-    P("3"); // Parcel or Take away
+    P("3"); // Parcel / Takeaway
 
     private final String code;
 

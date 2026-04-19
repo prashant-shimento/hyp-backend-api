@@ -85,6 +85,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     OrderValidator orderValidator;
 
+    @Autowired
+    RiderAvailabilityMonitor riderAvailabilityMonitor;
+
     public Order create(OrderDto orderDto) throws Exception {
 
         Timer.Sample timerSample = metrics.startTimer();
@@ -299,6 +302,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
         } catch (Exception e) {
             log.error("Failed to publish event status={}", newStatus, e);
+        }
+
+        if (newStatus == OrderStatusType.SEARCHING_RIDER) {
+            riderAvailabilityMonitor.onSearchingRiderEntered(order.getRestaurantId());
+        } else if (oldStatus == OrderStatusType.SEARCHING_RIDER) {
+            riderAvailabilityMonitor.onSearchingRiderExited(order.getRestaurantId());
         }
 
         log.info("Status changed from={} to={}", oldStatus, newStatus);

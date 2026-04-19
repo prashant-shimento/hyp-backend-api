@@ -180,6 +180,26 @@ public class OneSignalAlertService {
         }
     }
 
+    @Async
+    public void notifyRiderAvailabilityAlert(String restaurantId, String restaurantName, long count, String severity) {
+        String messageBody = String.format(
+                "[Rider Availability] %s | %d orders stuck in SEARCHING_RIDER | severity=%s",
+                restaurantName, count, severity);
+        messageTemplate.convertAndSend("/topic/broadcast/restaurant/" + restaurantId, messageBody);
+        OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
+                .targetChannel("push")
+                .appId(appId)
+                .includedSegments(List.of("All"))
+                .contents(Map.of("en", messageBody))
+                .build();
+        log.info("Sending rider availability alert restaurantId={} severity={}", restaurantId, severity);
+        try {
+            notificationService.sendOneSignalNotification(request);
+        } catch (OneSignalException e) {
+            log.error("Error sending rider availability alert restaurantId={}", restaurantId, e);
+        }
+    }
+
     public void notifyFraudRiderAlert(String riderContact, String riderName) {
         if (riderContact == null || riderContact.isBlank()) {
             log.warn("notifyFraudRiderAlert called with empty riderContact; skipping");

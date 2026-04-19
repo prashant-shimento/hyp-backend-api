@@ -70,6 +70,37 @@ public class RedisService {
         }
     }
 
+    /** Synchronous increment returning the new value. */
+    public long incrementAndGet(String key) {
+        try {
+            Long result = stringRedisTemplate.opsForValue().increment(key);
+            return result != null ? result : 0L;
+        } catch (Exception e) {
+            log.error("Failed to incrementAndGet Redis key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    /** Synchronous decrement returning the new value. */
+    public long decrementAndGet(String key) {
+        try {
+            Long result = stringRedisTemplate.opsForValue().decrement(key);
+            return result != null ? result : 0L;
+        } catch (Exception e) {
+            log.error("Failed to decrementAndGet Redis key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    /** Set a string value with no expiry. */
+    public void setRedisString(String key, String value) {
+        try {
+            stringRedisTemplate.opsForValue().set(key, value);
+        } catch (Exception e) {
+            log.error("Failed to set Redis string for key: {}", key, e);
+        }
+    }
+
     /**
      * Set JSON data in Redis.
      */
