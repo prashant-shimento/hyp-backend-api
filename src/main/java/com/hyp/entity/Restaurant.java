@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.OrderType;
 import com.hyp.enums.SubscriptionPlan;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
@@ -8,6 +9,7 @@ import com.hyp.model.PlatformFee;
 import com.hyp.model.PreOrder;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -213,8 +215,12 @@ public class Restaurant implements Identifiable<String> {
     @Field("subscription")
     private Subscription subscription;
 
-    @Field("order_types")
-    private List<String> orderTypes;
+    @Field("delivery_options")
+    private Map<OrderType, Boolean> deliveryOptions = Map.of(
+            OrderType.H, true,
+            OrderType.D, true,
+            OrderType.P, true,
+            OrderType.B, false);
 
     @Field("rider_availability_config")
     private RiderAvailabilityConfig riderAvailabilityConfig;

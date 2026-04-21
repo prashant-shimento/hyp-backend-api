@@ -2,6 +2,7 @@ package com.hyp.entity;
 
 import com.hyp.annotation.GenerateId;
 import com.hyp.enums.CaseStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderPlatform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
@@ -164,6 +165,9 @@ public class Order {
 
     @Field("discount_value")
     private Double discountValue;
+
+    @Field("fulfilled_by")
+    private DeliveryPartner fulfilledBy;
 
     @Data
     @NoArgsConstructor

@@ -11,6 +11,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.entity.RiderRecord;
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
@@ -276,6 +277,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         // TODO: Need to Move this saveOrder some where - unwanted save operation
         if (order.getDeliveryTrackingLink() == null) {
             order.setDeliveryTrackingLink("https://api.hyperapps.in/api/v2/order/track/" + order.getId());
+        }
+        if (fullFillStatus.equals(DeliveryFulfillStatusType.DELIVERED)) {
+            order.setFulfilledBy(DeliveryPartner.PIDGE);
         }
         orderService.save(order);
         orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus));

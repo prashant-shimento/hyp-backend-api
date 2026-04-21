@@ -2,6 +2,7 @@ package com.hyp.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderPlatform;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -105,6 +106,7 @@ public class OrderDto extends BaseDto {
     private String referralCode;
     private String offerCode;
     private Double discountValue;
+    private DeliveryPartner fulfilledBy;
 
     @Data
     @NoArgsConstructor
