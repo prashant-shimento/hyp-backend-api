@@ -2,17 +2,16 @@ package com.hyp.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hyp.entity.Restaurant;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.entity.Restaurant.Subscription;
 import com.hyp.enums.DeliveryPartner;
-import com.hyp.enums.OrderType;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
 import com.hyp.model.PreOrder;
 import java.util.List;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -87,5 +86,5 @@ public class RestaurantDto extends BaseDto {
     private Boolean discoverable;
     private boolean launched;
     private Subscription subscription;
-    private Map<OrderType, Boolean> deliveryOptions;
+    private List<Restaurant.DeliveryOption> deliveryOptions;
 }

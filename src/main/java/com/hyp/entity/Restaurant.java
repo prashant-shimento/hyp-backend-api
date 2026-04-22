@@ -9,7 +9,6 @@ import com.hyp.model.PlatformFee;
 import com.hyp.model.PreOrder;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -216,14 +215,34 @@ public class Restaurant implements Identifiable<String> {
     private Subscription subscription;
 
     @Field("delivery_options")
-    private Map<OrderType, Boolean> deliveryOptions = Map.of(
-            OrderType.H, true,
-            OrderType.D, true,
-            OrderType.P, true,
-            OrderType.B, false);
+    private List<DeliveryOption> deliveryOptions = List.of(
+            DeliveryOption.of(OrderType.H, true),
+            DeliveryOption.of(OrderType.D, true),
+            DeliveryOption.of(OrderType.P, true),
+            DeliveryOption.of(OrderType.B, false));
 
     @Field("rider_availability_config")
     private RiderAvailabilityConfig riderAvailabilityConfig;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryOption {
+
+        @Field("label")
+        private String label;
+
+        @Field("value")
+        private int value;
+
+        @Field("enabled")
+        private boolean enabled;
+
+        public static DeliveryOption of(OrderType orderType, boolean enabled) {
+            return new DeliveryOption(orderType.getLabel(), Integer.parseInt(orderType.getValue()), enabled);
+        }
+    }
 
     @Getter
     @Setter
