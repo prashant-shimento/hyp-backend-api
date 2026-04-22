@@ -15,12 +15,12 @@ public enum OrderType {
     private final String label;
     private final String code;
 
-    public static OrderType fromCode(String code) {
+    public static OrderType fromCode(String value) {
         for (OrderType type : OrderType.values()) {
-            if (type.code.equals(code)) {
+            if (type.value.equals(value)) {
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown OrderType code: " + code);
+        throw new IllegalArgumentException("Unknown OrderType value: " + value);
     }
 }
