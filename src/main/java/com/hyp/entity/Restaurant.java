@@ -217,8 +217,8 @@ public class Restaurant implements Identifiable<String> {
     @Field("delivery_options")
     private List<DeliveryOption> deliveryOptions = List.of(
             DeliveryOption.of(OrderType.H, true),
-            DeliveryOption.of(OrderType.D, true),
-            DeliveryOption.of(OrderType.P, true),
+            DeliveryOption.of(OrderType.D, false),
+            DeliveryOption.of(OrderType.P, false),
             DeliveryOption.of(OrderType.B, false));
 
     @Field("rider_availability_config")

@@ -262,8 +262,17 @@ public class OrderValidator {
             validatePreOrderTime(orderDto.getPreOrderDateTime(), preOrderConfig, restaurant.getDeliveryHours());
         }
 
+        OrderType orderType = OrderType.fromCode(orderDto.getOrderType());
+        if (!isDeliveryOptionEnabled(restaurant, orderType)) {
+            log.error(
+                    "Delivery option not available - restaurantId: {}, orderType: {}, label: {}",
+                    restaurant.getId(),
+                    orderType,
+                    orderType.getLabel());
+            throw new ValidationException(orderType.getLabel() + " is not available for this restaurant");
+        }
         // delivery-address reachability (using pre-fetched address)
-        if (OrderType.fromCode(orderDto.getOrderType()) == OrderType.H) {
+        if (orderType == OrderType.H) {
             validateDeliveryAddress(orderDto, restaurant, address);
         }
 
@@ -969,5 +978,17 @@ public class OrderValidator {
                     return result;
                 },
                 DB_FETCH_POOL);
+    }
+
+    private boolean isDeliveryOptionEnabled(Restaurant restaurant, OrderType orderType) {
+        List<Restaurant.DeliveryOption> deliveryOptions = restaurant.getDeliveryOptions();
+        if (deliveryOptions == null) {
+            return false;
+        }
+        return deliveryOptions.stream()
+                .filter(option -> option.getLabel().equals(orderType.getLabel()))
+                .map(Restaurant.DeliveryOption::isEnabled)
+                .findFirst()
+                .orElse(false);
     }
 }
