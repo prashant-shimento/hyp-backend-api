@@ -147,14 +147,6 @@ public class PosServiceImpl implements PosService {
             return;
         }
         
-        // Backward compatibility: support ingestionSource for existing restaurants
-        if ("urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource())) {
-            log.info("Processing UrbanPiper order (via ingestionSource) - Order ID: {}, Restaurant ID: {}, Restaurant Name: {}", 
-                    order.getId(), restaurant.getId(), restaurant.getRestaurantName());
-            processUrbanPiperOrder(order, customer, restaurant);
-            return;
-        }
-        
         try {
             PosOrderRequest posOrderRequest =
                     posOrderRequestTranslation.getPosOrderRequest(restaurant, order, customer);
@@ -467,8 +459,7 @@ public class PosServiceImpl implements PosService {
             Restaurant restaurant = restaurantService.findById(posRiderUpdateRequest.getRestaurantId());
 
             if (restaurant != null && 
-                    (restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name()) ||
-                     "urbanpiper".equalsIgnoreCase(restaurant.getIngestionSource()))) {
+                    restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name())) {
                 log.info("Updating rider status for UrbanPiper");
                 return updateUrbanPiperRiderStatus(posRiderUpdateRequest);
             }

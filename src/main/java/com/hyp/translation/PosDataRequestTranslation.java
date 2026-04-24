@@ -358,31 +358,14 @@ public class PosDataRequestTranslation {
                     restaurantRequest.getSourceId() != null ? restaurantRequest.getSourceId() : restaurant.getId());
         }
 
-        if (existingRestaurant != null && existingRestaurant.getIngestionSource() != null) {
-            restaurant.setIngestionSource(existingRestaurant.getIngestionSource());
-        } else {
-            restaurant.setIngestionSource(
-                    restaurantRequest.getIngestionSource() != null
-                            ? restaurantRequest.getIngestionSource()
-                            : Constants.PET_POOJA);
-        }
-        
-        // Set posPartner based on ingestionSource
+        // Set posPartner - priority order
         if (existingRestaurant != null && existingRestaurant.getPosPartner() != null) {
             restaurant.setPosPartner(existingRestaurant.getPosPartner());
+        } else if (restaurantRequest.getPosPartner() != null) {
+            restaurant.setPosPartner(restaurantRequest.getPosPartner());
         } else {
-            if (restaurantRequest.getPosPartner() != null) {
-                restaurant.setPosPartner(restaurantRequest.getPosPartner());
-            } else {
-                String ingestionSource = restaurant.getIngestionSource();
-                if ("urbanpiper".equalsIgnoreCase(ingestionSource)) {
-                    restaurant.setPosPartner(com.hyp.enums.PosPartner.URBAN_PIPER.name());
-                } else if (Constants.PET_POOJA.equalsIgnoreCase(ingestionSource)) {
-                    restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
-                } else {
-                    restaurant.setPosPartner(com.hyp.enums.PosPartner.SELF.name());
-                }
-            }
+            // Default to PET_POOJA for backward compatibility
+            restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
         }
         
         String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;

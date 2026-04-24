@@ -18,7 +18,6 @@ public class RestaurantTransformer {
             restaurant.setRestaurantid(location.getRefId());
             restaurant.setActive("1");
             restaurant.setSourceId(location.getRefId());
-            restaurant.setIngestionSource("urbanpiper");
             restaurant.setPosPartner(com.hyp.enums.PosPartner.URBAN_PIPER.name());
             
             PosDataRequest.RestaurantDetails details = new PosDataRequest.RestaurantDetails();
