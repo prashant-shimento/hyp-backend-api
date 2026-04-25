@@ -282,9 +282,12 @@ public class PosDataRequestTranslation {
         if (existingRestaurant != null && existingRestaurant.getLocation() != null) {
             restaurant.setLocation(existingRestaurant.getLocation());
         } else {
-            restaurant.setLocation(new Location(
-                    Double.valueOf(restaurantRequest.getDetails().getLatitude()),
-                    Double.valueOf(restaurantRequest.getDetails().getLongitude())));
+            if (restaurantRequest.getDetails().getLatitude() != null
+                    && restaurantRequest.getDetails().getLongitude() != null) {
+                restaurant.setLocation(new Location(
+                        Double.valueOf(restaurantRequest.getDetails().getLatitude()),
+                        Double.valueOf(restaurantRequest.getDetails().getLongitude())));
+            }
         }
         if (existingRestaurant != null && existingRestaurant.getDeliveryHours() != null) {
             restaurant.setDeliveryHours(existingRestaurant.getDeliveryHours());
@@ -335,14 +338,16 @@ public class PosDataRequestTranslation {
                     restaurantRequest.getSourceId() != null ? restaurantRequest.getSourceId() : restaurant.getId());
         }
 
-        if (existingRestaurant != null && existingRestaurant.getIngestionSource() != null) {
-            restaurant.setIngestionSource(existingRestaurant.getIngestionSource());
+        // Set posPartner - priority order
+        if (existingRestaurant != null && existingRestaurant.getPosPartner() != null) {
+            restaurant.setPosPartner(existingRestaurant.getPosPartner());
+        } else if (restaurantRequest.getPosPartner() != null) {
+            restaurant.setPosPartner(restaurantRequest.getPosPartner());
         } else {
-            restaurant.setIngestionSource(
-                    restaurantRequest.getIngestionSource() != null
-                            ? restaurantRequest.getIngestionSource()
-                            : Constants.PET_POOJA);
+            // Default to PET_POOJA for backward compatibility
+            restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
         }
+        
         String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;
         if (existingCharge != null && !existingCharge.isEmpty()) {
             restaurant.setPackagingCharge(existingCharge);
