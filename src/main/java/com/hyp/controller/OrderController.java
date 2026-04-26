@@ -98,8 +98,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
             PosRiderUpdateRequest posRiderUpdateRequest = posOrderRequestTranslation.getPosRiderStatusUpdateRequest(
                     restaurant,
                     order,
-                    new RiderDetails("rider", "9964552656"),
-                    RiderStatusType.rider_assigned.getValue());
+                    new RiderDetails("Hyperapps Rider", "9985938706"),
+                    RiderStatusType.getRiderStatusByOrderStatusType(order.getStatus())
+                            .name());
             String posResponse = posService.updatePosRiderStatus(posRiderUpdateRequest);
             response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
             return ResponseEntity.ok(response);
