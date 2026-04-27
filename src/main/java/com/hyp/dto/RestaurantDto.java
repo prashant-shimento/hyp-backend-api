@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RestaurantDto extends BaseDto {
-    private boolean active;
+    private Boolean active;
     private String menuSharingCode;
     private String currencyHtml;
     private String country;
@@ -84,7 +84,7 @@ public class RestaurantDto extends BaseDto {
     private String sourceId;
     private String ingestionSource;
     private Boolean discoverable;
-    private boolean launched;
+    private Boolean launched;
     private Subscription subscription;
     private List<Restaurant.DeliveryOption> deliveryOptions;
 }
