@@ -30,7 +30,8 @@ public interface Constants {
             "orderType",
             "orderTime",
             "restaurantId",
-            "partnerId");
+            "partnerId",
+            "offerCode");
     List<String> ITEM_API_PARAMS = Arrays.asList(
             "id",
             "itemName",
