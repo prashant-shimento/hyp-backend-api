@@ -89,11 +89,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     ApplicationMetrics metrics;
 
     public Delivery findByOrderId(String orderId) {
-        return deliveryRepository.findByOrderIdAndIsDeletedFalse(orderId);
+        return deliveryRepository.findFirstByOrderIdAndIsDeletedFalseOrderByCreatedAtDesc(orderId);
     }
 
     public Delivery findByOrderIdIncludingDeleted(String orderId) {
-        return deliveryRepository.findByOrderId(orderId);
+        return deliveryRepository.findFirstByOrderIdOrderByCreatedAtDesc(orderId);
     }
 
     public List<Delivery> findByOrderIds(List<String> orderIds) {
@@ -102,6 +102,10 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     public Delivery findByDeliveryOrderId(String deliveryOrderId) {
         return deliveryRepository.findByDeliveryOrderIdAndIsDeletedFalse(deliveryOrderId);
+    }
+
+    public Delivery findByDeliveryOrderIdIncludingDeleted(String deliveryOrderId) {
+        return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
     }
 
     public void processDeliveryOrder(Order order) {
@@ -136,6 +140,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     }
 
     public void createOrder(DeliveryOrderRequest deliveryOrderRequest, Order order) throws DeliveryException {
+        if (findByOrderId(order.getId()) != null) {
+            throw new DeliveryException("Active delivery already exists for order: " + order.getId());
+        }
         pidgeClient
                 .createDeliveryOrder(deliveryOrderRequest)
                 .flatMap(deliveryOrderId -> {
@@ -149,6 +156,66 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     return Mono.fromRunnable(() -> save(delivery));
                 })
                 .block(Duration.ofSeconds(10));
+    }
+
+    public Delivery createManualDelivery(Order order, DeliveryPartner partner) throws DeliveryException {
+        if (findByOrderId(order.getId()) != null) {
+            throw new DeliveryException("Active delivery already exists for order: " + order.getId());
+        }
+        Customer customer = customerService.findById(order.getCustomerId());
+        if (customer == null) throw new DeliveryException("Customer not found: " + order.getCustomerId());
+
+        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+        if (restaurant == null) throw new DeliveryException("Restaurant not found: " + order.getRestaurantId());
+
+        Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+        if (address == null)
+            throw new DeliveryException(
+                    "Address not found: " + order.getDeliveryDetails().getAddressId());
+
+        DeliveryOrderRequest deliveryOrderRequest =
+                DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant, address, customer, order);
+
+        Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+        delivery.setId(CommonUtils.genId());
+        delivery.setDeliveryOrderId(order.getId());
+        delivery.setChannel(DeliveryPartner.MANUAL.name());
+        delivery.setService(partner.name().toLowerCase());
+        delivery.setStatus(DeliveryOrderStatusType.PENDING);
+        return save(delivery);
+    }
+
+    public Delivery updateManualDeliveryStatus(Delivery delivery, Order order) {
+        DeliveryFulfillment fulfillment = delivery.getFulfillment();
+        DeliveryFulfillStatusType fulfillStatus = fulfillment != null ? fulfillment.getStatus() : null;
+
+        if (fulfillment != null && fulfillStatus != null) {
+            DeliveryOrderStatus.Log log = new DeliveryOrderStatus.Log();
+            log.setTimestamp(java.time.Instant.now().toString());
+            log.setStatus(fulfillStatus.name());
+            log.setAttemptType("FORWARD");
+            if (fulfillment.getLogs() == null) {
+                fulfillment.setLogs(new ArrayList<>());
+            }
+            fulfillment.getLogs().add(log);
+            delivery.setFulfillment(fulfillment);
+        }
+
+        if (fulfillStatus == DeliveryFulfillStatusType.DELIVERED) {
+            delivery.setStatus(DeliveryOrderStatusType.COMPLETED);
+        }
+
+        save(delivery);
+
+        if (fulfillStatus != null) {
+            OrderStatusType orderStatus = OrderStatusType.getOrderStatusByDeliveryStatus(fulfillStatus);
+            orderService.updateOrderStatus(order.getId(), orderStatus);
+
+            if (posService.isPosUpdateRequired(fulfillStatus)) {
+                posService.updatePosRiderStatus(delivery, order);
+            }
+        }
+        return delivery;
     }
 
     public DeliveryQuote getDeliveryQuote(DeliveryQuoteRequest deliveryQuoteRequest) throws DeliveryException {
@@ -265,14 +332,25 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     Duration.ofMinutes(Long.parseLong(riderDelay)).toSeconds());
         }
 
-        delivery.setNetworkId(Integer.parseInt(deliveryFulfill.getChannel().getId()));
-        delivery.setService(deliveryFulfill.getChannel().getName());
+        if (deliveryFulfill.getChannel() != null) {
+            try {
+                delivery.setNetworkId(
+                        Integer.parseInt(deliveryFulfill.getChannel().getId()));
+            } catch (NumberFormatException ignored) {
+                log.warn(
+                        "Non-numeric channel id '{}' for order {}",
+                        deliveryFulfill.getChannel().getId(),
+                        delivery.getOrderId());
+            }
+            delivery.setService(deliveryFulfill.getChannel().getName());
+        }
         delivery.setPickupNow(true);
         delivery.setFulfillment(deliveryFulfill);
 
-        if (deliveryOrderData.getFulfillment().getTrackCode() != null) {
-            delivery.getFulfillment()
-                    .setTrackCode(deliveryOrderData.getFulfillment().getTrackCode());
+        String trackCode = deliveryFulfill.getTrackCode();
+        if (trackCode != null) {
+            delivery.getFulfillment().setTrackCode(trackCode);
+            delivery.setTrackingUrl("https://t.pidge.in?t=" + trackCode);
         }
         // TODO: Need to Move this saveOrder some where - unwanted save operation
         if (order.getDeliveryTrackingLink() == null) {
@@ -506,15 +584,19 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         metrics.incrementGauge("delivery_in_transit");
     }
 
-    public void cancelDeliveryOrder(String deliveryOrderId) throws DeliveryException {
-        pidgeClient.cancelDeliveryOrder(deliveryOrderId).subscribe();
-        Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
+    public void cancelDeliveryOrder(Delivery delivery) throws DeliveryException {
+        if (delivery == null) {
+            log.error("Cannot cancel delivery order: Delivery object is null.");
+            return;
+        }
+        if (!DeliveryPartner.MANUAL.name().equalsIgnoreCase(delivery.getChannel())) {
+            pidgeClient.cancelDeliveryOrder(delivery.getDeliveryOrderId()).subscribe();
+        }
         DeliveryOrderStatusType previousStatus = delivery.getStatus();
         delivery.setDeleted(true);
         delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
         save(delivery);
         metrics.count(MetricsEvent.DELIVERY_FULFILLMENT, MetricTag.ACTION, "cancel", MetricTag.RESULT, "success");
-        // Decrement appropriate gauge based on previous status
         if (previousStatus == DeliveryOrderStatusType.PENDING) {
             metrics.decrementGauge("delivery_pending");
         } else if (previousStatus == DeliveryOrderStatusType.FULFILLED) {
@@ -530,9 +612,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         return pidgeClient.getDeliveryOrderStatus(deliveryOrderId);
     }
 
-    public void unallocateDeliveryOrder(String deliveryOrderId) {
-        pidgeClient.unallocateDeliveryOrder(deliveryOrderId).subscribe();
-        Delivery delivery = findByDeliveryOrderId(deliveryOrderId);
+    public void unallocateDeliveryOrder(Delivery delivery) {
+        if (delivery == null) {
+            log.error("Cannot unallocate delivery order: Delivery not found");
+            return;
+        }
+        pidgeClient.unallocateDeliveryOrder(delivery.getDeliveryOrderId()).subscribe();
         delivery.setStatus(DeliveryOrderStatusType.PENDING);
         save(delivery);
     }

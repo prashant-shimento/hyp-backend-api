@@ -1,5 +1,8 @@
 package com.hyp.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum RiderStatusType {
     rider_assigned("rider-assigned"),
     rider_arrived("rider-arrived"),
@@ -10,10 +13,6 @@ public enum RiderStatusType {
 
     RiderStatusType(String value) {
         this.value = value;
-    }
-
-    public String getValue() {
-        return value;
     }
 
     @Override

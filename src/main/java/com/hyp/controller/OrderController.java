@@ -119,6 +119,12 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
         Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
 
+        if (delivery.getTrackingUrl() != null && !delivery.getTrackingUrl().isBlank()) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(delivery.getTrackingUrl()))
+                    .build();
+        }
+
         String trackingUrl = "https://t.pidge.in?t=" + delivery.getFulfillment().getTrackCode();
         if (trackingUrl.isBlank()) {
             throw new EntityNotFoundException("Order Tracking Link", orderId);

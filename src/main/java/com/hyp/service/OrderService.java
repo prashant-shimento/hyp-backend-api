@@ -240,7 +240,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 if (delivery != null
                         && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
                                 || delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
-                    deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                    deliveryService.cancelDeliveryOrder(delivery);
                 }
             }
         } catch (DeliveryException e) {
@@ -441,7 +441,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
             Delivery delivery = deliveryService.findByOrderId(order.getId());
             if (delivery != null) {
-                deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                deliveryService.cancelDeliveryOrder(delivery);
             }
         }
 
@@ -455,7 +455,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 || status == OrderStatusType.DROPPED_OFF
                 || status == OrderStatusType.ERROR
                 || status == OrderStatusType.PAYMENT_FAILED
-                || status == OrderStatusType.REFUND_COMPLETED | status == OrderStatusType.REFUND_INITIATED;
+                || status == OrderStatusType.REFUND_COMPLETED
+                || status == OrderStatusType.REFUND_INITIATED;
     }
 
     private void consumeReferralTokenIfPaid(Order order, OrderStatusType newStatus) {
