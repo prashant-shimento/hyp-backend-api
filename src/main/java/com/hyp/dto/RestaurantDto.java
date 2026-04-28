@@ -87,4 +87,5 @@ public class RestaurantDto extends BaseDto {
     private Boolean launched;
     private Subscription subscription;
     private List<Restaurant.DeliveryOption> deliveryOptions;
+    private Restaurant.Discount discount;
 }
