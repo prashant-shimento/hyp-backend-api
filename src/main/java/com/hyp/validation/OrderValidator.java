@@ -226,7 +226,6 @@ public class OrderValidator {
                         deliveryQuoteFuture)
                 .join();
 
-        // ── Extract results ───────────────────────────────────────────────────
         Restaurant restaurant = restaurantFuture.get();
         Customer customer = customerFuture.get();
         Partner partner = partnerFuture.get();
@@ -283,6 +282,21 @@ public class OrderValidator {
         // Tax is computed on the fully-discounted taxable base for each item.
         double restaurantDiscountPercentage =
                 restaurant.getDiscountPercentage() != null ? restaurant.getDiscountPercentage() : 0.0;
+
+        // Level 2b — conditional discount from restaurant.discount (overrides discountPercentage if enabled)
+        Restaurant.Discount conditionalDiscount = restaurant.getDiscount();
+        if (conditionalDiscount != null
+                && conditionalDiscount.isEnabled()
+                && conditionalDiscount.getOfferValue() != null) {
+            double cartTotal = orderDto.getTotalAmount();
+            double minCart =
+                    conditionalDiscount.getMinCartValue() != null ? conditionalDiscount.getMinCartValue() : 0.0;
+            if (cartTotal >= minCart) {
+                restaurantDiscountPercentage = switch (conditionalDiscount.getOfferType()) {
+                    case PERCENTAGE -> conditionalDiscount.getOfferValue();
+                    default -> restaurantDiscountPercentage;};
+            }
+        }
 
         // Validate offer eligibility first (throws if invalid, before any price computation)
         checkOfferValidity(orderDto, offer, paidOrderCount, offerUsageCount);
