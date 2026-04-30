@@ -173,7 +173,7 @@ public class OrderDto extends BaseDto {
 
         private String type;
 
-        @Positive(message = "OrderTax price must be positive")
+        @PositiveOrZero(message = "OrderTax price must be positive")
         private Double price;
 
         @PositiveOrZero(message = "OrderTax amount must be positive")
