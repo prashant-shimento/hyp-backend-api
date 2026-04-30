@@ -6,9 +6,11 @@ import com.hyp.entity.Item;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.UpdateItemsRequest;
 import com.hyp.response.Response;
+import com.hyp.security.principal.RestaurantContext;
 import com.hyp.service.CategoryService;
 import com.hyp.service.MenuService;
 import com.hyp.service.PosService;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Data;
@@ -18,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Data
 @RestController
-@RequestMapping("/menu")
+@RequestMapping(path = {"/api/v2/menu", "/api/v3/menu"})
 public class MenuController {
 
     @Autowired
@@ -29,6 +31,27 @@ public class MenuController {
 
     @Autowired
     MenuService menuService;
+
+    /**
+     * Restaurant-scoped menu endpoint — requires X-Restaurant-Id header.
+     * Preferred over /menu/category?restaurantId= (kept for backward compatibility)
+     * and /menu/{restaurantId} (public, for unauthenticated storefront access).
+     */
+    @GetMapping
+    public ResponseEntity<Response> getMenu() {
+        Response response = new Response();
+        String restaurantId = RestaurantContext.getRestaurantId();
+        try {
+            List<Category> categories = categoryService.getAllCategoryItems(restaurantId);
+            response.setData(categories);
+            response.setMessage("Categories retrieved successfully.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.setError(true);
+            response.setMessage("Error occurred while fetching menu: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 
     @PostMapping("/extract")
     public PosDataRequest extract(@RequestBody JsonNode rawJson, @RequestParam boolean useExternalId) throws Exception {
@@ -42,6 +65,14 @@ public class MenuController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * @deprecated Use {@code GET /menu} with {@code X-Restaurant-Id} header instead.
+     */
+    @Deprecated
+    @Operation(
+            deprecated = true,
+            summary = "[DEPRECATED] Get menu by restaurantId query param",
+            description = "Deprecated: use GET /menu with X-Restaurant-Id header instead.")
     @GetMapping("/category")
     public ResponseEntity<Response> getCategoryItems(@RequestParam String restaurantId) {
         Response response = new Response();
@@ -49,7 +80,11 @@ public class MenuController {
             List<Category> categories = categoryService.getAllCategoryItems(restaurantId);
             response.setData(categories);
             response.setMessage("Categories retrieved successfully.");
-            return ResponseEntity.ok(response);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Deprecation", "true");
+            headers.add("Link", "</api/v3/menu>; rel=\"successor-version\"");
+            headers.add("Sunset", "2026-06-01");
+            return ResponseEntity.ok().headers(headers).body(response);
         } catch (Exception e) {
             response.setError(true);
             response.setMessage("Error occurred while fetching categories: " + e.getMessage());

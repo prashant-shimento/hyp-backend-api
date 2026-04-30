@@ -2,14 +2,20 @@ package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.entity.*;
+import com.hyp.security.principal.RestaurantContext;
+import com.hyp.security.principal.SecurityContextHolder;
+import com.hyp.security.principal.UserPrincipal;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.InsertOneModel;
 import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.WriteModel;
+import io.lettuce.core.dynamic.support.GenericTypeResolver;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +27,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Autowired
@@ -78,6 +85,205 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
         }
     }
 
+    /**
+     * Enable strict mode - throws exception if restaurant context missing
+     * Default: false (backward compatible)
+     */
+    protected boolean strictRestaurantScoping = false;
+
+    /**
+     * Enable auto-scoping - automatically applies restaurant filter when context exists
+     * Default: false (backward compatible)
+     */
+    protected boolean autoRestaurantScoping = false;
+
+    /**
+     * Get current restaurant context from ThreadLocal
+     */
+    protected String getCurrentRestaurantId() {
+        return RestaurantContext.getRestaurantId();
+    }
+
+    /**
+     * Check if entity is restaurant-scoped
+     * Handles inheritance properly
+     */
+    protected boolean isRestaurantScoped(Class<?> entityClass) {
+        // Strategy 1: Check if implements RestaurantScoped interface (single restaurantId)
+        if (RestaurantScoped.class.isAssignableFrom(entityClass)) {
+            log.debug("Entity {} is restaurant-scoped (implements RestaurantScoped)", entityClass.getSimpleName());
+            return true;
+        }
+
+        // Strategy 2: Check if implements RestaurantSetScoped interface (Set<String> restaurants)
+        if (RestaurantSetScoped.class.isAssignableFrom(entityClass)) {
+            log.debug("Entity {} is restaurant-scoped (implements RestaurantSetScoped)", entityClass.getSimpleName());
+            return true;
+        }
+
+        // Strategy 3: Check for restaurantId field in class hierarchy
+        boolean hasField = hasRestaurantIdField(entityClass);
+        log.debug("Entity {} restaurant-scoped field check: {}", entityClass.getSimpleName(), hasField);
+        return hasField;
+    }
+
+    /**
+     * Check if class or any superclass has restaurantId field
+     */
+    private boolean hasRestaurantIdField(Class<?> entityClass) {
+        Class<?> currentClass = entityClass;
+        while (currentClass != null && currentClass != Object.class) {
+            try {
+                Field field = currentClass.getDeclaredField("restaurantId");
+                log.debug("Found restaurantId field in {}", currentClass.getSimpleName());
+                return true;
+            } catch (NoSuchFieldException e) {
+                // Continue to superclass
+                currentClass = currentClass.getSuperclass();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get restaurantId from entity using reflection (handles inheritance)
+     */
+    protected String getRestaurantIdFromEntity(T entity) {
+        if (entity instanceof RestaurantScoped) {
+            return ((RestaurantScoped) entity).getRestaurantId();
+        }
+
+        // Fallback: use reflection
+        try {
+            Class<?> currentClass = entity.getClass();
+            while (currentClass != null && currentClass != Object.class) {
+                try {
+                    Field field = currentClass.getDeclaredField("restaurantId");
+                    field.setAccessible(true);
+                    return (String) field.get(entity);
+                } catch (NoSuchFieldException e) {
+                    currentClass = currentClass.getSuperclass();
+                }
+            }
+        } catch (IllegalAccessException e) {
+            log.error("Error accessing restaurantId field", e);
+        }
+        return null;
+    }
+
+    /**
+     * Set restaurantId on entity using reflection (handles inheritance)
+     */
+    protected void setRestaurantIdOnEntity(T entity, String restaurantId) {
+        if (entity instanceof RestaurantScoped) {
+            ((RestaurantScoped) entity).setRestaurantId(restaurantId);
+            return;
+        }
+
+        // Fallback: use reflection
+        try {
+            Class<?> currentClass = entity.getClass();
+            while (currentClass != null && currentClass != Object.class) {
+                try {
+                    Field field = currentClass.getDeclaredField("restaurantId");
+                    field.setAccessible(true);
+                    field.set(entity, restaurantId);
+                    return;
+                } catch (NoSuchFieldException e) {
+                    currentClass = currentClass.getSuperclass();
+                }
+            }
+        } catch (IllegalAccessException e) {
+            log.error("Error setting restaurantId field", e);
+        }
+    }
+
+    protected void validateRestaurantContext(Class<?> entityClass) {
+        if (isRestaurantScoped(entityClass)) {
+            String restaurantId = getCurrentRestaurantId();
+            if (restaurantId == null || restaurantId.isBlank()) {
+                if (strictRestaurantScoping) {
+                    throw new IllegalStateException("Restaurant context required for " + entityClass.getSimpleName());
+                } else {
+                    log.warn("Restaurant context not set for scoped entity: {}", entityClass.getSimpleName());
+                }
+            }
+        }
+    }
+
+    protected Query applyRestaurantFilter(Query query, Class<?> entityClass) {
+        String restaurantId = getCurrentRestaurantId();
+        if (restaurantId == null || restaurantId.isBlank()) return query;
+
+        if (RestaurantSetScoped.class.isAssignableFrom(entityClass)) {
+            // Set<String> restaurants field — match if restaurantId is an element
+            query.addCriteria(Criteria.where("restaurants").is(restaurantId));
+            log.debug("Applied RestaurantSetScoped filter: restaurants contains {}", restaurantId);
+        } else if (isRestaurantScoped(entityClass)) {
+            query.addCriteria(Criteria.where("restaurant_id").is(restaurantId));
+            log.debug("Applied restaurant filter: restaurant_id={}", restaurantId);
+        }
+        return query;
+    }
+
+    /**
+     * Get current customer ID from security context.
+     * Returns null if not a CUSTOMER user (admin/partner/superadmin bypass).
+     */
+    protected String getCurrentCustomerId() {
+        UserPrincipal principal = SecurityContextHolder.getPrincipal();
+        if (principal != null && "CUSTOMER".equals(principal.getUserType())) {
+            return principal.getUserId();
+        }
+        return null;
+    }
+
+    /**
+     * Apply customer owner filter to a query (for list operations).
+     * - CustomerScoped entities: filters by customer_id
+     * - SelfScoped entities: filters by _id
+     * Only applies when the current user is a CUSTOMER.
+     */
+    protected Query applyOwnerFilter(Query query) {
+        String customerId = getCurrentCustomerId();
+        if (customerId == null) return query; // non-CUSTOMER users bypass
+
+        Class<T> entityClass = getEntityClass();
+        if (CustomerScoped.class.isAssignableFrom(entityClass)) {
+            query.addCriteria(Criteria.where("customer_id").is(customerId));
+            log.debug("Applied CustomerScoped filter: customer_id={}", customerId);
+        } else if (SelfScoped.class.isAssignableFrom(entityClass)) {
+            query.addCriteria(Criteria.where("_id").is(customerId));
+            log.debug("Applied SelfScoped filter: _id={}", customerId);
+        }
+
+        return query;
+    }
+
+    /**
+     * Check if the current user owns the entity (for single-entity operations).
+     * - CustomerScoped: entity.getCustomerId() == principal.userId
+     * - SelfScoped + Identifiable: entity.getId() == principal.userId
+     * Returns true if: entity is not scoped, user is not a CUSTOMER, or ownership matches.
+     */
+    @Override
+    public boolean isEntityOwner(T entity) {
+        String customerId = getCurrentCustomerId();
+        if (customerId == null) return true; // non-CUSTOMER users bypass
+
+        if (entity == null) return false;
+
+        if (entity instanceof CustomerScoped scoped) {
+            return customerId.equals(scoped.getCustomerId());
+        }
+        if (entity instanceof SelfScoped && entity instanceof Identifiable<?> identifiable) {
+            Object id = identifiable.getId();
+            return customerId.equals(id != null ? id.toString() : null);
+        }
+
+        return true; // entity is not customer-scoped
+    }
+
     @Override
     public T findById(ID id) {
         if (id == null) return null;
@@ -103,6 +309,31 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Override
     public T save(T entity) {
+        if (autoRestaurantScoping && isRestaurantScoped(entity.getClass())) {
+            String currentRestaurantId = getRestaurantIdFromEntity(entity);
+            String contextRestaurantId = getCurrentRestaurantId();
+
+            if (currentRestaurantId == null && contextRestaurantId != null) {
+                setRestaurantIdOnEntity(entity, contextRestaurantId);
+                log.debug(
+                        "Auto-set restaurantId={} for entity {}",
+                        contextRestaurantId,
+                        entity.getClass().getSimpleName());
+            }
+        }
+
+        // Auto-set customerId from principal for CUSTOMER users (e.g., Address, Order)
+        if (entity instanceof CustomerScoped scoped) {
+            String customerId = getCurrentCustomerId();
+            if (customerId != null) {
+                scoped.setCustomerId(customerId);
+                log.debug(
+                        "Auto-set customerId={} for entity {}",
+                        customerId,
+                        entity.getClass().getSimpleName());
+            }
+        }
+
         T saved = repository.save(entity);
         refreshEntity(saved);
         return saved;
@@ -110,13 +341,30 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
 
     @Override
     public List<T> saveAll(List<T> entities) {
+        if (autoRestaurantScoping) {
+            String restaurantId = getCurrentRestaurantId();
+            if (restaurantId != null) {
+                for (T entity : entities) {
+                    if (isRestaurantScoped(entity.getClass())) {
+                        String currentRestaurantId = getRestaurantIdFromEntity(entity);
+                        if (currentRestaurantId == null) {
+                            setRestaurantIdOnEntity(entity, restaurantId);
+                        }
+                    }
+                }
+            }
+        }
         return repository.saveAll(entities);
     }
 
     @Override
     public List<T> saveAll(List<T> entities, String rId) {
         for (T entity : entities) {
-            ((BaseEntity) entity).setRestaurantId(rId);
+            if (entity instanceof RestaurantScoped) {
+                ((RestaurantScoped) entity).setRestaurantId(rId);
+            } else {
+                setRestaurantIdOnEntity(entity, rId);
+            }
         }
         return repository.saveAll(entities);
     }
@@ -306,5 +554,106 @@ public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
             return Collections.emptyList();
         }
         return repository.findAllById(ids);
+    }
+
+    @Override
+    public T findByIdScoped(ID id) {
+        validateRestaurantContext(getEntityClass());
+
+        if (!isRestaurantScoped(getEntityClass())) {
+            return findById(id);
+        }
+
+        String restaurantId = getCurrentRestaurantId();
+        if (restaurantId == null || restaurantId.isBlank()) {
+            return findById(id); // Fallback to unscoped if no context
+        }
+
+        Query query = new Query(Criteria.where("_id").is(id).and("restaurantId").is(restaurantId));
+
+        return mongoTemplate.findOne(query, getEntityClass());
+    }
+
+    @Override
+    public List<T> findByIdsScoped(List<ID> ids) {
+        validateRestaurantContext(getEntityClass());
+
+        if (!isRestaurantScoped(getEntityClass())) {
+            return findByIds(ids);
+        }
+
+        String restaurantId = getCurrentRestaurantId();
+        if (restaurantId == null || restaurantId.isBlank()) {
+            return findByIds(ids); // Fallback
+        }
+
+        Query query =
+                new Query(Criteria.where("_id").in(ids).and("restaurantId").is(restaurantId));
+
+        return mongoTemplate.find(query, getEntityClass());
+    }
+
+    @Override
+    public List<T> findAllScoped() {
+        validateRestaurantContext(getEntityClass());
+
+        if (!isRestaurantScoped(getEntityClass())) {
+            return findAll();
+        }
+
+        String restaurantId = getCurrentRestaurantId();
+        if (restaurantId == null || restaurantId.isBlank()) {
+            return findAll(); // Fallback
+        }
+
+        Query query = new Query(Criteria.where("restaurantId").is(restaurantId));
+        return mongoTemplate.find(query, getEntityClass());
+    }
+
+    @Override
+    public T findByFieldScoped(Class<T> entityClass, String fieldName, Object value) {
+        Query query = new Query(Criteria.where(fieldName).is(value));
+        query = applyRestaurantFilter(query, entityClass);
+        return mongoTemplate.findOne(query, entityClass);
+    }
+
+    @Override
+    public List<T> findByQueryScoped(Class<T> entityClass, Query query) {
+        validateRestaurantContext(entityClass);
+        query = applyRestaurantFilter(query, entityClass);
+        return mongoTemplate.find(query, entityClass);
+    }
+
+    /**
+     * Smart query method:
+     * - If restaurant context exists → apply scoping
+     * - If no context → use unscoped
+     * Perfect for gradual migration!
+     */
+    @Override
+    public List<T> findByQuerySmart(Class<T> entityClass, Query query) {
+        String restaurantId = getCurrentRestaurantId();
+
+        // If context exists and entity is scoped, apply filter
+        if (restaurantId != null && !restaurantId.isBlank() && isRestaurantScoped(entityClass)) {
+            log.debug("Smart query: applying restaurant scope for restaurantId={}", restaurantId);
+            query = applyRestaurantFilter(query, entityClass);
+        } else {
+            log.debug("Smart query: no restaurant scope applied");
+        }
+
+        // Apply owner filter (only affects CUSTOMER users when ownerField is set)
+        query = applyOwnerFilter(query);
+
+        return mongoTemplate.find(query, entityClass);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Class<T> getEntityClass() {
+        Class<?>[] typeArgs = GenericTypeResolver.resolveTypeArguments(getClass(), BaseServiceImpl.class);
+        if (typeArgs != null && typeArgs.length >= 1) {
+            return (Class<T>) typeArgs[0];
+        }
+        throw new IllegalStateException("Cannot resolve entity class");
     }
 }

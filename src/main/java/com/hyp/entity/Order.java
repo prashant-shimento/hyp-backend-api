@@ -27,7 +27,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "orders")
-public class Order {
+public class Order implements CustomerScoped {
 
     @Id
     @Field("id")

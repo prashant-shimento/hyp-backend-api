@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/delivery")
+@RequestMapping(path = {"/api/v2/delivery", "/api/v3/delivery"})
 public class DeliveryController extends BaseController<DeliveryDto, Delivery, String> {
 
     @Autowired

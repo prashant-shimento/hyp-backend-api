@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @Hidden
 @RestController
-@RequestMapping("/pos")
+@RequestMapping(path = {"/api/v2/pos", "/api/v3/pos"})
 public class PosController {
 
     @Autowired

@@ -13,9 +13,6 @@ public class AddonGroupValidator extends BaseValidatorImpl<AddonGroupDto> {
     @Autowired
     AddonItemService addonItemService;
 
-    @Autowired
-    AddonGroupService addonGroupService;
-
     @Override
     public void validate(AddonGroupDto dto) throws EntityNotFoundException, ValidationException {
 

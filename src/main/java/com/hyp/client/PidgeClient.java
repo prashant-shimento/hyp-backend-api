@@ -15,10 +15,7 @@ import com.hyp.request.DeliveryFulfillResponse;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.PidgeLoginRequest;
-import com.hyp.service.MockService;
-import com.hyp.service.NotificationService;
-import com.hyp.service.OneSignalAlertService;
-import com.hyp.service.RedisService;
+import com.hyp.service.*;
 import com.hyp.util.LoggingUtils;
 import jakarta.annotation.PostConstruct;
 import java.time.Duration;
@@ -72,7 +69,7 @@ public class PidgeClient {
     private RedisService redisService;
 
     @Autowired
-    private com.hyp.service.CacheService cacheService;
+    private CacheService cacheService;
 
     private static final String TOKEN_CACHE = "pidgeToken";
 

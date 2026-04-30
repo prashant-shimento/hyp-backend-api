@@ -52,7 +52,9 @@ public class CacheConfig {
 
         // Register caches that are OK with pod-local caching
         cacheManager.setCacheNames(java.util.List.of(
-                "paymentConfigCache" // Payment config rarely changes
+                "paymentConfigCache", // Payment config rarely changes
+                "restaurantExists", // Restaurant existence check
+                "restaurants" // Restaurant entity cache
                 ));
 
         log.info("Caffeine CacheManager configured for secondary caches: {}", cacheManager.getCacheNames());

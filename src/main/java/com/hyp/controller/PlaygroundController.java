@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/play-ground")
+@RequestMapping(path = {"/api/v2/play-ground", "/api/v3/play-ground"})
 public class PlaygroundController {
 
     @Autowired

@@ -10,58 +10,37 @@ import com.hyp.observability.ApplicationMetrics;
 import com.hyp.observability.MetricTag;
 import com.hyp.observability.MetricsEvent;
 import com.hyp.response.Response;
-import com.hyp.service.AddressService;
+import com.hyp.security.jwt.JwtTokenService;
+import com.hyp.security.principal.UserPrincipal;
 import com.hyp.service.CustomerService;
 import com.hyp.service.OtpService;
 import com.hyp.service.RedisService;
 import com.hyp.service.ReferralTokenService;
 import com.hyp.service.RestaurantService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @Slf4j
 @RestController
-@RequestMapping("/login")
+@RequestMapping(path = {"/api/v2/login", "/api/v3/login"})
+@RequiredArgsConstructor
 public class LoginController {
 
-    @Autowired
-    public CustomerService customerService;
-
-    @Autowired
-    public RestaurantService restaurantService;
-
-    @Autowired
-    public AddressService addressService;
-
-    @Autowired
-    OtpService otpService;
-
-    @Autowired
-    private Environment env;
-
-    @Autowired
-    HttpServletRequest httpRequest;
-
-    @Autowired
-    RedisService redisService;
-
-    @Autowired
-    ApplicationMetrics metrics;
-
-    @Autowired
-    ReferralTokenService referralTokenService;
+    private final CustomerService customerService;
+    private final RestaurantService restaurantService;
+    private final OtpService otpService;
+    private final RedisService redisService;
+    private final JwtTokenService jwtTokenService;
+    private final ApplicationMetrics metrics;
+    private final ReferralTokenService referralTokenService;
 
     @PostMapping("/otp")
     public ResponseEntity<Response> userLogin(@RequestBody @Valid LoginDto loginDto) throws Exception {
@@ -149,41 +128,34 @@ public class LoginController {
             customerService.save(customer);
         }
         log.info("OTP verified successfully for customer, restaurantId={}", verificationRequest.getRestaurantId());
-        return ResponseEntity.ok(new Response(Collections.singletonList(customer), false, "OTP Verified Successfully"));
+
+        // Generate JWT tokens for authenticated customer
+        UserPrincipal principal = UserPrincipal.builder()
+                .userId(customer.getId())
+                .userType("CUSTOMER")
+                .role("CUSTOMER")
+                .mobile(customer.getMobile())
+                .name(customer.getName())
+                .restaurantId(verificationRequest.getRestaurantId())
+                .build();
+
+        Map<String, Object> tokens = jwtTokenService.createTokenPair(principal, null, null);
+
+        // Build response with customer data and tokens
+        Map<String, Object> responseData = new LinkedHashMap<>();
+        responseData.put("customer", customer);
+        responseData.put("accessToken", tokens.get("accessToken"));
+        responseData.put("refreshToken", tokens.get("refreshToken"));
+        responseData.put("tokenType", tokens.get("tokenType"));
+        responseData.put("expiresIn", tokens.get("expiresIn"));
+
+        return ResponseEntity.ok(
+                new Response(Collections.singletonList(responseData), false, "OTP Verified Successfully"));
     }
 
     @PostMapping("/resend-otp/{mobile}")
     public ResponseEntity<Response> resendOtp(@PathVariable String mobile) throws BadRequestException {
         otpService.resendOtp(mobile);
         return ResponseEntity.ok(new Response(null, false, "OTP Resent Successfully"));
-    }
-
-    @GetMapping("/config")
-    public Map<String, Object> getConfig() {
-        Map<String, Object> configMap = new HashMap<String, Object>();
-        configMap.put("sms.url", env.getProperty("sms.url"));
-        configMap.put("sms.key", env.getProperty("sms.key"));
-        configMap.put("delivery.pidge.url", env.getProperty("delivery.pidge.url"));
-        configMap.put("delivery.pidge.username", env.getProperty("delivery.pidge.username"));
-        configMap.put("delivery.pidge.password", env.getProperty("delivery.pidge.password"));
-        configMap.put("delivery.pidge.token", env.getProperty("delivery.pidge.token"));
-        configMap.put("google.api.key", env.getProperty("google.api.key"));
-        configMap.put("pos.petpooja.url", env.getProperty("pos.petpooja.url"));
-        configMap.put("pos.petpooja.token", env.getProperty("pos.petpooja.token"));
-        configMap.put("pos.petpooja.secret", env.getProperty("pos.petpooja.secret"));
-        configMap.put("pos.petpooja.key", env.getProperty("pos.petpooja.key"));
-        configMap.put("razorpay.key", env.getProperty("razorpay.key"));
-        configMap.put("razorpay.secret", env.getProperty("razorpay.secret"));
-        configMap.put("app.domain", env.getProperty("app.domain"));
-        configMap.put("spring.data.mongodb.uri", env.getProperty("spring.data.mongodb.uri"));
-        String scheme = httpRequest.getScheme();
-        String baseUrl = ServletUriComponentsBuilder.fromRequestUri(httpRequest)
-                .replacePath(null)
-                .build()
-                .toUriString();
-        configMap.put("domain", httpRequest.getRequestURL().toString() + "======" + scheme + "======" + baseUrl);
-        configMap.put("internal.users.numbers", env.getProperty("internal.users.numbers"));
-
-        return configMap;
     }
 }

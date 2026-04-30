@@ -160,51 +160,55 @@ public class OrderEventListener {
 
             case PAID:
                 if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
-                    User user = userService.findByRestaurantId(order.getRestaurantId());
-                    Map<String, Object> customDataMap = new HashMap<>();
-                    customDataMap.put("orderId", order.getId());
-                    customDataMap.put("customerName", customer.getName());
+                    List<User> users = userService.findByRestaurantId(order.getRestaurantId());
+                    if (users != null && !users.isEmpty()) {
+                        Map<String, Object> customDataMap = new HashMap<>();
+                        customDataMap.put("orderId", order.getId());
+                        customDataMap.put("customerName", customer.getName());
 
-                    List<Map<String, Object>> orderItems = order.getOrderItems().stream()
-                            .map(orderItem -> {
-                                Map<String, Object> itemMap = new HashMap<>();
-                                itemMap.put("itemName", orderItem.getName());
-                                itemMap.put("quantity", orderItem.getQuantity());
-                                itemMap.put("price", orderItem.getPrice());
-                                itemMap.put("finalPrice", orderItem.getFinalPrice());
-                                itemMap.put("variationName", orderItem.getVariationName());
-                                if (orderItem.getOrderAddonItems() != null
-                                        && !orderItem.getOrderAddonItems().isEmpty()) {
-                                    List<Map<String, Object>> addons = orderItem.getOrderAddonItems().stream()
-                                            .map(addon -> {
-                                                Map<String, Object> addonMap = new HashMap<>();
-                                                addonMap.put("addonName", addon.getAddonItemName());
-                                                addonMap.put("price", addon.getPrice());
-                                                addonMap.put("quantity", addon.getQuantity());
-                                                return addonMap;
-                                            })
-                                            .toList();
-                                    itemMap.put("addons", addons);
-                                }
-                                return itemMap;
-                            })
-                            .toList();
-                    customDataMap.put("items", orderItems);
+                        List<Map<String, Object>> orderItems = order.getOrderItems().stream()
+                                .map(orderItem -> {
+                                    Map<String, Object> itemMap = new HashMap<>();
+                                    itemMap.put("itemName", orderItem.getName());
+                                    itemMap.put("quantity", orderItem.getQuantity());
+                                    itemMap.put("price", orderItem.getPrice());
+                                    itemMap.put("finalPrice", orderItem.getFinalPrice());
+                                    itemMap.put("variationName", orderItem.getVariationName());
+                                    if (orderItem.getOrderAddonItems() != null
+                                            && !orderItem.getOrderAddonItems().isEmpty()) {
+                                        List<Map<String, Object>> addons = orderItem.getOrderAddonItems().stream()
+                                                .map(addon -> {
+                                                    Map<String, Object> addonMap = new HashMap<>();
+                                                    addonMap.put("addonName", addon.getAddonItemName());
+                                                    addonMap.put("price", addon.getPrice());
+                                                    addonMap.put("quantity", addon.getQuantity());
+                                                    return addonMap;
+                                                })
+                                                .toList();
+                                        itemMap.put("addons", addons);
+                                    }
+                                    return itemMap;
+                                })
+                                .toList();
+                        customDataMap.put("items", orderItems);
 
-                    OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
-                            .targetChannel("push")
-                            .includeAliases(OneSignalNotificationAlias.builder()
-                                    .externalId(List.of(user.getId()))
-                                    .build())
-                            .appId(partnerAppId)
-                            .templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
-                            .customData(customDataMap)
-                            .build();
+                        // Send notification to all users of the restaurant
+                        List<String> userIds = users.stream().map(User::getId).toList();
+                        OneSignalNotificationRequest request = OneSignalNotificationRequest.builder()
+                                .targetChannel("push")
+                                .includeAliases(OneSignalNotificationAlias.builder()
+                                        .externalId(userIds)
+                                        .build())
+                                .appId(partnerAppId)
+                                .templateId(Constants.ONE_SIGNAL_ORDER_PLACED_TEMPLATE)
+                                .customData(customDataMap)
+                                .build();
 
-                    try {
-                        notificationService.sendOneSignalNotificationForPartner(request);
-                    } catch (OneSignalException e) {
-                        log.error("Error occurred in sending push notification {}", request);
+                        try {
+                            notificationService.sendOneSignalNotificationForPartner(request);
+                        } catch (OneSignalException e) {
+                            log.error("Error occurred in sending push notification {}", request);
+                        }
                     }
                 }
 

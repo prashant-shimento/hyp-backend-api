@@ -10,4 +10,6 @@ public interface PartnerRepository extends MongoRepository<Partner, String> {
     List<Partner> findByType(PartnerType type);
 
     Partner findByRestaurantsContainingAndType(String restaurantId, PartnerType type);
+
+    Partner findByDomain(String domain);
 }

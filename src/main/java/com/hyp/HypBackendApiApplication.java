@@ -5,20 +5,25 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.servers.Server;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-@SpringBootApplication
+@SpringBootApplication(
+        scanBasePackages = "com.hyp",
+        exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableMongoAuditing
 @EnableScheduling
 @EnableCaching
 @EnableAsync
 @EnableRetry
 @EnableAspectJAutoProxy
+@EnableMongoRepositories(basePackages = "com.hyp.repository")
 @OpenAPIDefinition(
         info = @Info(title = "Hyperapps Backend API", version = "1.0", description = "An APIs for Hyperapps Backend"),
         servers = {

@@ -145,7 +145,7 @@ public class RedisService {
     @Async
     public void removeRedisData(String key) {
         try {
-            Boolean deleted = stringRedisTemplate.unlink(key);
+            Boolean deleted = stringRedisTemplate.delete(key);
             if (Boolean.TRUE.equals(deleted)) {
                 log.info("Successfully removed key: {}", key);
             } else {
@@ -200,6 +200,70 @@ public class RedisService {
         } catch (Exception e) {
             log.error("Redis SET NX failed for key={}", key, e);
             throw e;
+        }
+    }
+
+    /**
+     * Set object data in Redis (synchronous, no TTL)
+     */
+    public void setObjectData(String key, Object value) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(value);
+            stringRedisTemplate.opsForValue().set(key, jsonValue);
+            log.debug("Redis set operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to set Redis data for key: {}", key, e);
+        }
+    }
+
+    /**
+     * Get object data from Redis
+     */
+    public Object getObjectData(String key) {
+        try {
+            String value = stringRedisTemplate.opsForValue().get(key);
+            if (value == null) return null;
+            return objectMapper.readValue(value, Object.class);
+        } catch (Exception e) {
+            log.error("Error fetching object from Redis for key: {}", key, e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if a key exists in Redis
+     */
+    public boolean hasKey(String key) {
+        try {
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.error("Error checking key existence in Redis for key: {}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * Delete a key from Redis (synchronous)
+     */
+    public void deleteKey(String key) {
+        try {
+            stringRedisTemplate.delete(key);
+            log.debug("Redis delete operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to delete Redis key: {}", key, e);
+        }
+    }
+
+    /**
+     * Publish a message to a Redis channel (pub/sub)
+     */
+    public void publish(String channel, Object message) {
+        try {
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            stringRedisTemplate.convertAndSend(channel, jsonMessage);
+            log.debug("Published message to channel: {}", channel);
+        } catch (Exception e) {
+            log.error("Failed to publish message to channel: {}", channel, e);
         }
     }
 }

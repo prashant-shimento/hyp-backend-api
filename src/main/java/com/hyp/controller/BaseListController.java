@@ -29,6 +29,11 @@ public abstract class BaseListController<DTO, T, ID> {
 
     protected Class<T> entity;
 
+    /**
+     * Scoping mode for this controller
+     */
+    protected BaseController.ScopingMode scopingMode = BaseController.ScopingMode.LEGACY;
+
     @SuppressWarnings("unchecked")
     public BaseListController() {
         Class<?>[] typeArgs = GenericTypeResolver.resolveTypeArguments(getClass(), BaseListController.class);
@@ -45,9 +50,16 @@ public abstract class BaseListController<DTO, T, ID> {
         if (query == null) {
             return ResponseEntity.badRequest().body(new Response(null, true, "Invalid query parameters"));
         }
-        log.info("getAll {}", query);
+        log.info("getAll {} with scopingMode={}", query, scopingMode);
         long startTime = System.currentTimeMillis();
-        List<T> entities = service.findByQueryWithReferences(entity, query);
+
+        List<T> entities =
+                switch (scopingMode) {
+                    case LEGACY -> service.findByQueryWithReferences(entity, query);
+                    case SMART -> service.findByQuerySmart(entity, query);
+                    case STRICT_SCOPED -> service.findByQueryScoped(entity, query);
+                };
+
         log.info("Query Execution Time for getAll: {} ms", System.currentTimeMillis() - startTime);
         List<DTO> dtoEntities = translationService.getDtoList(entities);
         Response response = new Response(dtoEntities, false, "success");
@@ -58,23 +70,22 @@ public abstract class BaseListController<DTO, T, ID> {
     public ResponseEntity<Response> getById(@PathVariable ID id) {
         try {
             T entityById = service.findByIdWithReference(id, entity);
-            if (entityById != null) {
-                if (entityById instanceof BaseEntity) {
-                    if (!((BaseEntity) entityById).isDeleted()) {
-                        DTO dto = translationService.getDto(entityById);
-                        Response response = new Response(Collections.singletonList(dto), false, "success");
-                        return ResponseEntity.ok(response);
-                    } else {
-                        return ResponseEntity.notFound().build();
-                    }
-                } else {
-                    DTO dto = translationService.getDto(entityById);
-                    Response response = new Response(Collections.singletonList(dto), false, "success");
-                    return ResponseEntity.ok(response);
-                }
-            } else {
+            if (entityById == null) {
                 return ResponseEntity.notFound().build();
             }
+
+            // Owner check for SMART/STRICT_SCOPED modes
+            if (scopingMode != BaseController.ScopingMode.LEGACY && !service.isEntityOwner(entityById)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new Response(null, true, "Access denied"));
+            }
+
+            if (entityById instanceof BaseEntity && ((BaseEntity) entityById).isDeleted()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            DTO dto = translationService.getDto(entityById);
+            Response response = new Response(Collections.singletonList(dto), false, "success");
+            return ResponseEntity.ok(response);
 
         } catch (Exception ex) {
             Response response = new Response(null, true, ex.getMessage());

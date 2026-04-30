@@ -5,10 +5,14 @@ import com.hyp.entity.User;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.request.UserLoginRequest;
 import com.hyp.response.Response;
+import com.hyp.security.jwt.JwtTokenService;
+import com.hyp.security.principal.UserPrincipal;
 import com.hyp.service.UserService;
 import com.hyp.translation.UserTranslation;
 import jakarta.validation.Valid;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/user")
+@RequestMapping(path = {"/api/v2/user", "/api/v3/user"})
 public class UserController extends BaseListController<UserDto, User, String> {
 
     @Autowired
@@ -32,6 +36,9 @@ public class UserController extends BaseListController<UserDto, User, String> {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenService jwtTokenService;
+
     @PostMapping("/auth/login")
     public ResponseEntity<Response> login(@RequestBody @Valid UserLoginRequest userLoginRequest)
             throws EntityNotFoundException {
@@ -42,23 +49,49 @@ public class UserController extends BaseListController<UserDto, User, String> {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new Response(null, true, "Invalid credentials"));
         }
 
+        // Determine role - default to RESTAURANT_USER if not set
+        String role = user.getRole() != null ? user.getRole() : "RESTAURANT_USER";
+
+        // Get first restaurant as the default/active restaurant for the session
+        String defaultRestaurantId =
+                user.getRestaurantIds() != null && !user.getRestaurantIds().isEmpty()
+                        ? user.getRestaurantIds().iterator().next()
+                        : null;
+
+        // Generate JWT tokens for authenticated user
+        UserPrincipal principal = UserPrincipal.builder()
+                .userId(user.getId())
+                .userType("USER")
+                .role(role)
+                .email(user.getEmail())
+                .name(user.getName())
+                .mobile(user.getMobile())
+                .restaurantId(defaultRestaurantId)
+                .partnerId(user.getPartnerId())
+                .build();
+
+        Map<String, Object> tokens = jwtTokenService.createTokenPair(principal, null, null);
+
         UserDto userData = userTranslation.getDto(user);
-        return ResponseEntity.ok(new Response(Collections.singletonList(userData), false, "Login successful"));
+
+        // Build response with user data and tokens
+        Map<String, Object> responseData = new LinkedHashMap<>();
+        responseData.put("user", userData);
+        responseData.put("accessToken", tokens.get("accessToken"));
+        responseData.put("refreshToken", tokens.get("refreshToken"));
+        responseData.put("tokenType", tokens.get("tokenType"));
+        responseData.put("expiresIn", tokens.get("expiresIn"));
+
+        return ResponseEntity.ok(new Response(Collections.singletonList(responseData), false, "Login successful"));
     }
 
     @PostMapping
     public ResponseEntity<Response> create(@RequestBody @Valid UserDto userDto) {
         boolean emailExists = userService.findByEmail(userDto.getEmail()) != null;
-        boolean restaurantExists = userService.findByRestaurantId(userDto.getRestaurantId()) != null;
 
         if (emailExists) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new Response(null, false, "Email is already registered with another user."));
-        }
-
-        if (restaurantExists) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new Response(null, false, "A user already exists for this restaurant."));
         }
 
         User user = userTranslation.getEntity(userDto);

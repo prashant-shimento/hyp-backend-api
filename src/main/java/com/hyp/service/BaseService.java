@@ -44,4 +44,18 @@ public interface BaseService<T, ID> {
     List<T> findByRestaurant(Class<T> entityClass, Object value);
 
     List<T> findAllByIdIn(List<ID> ids);
+
+    T findByIdScoped(ID id);
+
+    List<T> findByIdsScoped(List<ID> ids);
+
+    List<T> findAllScoped();
+
+    T findByFieldScoped(Class<T> entityClass, String fieldName, Object value);
+
+    List<T> findByQueryScoped(Class<T> entityClass, Query query);
+
+    List<T> findByQuerySmart(Class<T> entityClass, Query query);
+
+    boolean isEntityOwner(T entity);
 }

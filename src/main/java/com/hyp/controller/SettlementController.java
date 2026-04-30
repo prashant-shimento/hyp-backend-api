@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/settlement")
+@RequestMapping(path = {"/api/v2/settlement", "/api/v3/settlement"})
 public class SettlementController extends BaseListController<SettlementDto, Settlement, String> {
 
     @Autowired

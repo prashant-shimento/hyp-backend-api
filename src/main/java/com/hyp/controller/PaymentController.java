@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/payment")
+@RequestMapping(path = {"/api/v2/payment", "/api/v3/payment"})
 public class PaymentController extends BaseListController<PaymentDto, Payment, String> {
 
     @Autowired

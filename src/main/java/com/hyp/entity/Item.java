@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -17,6 +19,10 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "items")
+@CompoundIndexes({
+    @CompoundIndex(name = "idx_category_deleted", def = "{'item_category_id': 1, 'is_deleted': 1}"),
+    @CompoundIndex(name = "idx_restaurant_deleted", def = "{'restaurant_id': 1, 'is_deleted': 1}")
+})
 public class Item extends BaseEntity {
 
     @Field("itemdescription")

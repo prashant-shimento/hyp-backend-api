@@ -6,6 +6,56 @@ A comprehensive Spring Boot backend service for a restaurant delivery and manage
 
 Hyperapps Backend API powers a full-featured food delivery ecosystem, handling order management, payment processing, delivery coordination, and restaurant operations. The platform integrates with multiple third-party services to provide a seamless experience for customers, restaurant partners, and delivery personnel.
 
+## Branch: security-implementation
+
+This branch contains a comprehensive security implementation with the following features:
+
+### Security Features
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| JWT Authentication | Access & refresh token management with secure storage | ✅ Complete |
+| API Key Authentication | Webhook authentication with STATIC_TOKEN & HMAC modes | ✅ Complete |
+| Permission-Based RBAC | Granular permissions with role inheritance | ✅ Complete |
+| Access Policies | URL-based policy system for fine-grained authorization | ✅ Complete |
+| Rate Limiting | Token bucket algorithm (Bucket4j) for abuse prevention | ✅ Complete |
+| Multi-Tenancy | Restaurant-scoped data isolation | ✅ Complete |
+
+### Security Architecture
+
+```
+HTTP Request
+     │
+     ▼
+┌─────────────────────────────────────────────────────────┐
+│               SECURITY FILTER CHAIN                      │
+├─────────────────────────────────────────────────────────┤
+│  1. RateLimitingFilter      → Rate limit check          │
+│  2. ApiKeyAuthenticationFilter → Webhook auth           │
+│  3. JwtAuthenticationFilter → JWT token validation      │
+│  4. PolicyEnforcementFilter → Permission-based authz    │
+└─────────────────────────────────────────────────────────┘
+     │
+     ▼
+Controller → Service → Repository
+```
+
+### Default Roles
+
+| Role | Description |
+|------|-------------|
+| PLATFORM_ADMIN | Super admin - bypasses all permission checks |
+| PLATFORM_USER | Platform-level read access |
+| RESTAURANT_ADMIN | Full restaurant management (inherits RESTAURANT_USER) |
+| RESTAURANT_USER | Basic restaurant operations (inherits PUBLIC) |
+| CUSTOMER | Customer actions - order, payment (inherits PUBLIC) |
+| PUBLIC | Base role - menu read, location search, auth |
+| POS_PARTNER | POS webhook callbacks |
+| DELIVERY_PARTNER | Delivery webhook callbacks |
+| PAYMENT_PARTNER | Payment webhook callbacks |
+
+> 📖 For detailed security documentation, see [SECURITY_IMPLEMENTATION.md](./SECURITY_IMPLEMENTATION.md)
+
 ## Tech Stack
 
 | Component | Technology |
@@ -35,6 +85,7 @@ Hyperapps Backend API powers a full-featured food delivery ecosystem, handling o
 src/main/java/com/hyp/
 ├── config/           # Configuration classes (Redis, Temporal, Security, etc.)
 ├── controller/       # REST API controllers
+│   └── admin/        # Admin controllers (roles, policies)
 ├── entity/           # MongoDB document entities
 ├── enums/            # Enumeration types
 ├── event/            # Spring event classes
@@ -43,11 +94,26 @@ src/main/java/com/hyp/
 ├── repository/       # MongoDB repositories
 ├── request/          # Request DTOs
 ├── response/         # Response DTOs
+├── seeder/           # Database seeders (permissions, roles, policies)
+├── security/         # Security implementation
+│   ├── apikey/       # API key authentication (webhooks)
+│   ├── exception/    # Security exceptions
+│   ├── jwt/          # JWT token management
+│   ├── policy/       # Access policy enforcement
+│   ├── principal/    # User principal & restaurant context
+│   ├── ratelimit/    # Rate limiting
+│   └── service/      # Security services (roles, permissions, cache)
 ├── service/          # Business logic services
 ├── translation/      # DTO translation classes
 ├── utils/            # Utility classes
 ├── validation/       # Custom validators
 └── workflow/         # Temporal workflow definitions
+
+load-testing/         # k6 load testing scripts
+├── k6-config.js      # Configuration
+├── k6-order-flow.js  # Order flow tests
+├── k6-soak-test.js   # Soak testing
+└── run-tests.sh      # Test runner script
 ```
 
 ## Core Features
@@ -91,6 +157,8 @@ src/main/java/com/hyp/
 
 Base Path: `/api/v2`
 
+### Core Endpoints
+
 | Endpoint | Description |
 |----------|-------------|
 | `/order` | Order management |
@@ -105,6 +173,18 @@ Base Path: `/api/v2`
 | `/report` | Business reports |
 | `/notification` | Notification dispatch |
 | `/pos` | POS data synchronization |
+
+### Security Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/auth/refresh` | Refresh access token |
+| `/auth/logout` | Logout current session |
+| `/auth/logout-all` | Logout all sessions |
+| `/auth/me` | Get current user info |
+| `/admin/permissions` | Permission management (PLATFORM_ADMIN) |
+| `/admin/roles` | Role management (PLATFORM_ADMIN) |
+| `/admin/policies` | Access policy management (PLATFORM_ADMIN) |
 
 ## Workflow Engine
 
@@ -143,6 +223,9 @@ MONGODB_CLUSTER=
 APP_DOMAIN=
 APP_SECRET_KEY=
 CORS_ALLOWED_ORIGINS=*
+
+# JWT Security (Required)
+JWT_SECRET=your-256-bit-secret-key-change-in-production
 
 # POS System (PetPooja)
 POS_PETPOOJA_URL=
@@ -248,6 +331,25 @@ mvn test
 mvn test jacoco:report
 ```
 
+## Load Testing
+
+The `load-testing/` directory contains k6 scripts for performance testing:
+
+```bash
+# Install k6 (macOS)
+brew install k6
+
+# Run order flow load test
+cd load-testing
+./run-tests.sh
+
+# Or run specific tests
+k6 run k6-order-flow.js
+k6 run k6-soak-test.js
+```
+
+> See [load-testing/README.md](./load-testing/README.md) and [load-testing/SETUP_GUIDE.md](./load-testing/SETUP_GUIDE.md) for detailed instructions.
+
 ## Code Formatting
 
 The project uses Spotless with Palantir Java formatter:
@@ -262,6 +364,8 @@ mvn spotless:apply
 
 ## Key Entities
 
+### Business Entities
+
 | Entity | Description |
 |--------|-------------|
 | Order | Customer orders with items, status, and payment details |
@@ -274,6 +378,16 @@ mvn spotless:apply
 | Category | Menu categories hierarchy |
 | Variation | Item variations (size, color, etc.) |
 | AddonGroup | Groups of optional add-on items |
+
+### Security Entities
+
+| Entity | Collection | Description |
+|--------|------------|-------------|
+| Permission | `permissions` | Granular capabilities (e.g., `menu:read`, `order:create`) |
+| Role | `roles` | Permission sets with inheritance support |
+| AccessPolicy | `access_policies` | URL-based authorization rules |
+| RefreshToken | `refresh_tokens` | Hashed refresh tokens with device tracking |
+| ApiKeyConfig | `api_key_configs` | Webhook API key configuration |
 
 ## Order Status Flow
 

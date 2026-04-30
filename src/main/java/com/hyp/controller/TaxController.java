@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/tax")
+@RequestMapping(path = {"/api/v2/tax", "/api/v3/tax"})
 public class TaxController extends BaseController<TaxDto, Tax, String> {
 
     @Autowired

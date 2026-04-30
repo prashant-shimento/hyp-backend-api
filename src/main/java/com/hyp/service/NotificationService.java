@@ -353,28 +353,28 @@ public class NotificationService {
     public void sendOneSignalNotification(
             OneSignalNotificationRequest oneSignalNotificationRequest, String restaurantId)
             throws EntityNotFoundException {
-        User user = userService.findByRestaurantId(restaurantId);
-        if (user == null) {
+        List<User> users = userService.findByRestaurantId(restaurantId);
+        if (users == null || users.isEmpty()) {
             throw new EntityNotFoundException("Restaurant", restaurantId);
         }
+        List<String> userIds = users.stream().map(User::getId).toList();
         if (oneSignalNotificationRequest == null) {
             oneSignalNotificationRequest = OneSignalNotificationRequest.builder()
                     .targetChannel("push")
                     .includeAliases(OneSignalNotificationAlias.builder()
-                            .externalId(List.of(user.getId()))
+                            .externalId(userIds)
                             .build())
                     .appId(partnerAppId)
                     .contents(Map.of("en", "OneSignal notification is working fine"))
                     .build();
         } else {
-            oneSignalNotificationRequest.setIncludeAliases(OneSignalNotificationAlias.builder()
-                    .externalId(List.of(user.getId()))
-                    .build());
+            oneSignalNotificationRequest.setIncludeAliases(
+                    OneSignalNotificationAlias.builder().externalId(userIds).build());
             oneSignalNotificationRequest.setAppId(partnerAppId);
         }
         try {
             sendOneSignalNotificationForPartner(oneSignalNotificationRequest);
-            log.info("Test notification sent to userId={} for restaurantId={}", user.getId(), restaurantId);
+            log.info("Test notification sent to userIds={} for restaurantId={}", userIds, restaurantId);
         } catch (OneSignalException e) {
             log.error("Error occurred in sending push notification {}", oneSignalNotificationRequest, e);
         }

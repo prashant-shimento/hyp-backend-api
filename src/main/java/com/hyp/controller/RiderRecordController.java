@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/rider")
+@RequestMapping(path = {"/api/v2/rider", "/api/v3/rider"})
 public class RiderRecordController extends BaseController<RiderRecordDto, RiderRecord, String> {
 
     @Autowired

@@ -4,6 +4,8 @@ import com.hyp.listener.BroadcastExpiryListener;
 import com.hyp.listener.DeliveryListener;
 import com.hyp.listener.ItemStockListener;
 import com.hyp.listener.OrderListener;
+import com.hyp.listener.SecurityCacheInvalidationListener;
+import com.hyp.security.service.SecurityCacheService;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -15,6 +17,7 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettucePoolingClientConfiguration;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
@@ -102,13 +105,16 @@ public class RedisConfig {
             MessageListenerAdapter orderListenerAdapter,
             MessageListenerAdapter itemStockListenerAdapter,
             MessageListenerAdapter deliveryListenerAdapter,
-            MessageListenerAdapter broadcastExpiryListenerAdapter) {
+            MessageListenerAdapter broadcastExpiryListenerAdapter,
+            MessageListenerAdapter securityCacheListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.addMessageListener(orderListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         container.addMessageListener(itemStockListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         container.addMessageListener(deliveryListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
         container.addMessageListener(broadcastExpiryListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
+        container.addMessageListener(
+                securityCacheListenerAdapter, new ChannelTopic(SecurityCacheService.CACHE_INVALIDATION_CHANNEL));
         return container;
     }
 
@@ -130,5 +136,10 @@ public class RedisConfig {
     @Bean
     MessageListenerAdapter broadcastExpiryListenerAdapter(BroadcastExpiryListener broadcastExpiryListener) {
         return new MessageListenerAdapter(broadcastExpiryListener);
+    }
+
+    @Bean
+    MessageListenerAdapter securityCacheListenerAdapter(SecurityCacheInvalidationListener listener) {
+        return new MessageListenerAdapter(listener);
     }
 }

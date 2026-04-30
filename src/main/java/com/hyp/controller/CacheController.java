@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/cache")
+@RequestMapping(path = {"/api/v2/cache", "/api/v3/cache"})
 public class CacheController {
 
     @Autowired
