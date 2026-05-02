@@ -42,6 +42,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -87,6 +88,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     @Autowired
     ApplicationMetrics metrics;
+
+    @Value("${app.domain}")
+    private String appDomain;
 
     public Delivery findByOrderId(String orderId) {
         return deliveryRepository.findFirstByOrderIdAndIsDeletedFalseOrderByCreatedAtDesc(orderId);
@@ -354,7 +358,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         }
         // TODO: Need to Move this saveOrder some where - unwanted save operation
         if (order.getDeliveryTrackingLink() == null) {
-            order.setDeliveryTrackingLink("https://api.hyperapps.in/api/v2/order/track/" + order.getId());
+            order.setDeliveryTrackingLink(appDomain + "/api/v2/order/track/" + order.getId());
         }
         if (fullFillStatus.equals(DeliveryFulfillStatusType.DELIVERED)) {
             order.setFulfilledBy(DeliveryPartner.PIDGE);
