@@ -1,6 +1,8 @@
 package com.hyp.entity;
 
 import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.OfferType;
+import com.hyp.enums.OrderType;
 import com.hyp.enums.SubscriptionPlan;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
@@ -72,6 +74,8 @@ public class Restaurant implements Identifiable<String> {
 
     @Field("discount_percentage")
     private Double discountPercentage;
+
+    private Discount discount;
 
     private String status;
 
@@ -213,6 +217,49 @@ public class Restaurant implements Identifiable<String> {
     @Field("subscription")
     private Subscription subscription;
 
+    @Field("delivery_options")
+    private List<DeliveryOption> deliveryOptions = List.of(
+            DeliveryOption.of(OrderType.H, true),
+            DeliveryOption.of(OrderType.D, false),
+            DeliveryOption.of(OrderType.P, false),
+            DeliveryOption.of(OrderType.B, false));
+
+    @Field("rider_availability_config")
+    private RiderAvailabilityConfig riderAvailabilityConfig;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryOption {
+
+        @Field("label")
+        private String label;
+
+        @Field("value")
+        private int value;
+
+        @Field("enabled")
+        private boolean enabled;
+
+        public static DeliveryOption of(OrderType orderType, boolean enabled) {
+            return new DeliveryOption(orderType.getLabel(), Integer.parseInt(orderType.getValue()), enabled);
+        }
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RiderAvailabilityConfig {
+        private boolean enabled;
+        private int threshold;
+        private int max;
+
+        @Field("alert_message")
+        private String alertMessage;
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -248,5 +295,25 @@ public class Restaurant implements Identifiable<String> {
 
         @Field("days_left_to_subscribe")
         private Integer daysLeftToSubscribe;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Discount {
+        private boolean enabled;
+
+        @Field("offer_type")
+        private OfferType offerType;
+
+        @Field("offer_value")
+        private Double offerValue;
+
+        @Field("min_cart_value")
+        private Double minCartValue; // null = no minimum threshold
+
+        @Field("max_cap")
+        private Double maxCap; // null = no cap on discount amount
     }
 }

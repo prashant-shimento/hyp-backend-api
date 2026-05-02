@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/location")
+@RequestMapping(path = {"/api/v2/location", "/api/v3/location"})
 public class LocationController {
 
     @Autowired

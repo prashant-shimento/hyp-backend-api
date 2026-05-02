@@ -3,8 +3,6 @@ package com.hyp.controller;
 import com.hyp.adapter.UrbanPiperAdapter;
 import com.hyp.adapter.urbanpiper.order.OrderStatusTransformer;
 import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderStatusRequest;
-import com.hyp.entity.Order;
-import com.hyp.enums.OrderStatusType;
 import com.hyp.request.OrderStatusUpdateRequest;
 import com.hyp.request.PosStatusRequest;
 import com.hyp.request.urbanpiper.InventoryRequest;
@@ -62,12 +60,12 @@ public class UrbanPiperController {
     @PostMapping("/menu")
     public ResponseEntity<PosResponse> receiveMenu(@RequestBody UrbanPiperMenuRequest request) {
         log.info("UrbanPiper menu request received");
-        
+
         try {
             PosDataRequest posDataRequest = urbanPiperAdapter.transformMenuPayload(request);
 
             boolean success = posService.savePosData(posDataRequest);
-            
+
             return ResponseEntity.ok(PosResponse.builder()
                     .success(success ? "1" : "0")
                     .message(success ? "Menu received and saved successfully" : "Failed to save menu")
@@ -85,7 +83,7 @@ public class UrbanPiperController {
     @PostMapping("/inventory")
     public ResponseEntity<PosResponse> receiveInventory(@RequestBody InventoryRequest request) {
         log.info("UrbanPiper inventory payload received: {}", request);
-        
+
         try {
             PosStockRequest stockRequest = inventoryTransformer.transform(request);
             Restaurant restaurant = restaurantService.findByMenuSharingCode(stockRequest.getRestaurantId());
@@ -98,10 +96,10 @@ public class UrbanPiperController {
                         .success("0")
                         .build());
             }
-            
+
             boolean result = posService.updateStock(stockRequest);
             messageTemplate.convertAndSend("/topic/item-status", stockRequest);
-            
+
             return ResponseEntity.ok(PosResponse.builder()
                     .code(result ? HttpStatus.OK.value() : HttpStatus.INTERNAL_SERVER_ERROR.value())
                     .message(result ? "Stock Updated Successfully" : "Something Went Wrong")
@@ -122,24 +120,24 @@ public class UrbanPiperController {
 
     @PostMapping("/order/status")
     public ResponseEntity<PosResponse> receiveOrderStatus(@RequestBody UrbanPiperOrderStatusRequest request) {
-        log.info("UrbanPiper order status update received for order: {}, status: {}", 
+        log.info("UrbanPiper order status update received for order: {}, status: {}",
                 request.getExternalOrderId(), request.getStatus());
-        
+
         try {
             // Translate UrbanPiper request to PosCallbackRequest
-            com.hyp.request.PosCallbackRequest posCallbackRequest = 
+            com.hyp.request.PosCallbackRequest posCallbackRequest =
                     urbanPiperCallbackTranslator.translateToPosCallback(request, request.getLocationRefId());
-            
+
             // Use the same processOrderCallback method as PetPooja
             orderService.processOrderCallback(posCallbackRequest);
-            
+
             return ResponseEntity.ok(PosResponse.builder()
                     .code(HttpStatus.OK.value())
                     .success("1")
                     .message("Order status updated successfully")
                     .status("success")
                     .build());
-                    
+
         } catch (Exception e) {
             log.error("Error processing UrbanPiper order status update", e);
             return ResponseEntity.ok(PosResponse.builder()
@@ -154,9 +152,9 @@ public class UrbanPiperController {
 
     @PostMapping("/store/status")
     public ResponseEntity<PosResponse> receiveStoreStatus(@RequestBody StoreStatusRequest request) {
-        log.info("UrbanPiper store status update received: location_ref_id={}, ordering_enabled={}", 
+        log.info("UrbanPiper store status update received: location_ref_id={}, ordering_enabled={}",
                 request.getLocationRefId(), request.getOrderingEnabled());
-        
+
         try {
             if (request.getLocationRefId() == null || request.getLocationRefId().isEmpty()) {
                 return ResponseEntity.ok(PosResponse.builder()
@@ -184,14 +182,14 @@ public class UrbanPiperController {
             posService.updateRestaurant(posStatusRequest);
 
             messageTemplate.convertAndSend("/topic/restaurant-status", posStatusRequest);
-            
+
             return ResponseEntity.ok(PosResponse.builder()
                     .code(HttpStatus.OK.value())
                     .success("1")
                     .message("Store Toggle Details Successfully Updated")
                     .status("success")
                     .build());
-                    
+
         } catch (Exception e) {
             log.error("Error processing store status update", e);
             return ResponseEntity.ok(PosResponse.builder()
@@ -206,9 +204,9 @@ public class UrbanPiperController {
 
     @PostMapping("/order/status/exchange")
     public ResponseEntity<PosResponse> updateOrderStatusExchange(@RequestBody OrderStatusUpdateRequest request) {
-        log.info("Order status exchange request received for order: {}, status: {}", 
+        log.info("Order status exchange request received for order: {}, status: {}",
                 request.getOrderNo(), request.getNewStatus());
-        
+
         try {
             // Validate the request
             if (request.getOrderNo() == null || request.getOrderNo().isEmpty()) {
@@ -219,7 +217,7 @@ public class UrbanPiperController {
                         .status("failed")
                         .build());
             }
-            
+
             if (request.getNewStatus() == null || request.getNewStatus().isEmpty()) {
                 return ResponseEntity.ok(PosResponse.builder()
                         .code(HttpStatus.BAD_REQUEST.value())
@@ -228,10 +226,10 @@ public class UrbanPiperController {
                         .status("failed")
                         .build());
             }
-            
+
             // Validate reason is mandatory for cancelled or rejected
             String status = request.getNewStatus().toLowerCase();
-            if ((status.equals("cancelled") || status.equals("rejected")) 
+            if ((status.equals("cancelled") || status.equals("rejected"))
                     && (request.getReason() == null || request.getReason().isEmpty())) {
                 return ResponseEntity.ok(PosResponse.builder()
                         .code(HttpStatus.BAD_REQUEST.value())
@@ -240,31 +238,31 @@ public class UrbanPiperController {
                         .status("failed")
                         .build());
             }
-            
+
             // Log reason if provided
             if (request.getReason() != null && !request.getReason().isEmpty()) {
-                log.info("Order {} status changing to {} with reason: {}", 
+                log.info("Order {} status changing to {} with reason: {}",
                         request.getOrderNo(), request.getNewStatus(), request.getReason());
             }
-            
+
             // Create PosCallbackRequest for translation
             UrbanPiperOrderStatusRequest urbanPiperStatusRequest = new UrbanPiperOrderStatusRequest();
             urbanPiperStatusRequest.setExternalOrderId(request.getOrderNo());
             urbanPiperStatusRequest.setStatus(request.getNewStatus());
-            
+
             // Translate and use processOrderCallback
-            com.hyp.request.PosCallbackRequest posCallbackRequest = 
+            com.hyp.request.PosCallbackRequest posCallbackRequest =
                     urbanPiperCallbackTranslator.translateToPosCallback(urbanPiperStatusRequest, null);
-            
+
             orderService.processOrderCallback(posCallbackRequest);
-            
+
             return ResponseEntity.ok(PosResponse.builder()
                     .code(HttpStatus.OK.value())
                     .success("1")
                     .message("Order status updated successfully")
                     .status("success")
                     .build());
-                    
+
         } catch (IllegalArgumentException e) {
             log.error("Invalid status value: {}", e.getMessage());
             return ResponseEntity.ok(PosResponse.builder()

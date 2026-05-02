@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/item")
+@RequestMapping(path = {"/api/v2/item", "/api/v3/item"})
 public class ItemController extends BaseController<ItemDto, Item, String> {
 
     @Autowired

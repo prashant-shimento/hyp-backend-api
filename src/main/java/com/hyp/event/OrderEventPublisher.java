@@ -2,6 +2,7 @@ package com.hyp.event;
 
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
+import com.hyp.entity.Payment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,11 @@ public class OrderEventPublisher {
 
     public void publishSettlementEvent(Order order) {
         SettlementEvent event = new SettlementEvent(this, order);
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public void publishPaymentSuccessEvent(Order order, Payment payment, String paymentStatus) {
+        PaymentEvent event = new PaymentEvent(this, order, payment, paymentStatus);
         applicationEventPublisher.publishEvent(event);
     }
 }

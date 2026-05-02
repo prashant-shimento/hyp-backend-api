@@ -2,6 +2,7 @@ package com.hyp.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderPlatform;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -104,6 +105,8 @@ public class OrderDto extends BaseDto {
     private String referralToken;
     private String referralCode;
     private String offerCode;
+    private Double discountValue;
+    private DeliveryPartner fulfilledBy;
 
     @Data
     @NoArgsConstructor
@@ -170,7 +173,7 @@ public class OrderDto extends BaseDto {
 
         private String type;
 
-        @Positive(message = "OrderTax price must be positive")
+        @PositiveOrZero(message = "OrderTax price must be positive")
         private Double price;
 
         @PositiveOrZero(message = "OrderTax amount must be positive")

@@ -7,6 +7,7 @@ import com.hyp.enums.PartnerType;
 import com.hyp.model.ApiConfig;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.*;
@@ -66,7 +67,7 @@ public class PartnerDto {
 
     private String themeColor;
 
-    private Map<String, String> locationConfigs;
+    private LinkedHashMap<String, String> locationConfigs;
 
     private String googleAnalytics;
 

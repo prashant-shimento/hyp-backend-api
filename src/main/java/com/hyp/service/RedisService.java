@@ -5,38 +5,30 @@ import java.time.Duration;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.json.Path2;
-import redis.clients.jedis.params.SetParams;
 
 /**
- * Redis service using JedisPooled for all operations.
- * This consolidates all Redis operations into a single connection pool,
- * reducing connection usage compared to using both RedisTemplate and JedisPooled.
+ * Redis service using Lettuce via StringRedisTemplate for all operations.
+ * This consolidates all Redis operations through a single connection pool.
  */
 @Slf4j
 @Component
 public class RedisService {
 
     @Autowired
-    private JedisPooled jedis;
+    private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    public boolean isNotificationServiceEnabled() {
-        String value = jedis.get("notification:service:enabled");
-        return Boolean.parseBoolean(value);
-    }
-
     public String getAlertUsers() {
-        return jedis.get("whatsappAlert");
+        return stringRedisTemplate.opsForValue().get("whatsappAlert");
     }
 
     public String getInternalUsers() {
-        return jedis.get("internalUsers");
+        return stringRedisTemplate.opsForValue().get("internalUsers");
     }
 
     /**
@@ -44,7 +36,7 @@ public class RedisService {
      */
     public Optional<String> getRedisData(String key) {
         try {
-            String value = jedis.get(key);
+            String value = stringRedisTemplate.opsForValue().get(key);
             return Optional.ofNullable(value);
         } catch (Exception e) {
             log.error("Error fetching value from Redis for key: {}", key, e);
@@ -59,7 +51,7 @@ public class RedisService {
     public void setRedisData(String key, Object value, long ttlSeconds) {
         try {
             String jsonValue = objectMapper.writeValueAsString(value);
-            jedis.setex(key, ttlSeconds, jsonValue);
+            stringRedisTemplate.opsForValue().set(key, jsonValue, Duration.ofSeconds(ttlSeconds));
             log.info("Redis set operation completed for key: {}", key);
         } catch (Exception e) {
             log.error("Failed to set Redis data for key: {}", key, e);
@@ -72,21 +64,51 @@ public class RedisService {
     @Async
     public void increment(String key) {
         try {
-            jedis.incr(key);
+            stringRedisTemplate.opsForValue().increment(key);
         } catch (Exception e) {
             log.error("Failed to increment Redis key: {}", key, e);
         }
     }
 
+    /** Synchronous increment returning the new value. */
+    public long incrementAndGet(String key) {
+        try {
+            Long result = stringRedisTemplate.opsForValue().increment(key);
+            return result != null ? result : 0L;
+        } catch (Exception e) {
+            log.error("Failed to incrementAndGet Redis key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    /** Synchronous decrement returning the new value. */
+    public long decrementAndGet(String key) {
+        try {
+            Long result = stringRedisTemplate.opsForValue().decrement(key);
+            return result != null ? result : 0L;
+        } catch (Exception e) {
+            log.error("Failed to decrementAndGet Redis key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    /** Set a string value with no expiry. */
+    public void setRedisString(String key, String value) {
+        try {
+            stringRedisTemplate.opsForValue().set(key, value);
+        } catch (Exception e) {
+            log.error("Failed to set Redis string for key: {}", key, e);
+        }
+    }
+
     /**
-     * Set JSON data using Redis JSON module.
+     * Set JSON data in Redis.
      */
     @Async
     public void setRedisJsonData(String key, Object data, long ttlSeconds) {
         try {
             String jsonString = objectMapper.writeValueAsString(data);
-            jedis.jsonSet(key, Path2.ROOT_PATH, jsonString);
-            jedis.expire(key, ttlSeconds);
+            stringRedisTemplate.opsForValue().set(key, jsonString, Duration.ofSeconds(ttlSeconds));
             log.info("Redis JSON Data set operation completed for key: {}", key);
         } catch (Exception e) {
             log.error("Failed to set Redis JSON data for key: {}", key, e);
@@ -94,18 +116,25 @@ public class RedisService {
     }
 
     /**
-     * Get JSON data using Redis JSON module.
+     * Get JSON data from Redis.
      */
     public <T> Optional<T> getRedisJsonData(String key, Class<T> valueType) {
         try {
-            Object jsonElement = jedis.jsonGet(key);
-            if (jsonElement != null) {
-                String json = objectMapper.writeValueAsString(jsonElement);
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json != null) {
                 T data = objectMapper.readValue(json, valueType);
                 return Optional.of(data);
             }
         } catch (Exception e) {
-            log.error("Failed to get Redis JSON data for key: {}", key, e);
+            Throwable cause = e.getCause();
+            if (cause != null
+                    && cause.getMessage() != null
+                    && cause.getMessage().startsWith("WRONGTYPE")) {
+                log.warn("Key '{}' has wrong Redis type (stale key), deleting for self-heal", key);
+                stringRedisTemplate.delete(key);
+            } else {
+                log.error("Failed to get Redis JSON data for key: {}", key, e);
+            }
         }
         return Optional.empty();
     }
@@ -116,8 +145,8 @@ public class RedisService {
     @Async
     public void removeRedisData(String key) {
         try {
-            long deleted = jedis.del(key);
-            if (deleted > 0) {
+            Boolean deleted = stringRedisTemplate.delete(key);
+            if (Boolean.TRUE.equals(deleted)) {
                 log.info("Successfully removed key: {}", key);
             } else {
                 log.warn("Key not found or not removed: {}", key);
@@ -132,7 +161,7 @@ public class RedisService {
      */
     public boolean exists(String key) {
         try {
-            return jedis.exists(key);
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
         } catch (Exception e) {
             log.error("Error checking existence of Redis key: {}", key, e);
             return false;
@@ -145,7 +174,7 @@ public class RedisService {
     @Async
     public void expire(String key, long ttlSeconds) {
         try {
-            jedis.expire(key, ttlSeconds);
+            stringRedisTemplate.expire(key, Duration.ofSeconds(ttlSeconds));
         } catch (Exception e) {
             log.error("Failed to set expiry on Redis key: {}", key, e);
         }
@@ -157,7 +186,7 @@ public class RedisService {
      */
     public void setRedisStringDataSync(String key, String value, long ttlSeconds) {
         try {
-            jedis.setex(key, ttlSeconds, value);
+            stringRedisTemplate.opsForValue().set(key, value, Duration.ofSeconds(ttlSeconds));
             log.debug("Redis sync set operation completed for key: {}", key);
         } catch (Exception e) {
             log.error("Failed to set Redis data synchronously for key: {}", key, e);
@@ -166,14 +195,75 @@ public class RedisService {
 
     public boolean setIfAbsent(String key, String value, Duration ttl) {
         try {
-            SetParams params = new SetParams().nx().ex((int) ttl.getSeconds());
-
-            String result = jedis.set(key, value, params);
-            return "OK".equals(result);
-
+            Boolean result = stringRedisTemplate.opsForValue().setIfAbsent(key, value, ttl);
+            return Boolean.TRUE.equals(result);
         } catch (Exception e) {
             log.error("Redis SET NX failed for key={}", key, e);
             throw e;
+        }
+    }
+
+    /**
+     * Set object data in Redis (synchronous, no TTL)
+     */
+    public void setObjectData(String key, Object value) {
+        try {
+            String jsonValue = objectMapper.writeValueAsString(value);
+            stringRedisTemplate.opsForValue().set(key, jsonValue);
+            log.debug("Redis set operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to set Redis data for key: {}", key, e);
+        }
+    }
+
+    /**
+     * Get object data from Redis
+     */
+    public Object getObjectData(String key) {
+        try {
+            String value = stringRedisTemplate.opsForValue().get(key);
+            if (value == null) return null;
+            return objectMapper.readValue(value, Object.class);
+        } catch (Exception e) {
+            log.error("Error fetching object from Redis for key: {}", key, e);
+            return null;
+        }
+    }
+
+    /**
+     * Check if a key exists in Redis
+     */
+    public boolean hasKey(String key) {
+        try {
+            return Boolean.TRUE.equals(stringRedisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.error("Error checking key existence in Redis for key: {}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * Delete a key from Redis (synchronous)
+     */
+    public void deleteKey(String key) {
+        try {
+            stringRedisTemplate.delete(key);
+            log.debug("Redis delete operation completed for key: {}", key);
+        } catch (Exception e) {
+            log.error("Failed to delete Redis key: {}", key, e);
+        }
+    }
+
+    /**
+     * Publish a message to a Redis channel (pub/sub)
+     */
+    public void publish(String channel, Object message) {
+        try {
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            stringRedisTemplate.convertAndSend(channel, jsonMessage);
+            log.debug("Published message to channel: {}", channel);
+        } catch (Exception e) {
+            log.error("Failed to publish message to channel: {}", channel, e);
         }
     }
 }

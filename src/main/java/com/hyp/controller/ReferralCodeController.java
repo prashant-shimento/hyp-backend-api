@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/referral")
+@RequestMapping(path = {"/api/v2/referral", "/api/v3/referral"})
 public class ReferralCodeController extends BaseListController<ReferralCodeDto, ReferralCode, String> {
 
     @Autowired

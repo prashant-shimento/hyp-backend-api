@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/report")
+@RequestMapping(path = {"/api/v2/report", "/api/v3/report"})
 public class ReportController extends BaseController<ReportDto, Report, String> {
 
     @Autowired

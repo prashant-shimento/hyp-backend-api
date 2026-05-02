@@ -9,6 +9,11 @@ on:
         type: choice
         options:
           - staging
+      port:
+        description: "Host port to expose (e.g. 9090, 9091, 9092)"
+        required: true
+        type: string
+        default: "9090"
       skip_build:
         description: "Skip Docker build (redeploy existing image)"
         required: false
@@ -24,6 +29,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Derive image tag from branch
+        id: meta
+        run: |
+          # Sanitize branch name for Docker tag (replace / with -)
+          TAG=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -34,10 +46,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push Docker image
+        env:
+          TAG: ${{ steps.meta.outputs.TAG }}
         run: |
           docker build -t hyp-backend-api .
-          docker tag hyp-backend-api lognathp/hyp-backend-api:${{ inputs.environment }}
-          docker push lognathp/hyp-backend-api:${{ inputs.environment }}
+          docker tag hyp-backend-api lognathp/hyp-backend-api:${TAG}
+          docker push lognathp/hyp-backend-api:${TAG}
 
   deploy:
     runs-on: ubuntu-latest
@@ -45,6 +59,14 @@ jobs:
     if: always() && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
 
     steps:
+      - name: Derive deploy identifiers
+        id: meta
+        run: |
+          TAG=$(echo "${GITHUB_REF_NAME}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          CONTAINER_NAME="hyp-backend-${TAG}"
+          echo "TAG=${TAG}" >> $GITHUB_OUTPUT
+          echo "CONTAINER_NAME=${CONTAINER_NAME}" >> $GITHUB_OUTPUT
+
       - name: Start SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -101,56 +123,71 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.STAGING_VPS_HOST }}
           VPS_USER: ${{ secrets.STAGING_VPS_USER }}
+          CONTAINER_NAME: ${{ steps.meta.outputs.CONTAINER_NAME }}
         run: |
           ssh $VPS_USER@$VPS_HOST "mkdir -p /home/hyp-backend"
-          scp .env.deploy $VPS_USER@$VPS_HOST:/home/hyp-backend/.env
-          ssh $VPS_USER@$VPS_HOST "chmod 600 /home/hyp-backend/.env"
+          scp .env.deploy $VPS_USER@$VPS_HOST:/home/hyp-backend/.env.${CONTAINER_NAME}
+          ssh $VPS_USER@$VPS_HOST "chmod 600 /home/hyp-backend/.env.${CONTAINER_NAME}"
 
       - name: Deploy to VPS
         env:
           VPS_HOST: ${{ secrets.STAGING_VPS_HOST }}
           VPS_USER: ${{ secrets.STAGING_VPS_USER }}
-          IMAGE_TAG: ${{ inputs.environment }}
+          CONTAINER_NAME: ${{ steps.meta.outputs.CONTAINER_NAME }}
+          IMAGE_TAG: ${{ steps.meta.outputs.TAG }}
+          HOST_PORT: ${{ inputs.port }}
         run: |
-          ssh $VPS_USER@$VPS_HOST << 'EOF'
+          ssh $VPS_USER@$VPS_HOST "bash -s" << EOF
             set -e
-            CONTAINER_NAME="hyp-backend-staging"
-            IMAGE="lognathp/hyp-backend-api:staging"
-            ENV_FILE="/home/hyp-backend/.env"
+            CONTAINER_NAME="${CONTAINER_NAME}"
+            IMAGE="lognathp/hyp-backend-api:${IMAGE_TAG}"
+            ENV_FILE="/home/hyp-backend/.env.${CONTAINER_NAME}"
+            HOST_PORT="${HOST_PORT}"
+
+            echo "==> Deploying \${CONTAINER_NAME} on port \${HOST_PORT}..."
+
+            # Check if the requested port is already in use by another container
+            EXISTING=$(docker ps --format '{{.Names}} {{.Ports}}' | grep "0.0.0.0:\${HOST_PORT}->" | awk '{print \$1}' || true)
+            if [ -n "\${EXISTING}" ] && [ "\${EXISTING}" != "\${CONTAINER_NAME}" ]; then
+                echo "ERROR: Port \${HOST_PORT} is already in use by container '\${EXISTING}'"
+                echo "Pick a different port or stop that container first."
+                rm -f "\${ENV_FILE}"
+                exit 1
+            fi
 
             echo "==> Ensuring logs directory exists..."
             mkdir -p /home/logs
 
             echo "==> Saving logs from current container..."
-            if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-                docker logs "$CONTAINER_NAME" > "/home/logs/${CONTAINER_NAME}-$(date +%Y%m%d%H%M%S).log" 2>&1 || true
+            if docker ps -a --format '{{.Names}}' | grep -q "^\${CONTAINER_NAME}\$"; then
+                docker logs "\${CONTAINER_NAME}" > "/home/logs/\${CONTAINER_NAME}-\$(date +%Y%m%d%H%M%S).log" 2>&1 || true
                 echo "==> Stopping and removing old container..."
-                docker stop "$CONTAINER_NAME" || true
-                docker rm "$CONTAINER_NAME" || true
+                docker stop "\${CONTAINER_NAME}" || true
+                docker rm "\${CONTAINER_NAME}" || true
             fi
 
             echo "==> Pulling latest image..."
-            docker pull "$IMAGE"
+            docker pull "\${IMAGE}"
 
-            echo "==> Starting new container..."
+            echo "==> Starting new container on port \${HOST_PORT}..."
             docker run -d \
-              --name "$CONTAINER_NAME" \
+              --name "\${CONTAINER_NAME}" \
               --restart=always \
-              -p 9090:9090 \
-              --env-file "$ENV_FILE" \
-              "$IMAGE"
+              -p "\${HOST_PORT}":9090 \
+              --env-file "\${ENV_FILE}" \
+              "\${IMAGE}"
 
             echo "==> Removing secrets file from disk..."
-            rm -f "$ENV_FILE"
+            rm -f "\${ENV_FILE}"
 
             echo "==> Verifying container is running..."
             sleep 5
-            if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            if docker ps --format '{{.Names}}' | grep -q "^\${CONTAINER_NAME}\$"; then
                 echo "Deployment successful"
-                docker ps --filter "name=${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                docker ps --filter "name=\${CONTAINER_NAME}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             else
                 echo "Container failed to start. Logs:"
-                docker logs "$CONTAINER_NAME" 2>&1 | tail -50
+                docker logs "\${CONTAINER_NAME}" 2>&1 | tail -50
                 exit 1
             fi
           EOF

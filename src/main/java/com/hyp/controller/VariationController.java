@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/variation")
+@RequestMapping(path = {"/api/v2/variation", "/api/v3/variation"})
 public class VariationController extends BaseController<VariationDto, Variation, String> {
 
     @Autowired

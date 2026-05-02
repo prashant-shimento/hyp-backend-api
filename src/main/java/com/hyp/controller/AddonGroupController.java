@@ -5,6 +5,7 @@ import com.hyp.entity.AddonGroup;
 import com.hyp.response.Response;
 import com.hyp.service.AddonGroupService;
 import com.hyp.translation.AddonGroupsTranslation;
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,8 +16,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/addon-group")
+@RequestMapping(path = {"/api/v2/addon-group", "/api/v3/addon-group"})
 public class AddonGroupController extends BaseController<AddonGroupDto, AddonGroup, String> {
+
+    @Autowired
+    private ScopingMode defaultScopingMode;
+
+    @PostConstruct
+    public void init() {
+        this.scopingMode = defaultScopingMode;
+    }
 
     @Autowired
     public AddonGroupsTranslation addonGroupTranslation;

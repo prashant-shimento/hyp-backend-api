@@ -22,6 +22,7 @@ public class DeliveryQuote {
 
     @Data
     public static class DeliveryNetworks {
+
         @JsonProperty("network_id")
         private int networkId;
 

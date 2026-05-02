@@ -35,7 +35,8 @@ public enum OrderStatusType {
     REFUND_COMPLETED,
     REFUND_FAILED,
     REFUND_PENDING,
-    RIDER_CANCELLED;
+    RIDER_CANCELLED,
+    MANUAL_DELIVERY_BOOKED;
 
     public static OrderStatusType getOrderStatusByPosStatus(String value) {
         return switch (value) {

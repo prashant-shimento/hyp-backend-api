@@ -69,6 +69,9 @@ public class Delivery extends BaseEntity {
     @Field("fulfillment_histories")
     private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
 
+    @Field("tracking_url")
+    private String trackingUrl;
+
     @Data
     @NoArgsConstructor
     public static class ContactDetail {

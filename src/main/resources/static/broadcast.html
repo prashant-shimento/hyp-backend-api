@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Broadcast Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 24px; color: #1a1a1a; }
+    h1 { font-size: 18px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    section { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; }
+    h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+         color: #666; margin-bottom: 14px; }
+    label { display: block; font-size: 12px; margin-bottom: 4px; color: #555; }
+    input, select, textarea {
+      width: 100%; padding: 7px 10px; border: 1px solid #ccc; border-radius: 5px;
+      font-size: 13px; margin-bottom: 10px; font-family: inherit;
+    }
+    textarea { height: 100px; resize: vertical; font-family: monospace; font-size: 12px; }
+    button {
+      padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px;
+      cursor: pointer; margin-right: 6px; margin-bottom: 6px;
+    }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-secondary { background: #e5e7eb; color: #333; }
+    .btn-secondary:hover { background: #d1d5db; }
+    .status { font-size: 12px; padding: 4px 10px; border-radius: 12px; display: inline-block; margin-bottom: 12px; }
+    .status.connected { background: #dcfce7; color: #166534; }
+    .status.disconnected { background: #fee2e2; color: #991b1b; }
+    #log { background: #0f172a; color: #e2e8f0; border-radius: 6px; padding: 14px;
+           font-family: monospace; font-size: 12px; height: 340px; overflow-y: auto; }
+    .log-entry { margin-bottom: 8px; line-height: 1.5; }
+    .log-entry .ts { color: #64748b; }
+    .log-entry .tag { padding: 1px 6px; border-radius: 3px; font-size: 11px; margin-right: 6px; }
+    .tag-in  { background: #1e3a5f; color: #93c5fd; }
+    .tag-out { background: #14532d; color: #86efac; }
+    .tag-sys { background: #3b0764; color: #d8b4fe; }
+    .tag-err { background: #7f1d1d; color: #fca5a5; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .preset-btn { font-size: 11px; padding: 4px 10px; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+  </style>
+</head>
+<body>
+<h1>Broadcast Channel — Test Console</h1>
+
+<div class="grid">
+
+  <!-- LEFT: Connection + Subscribe -->
+  <section>
+    <h2>Connection</h2>
+    <span id="statusBadge" class="status disconnected">Disconnected</span>
+
+    <label>Server URL</label>
+    <input id="serverUrl" value="http://localhost:8080/api/v2/ws">
+
+    <button class="btn-primary" onclick="connect()">Connect</button>
+    <button class="btn-danger" onclick="disconnect()">Disconnect</button>
+
+    <hr>
+    <h2>Subscribe to Topic</h2>
+
+    <div class="row">
+      <div>
+        <label>Scope</label>
+        <select id="subScope">
+          <option value="restaurant">restaurant</option>
+          <option value="partner">partner</option>
+          <option value="customer">customer</option>
+        </select>
+      </div>
+      <div>
+        <label>RECEIVER ID</label>
+        <input id="subReceiverId" placeholder="restaurantId / partnerId">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="subscribe()">Subscribe</button>
+    <button class="btn-secondary" onclick="unsubscribeAll()">Unsubscribe All</button>
+
+    <div id="subscriptions" style="margin-top:10px;font-size:12px;color:#555;"></div>
+  </section>
+
+  <!-- RIGHT: Send Broadcast -->
+  <section>
+    <h2>Send Broadcast (Admin API)</h2>
+
+    <label>API Base URL</label>
+    <input id="apiBase" value="http://localhost:8080/api/v2/admin/broadcast">
+
+    <div class="row">
+      <div>
+        <label>Scope</label>
+        <select id="scope">
+          <option value="RESTAURANT">RESTAURANT</option>
+          <option value="PARTNER">PARTNER</option>
+          <option value="CUSTOMER">CUSTOMER</option>
+        </select>
+      </div>
+      <div>
+        <label>Target ID</label>
+        <input id="receiverId" placeholder="restaurantId / partnerId">
+      </div>
+    </div>
+
+    <label>Type</label>
+    <select id="type" onchange="applyPreset()">
+      <option value="WEATHER_ALERT">WEATHER_ALERT</option>
+      <option value="CUSTOM_MESSAGE">CUSTOM_MESSAGE</option>
+      <option value="DOWNTIME">DOWNTIME</option>
+      <option value="PAYMENT_ISSUE">PAYMENT_ISSUE</option>
+      <option value="RIDER_AVAILABILITY">RIDER_AVAILABILITY</option>
+      <option value="ORDER_TYPE_CHANGE">ORDER_TYPE_CHANGE</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>Status</label>
+        <select id="status">
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="CLEARED">CLEARED</option>
+        </select>
+      </div>
+      <div>
+        <label>TTL (minutes, optional)</label>
+        <input id="ttl" type="number" placeholder="e.g. 60">
+      </div>
+    </div>
+
+    <label>Data (JSON)</label>
+    <div class="presets" id="presets"></div>
+    <textarea id="data" placeholder='{"message": "..."}'></textarea>
+
+    <button class="btn-primary" onclick="sendBroadcast()">Send</button>
+    <button class="btn-secondary" onclick="clearData()">Clear</button>
+
+    <hr>
+    <h2>Clear Active Broadcast</h2>
+    <div class="row">
+      <input id="clearId" placeholder="broadcastId">
+      <button class="btn-danger" style="flex:0;white-space:nowrap" onclick="clearBroadcast()">Clear</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Log -->
+<section style="margin-top:20px; background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h2 style="margin:0;">Event Log</h2>
+    <button class="btn-secondary" style="margin:0;" onclick="clearLog()">Clear</button>
+  </div>
+  <div id="log"></div>
+</section>
+
+<script>
+  let stompClient = null;
+  const subs = {};
+
+  const PRESETS = {
+    WEATHER_ALERT:      { message: 'Heavy rain expected — expect 30–45 min delays' },
+    CUSTOM_MESSAGE:     { message: 'Kitchen closes at 10 PM today' },
+    DOWNTIME:           { message: 'Maintenance window 2–3 AM. Orders paused.' },
+    PAYMENT_ISSUE:      { message: 'Razorpay experiencing intermittent failures. Retrying...' },
+    RIDER_AVAILABILITY: { status: 'THRESHOLD', count: 6, message: '6 orders stuck searching for rider' },
+    ORDER_TYPE_CHANGE:  { orderTypes: ['B'], enabled: true },
+  };
+
+  function applyPreset() {
+    const type = document.getElementById('type').value;
+    document.getElementById('data').value = JSON.stringify(PRESETS[type] || {}, null, 2);
+    renderPresets(type);
+  }
+
+  function renderPresets(type) {
+    const container = document.getElementById('presets');
+    container.innerHTML = '';
+    if (type === 'ORDER_TYPE_CHANGE') {
+      [
+        ['Enable Delivery',  { orderTypes: ['H'], enabled: true }],
+        ['Enable Takeaway',  { orderTypes: ['P'], enabled: true }],
+        ['Enable BYOD',      { orderTypes: ['B'], enabled: true }],
+        ['Disable Delivery', { orderTypes: ['H'], enabled: false }],
+        ['Disable Takeaway', { orderTypes: ['P'], enabled: false }],
+        ['Disable BYOD',     { orderTypes: ['B'], enabled: false }],
+        ['Enable H+P+B',     { orderTypes: ['H','P','B'], enabled: true }],
+      ].forEach(([label, data]) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-secondary preset-btn';
+        btn.textContent = label;
+        btn.onclick = () => document.getElementById('data').value = JSON.stringify(data, null, 2);
+        container.appendChild(btn);
+      });
+    } else if (type === 'RIDER_AVAILABILITY') {
+      [
+        ['Threshold alert', { status: 'THRESHOLD', count: 6, message: '6 orders searching for rider' }],
+        ['Max alert',       { status: 'MAX',       count: 9, message: 'Rider availability critical' }],
+        ['Normal',          { status: 'NORMAL',    count: 1 }],
+      ].forEach(([label, data]) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-secondary preset-btn';
+        btn.textContent = label;
+        btn.onclick = () => document.getElementById('data').value = JSON.stringify(data, null, 2);
+        container.appendChild(btn);
+      });
+    }
+  }
+
+  function connect() {
+    const url = document.getElementById('serverUrl').value;
+    const socket = new SockJS(url);
+    stompClient = new StompJs.Client({ webSocketFactory: () => socket });
+
+    stompClient.onConnect = () => {
+      setBadge(true);
+      log('sys', 'Connected to ' + url);
+    };
+    stompClient.onStompError = (frame) => {
+      setBadge(false);
+      log('err', 'STOMP error: ' + frame.headers['message']);
+    };
+    stompClient.onDisconnect = () => {
+      setBadge(false);
+      log('sys', 'Disconnected');
+    };
+    stompClient.activate();
+  }
+
+  function disconnect() {
+    if (stompClient) stompClient.deactivate();
+  }
+
+  function subscribe() {
+    if (!stompClient?.connected) { alert('Connect first'); return; }
+    const scope    = document.getElementById('subScope').value;
+    const receiverId = document.getElementById('subreceiverId').value.trim();
+    if (!receiverId) { alert('Enter a target ID'); return; }
+
+    const topic = `/topic/broadcast/${scope}/${receiverId}`;
+    if (subs[topic]) { log('sys', 'Already subscribed to ' + topic); return; }
+
+    subs[topic] = stompClient.subscribe(topic, (msg) => {
+      try {
+        const body = JSON.parse(msg.body);
+        log('in', `[${topic}] ${JSON.stringify(body, null, 2)}`);
+      } catch {
+        log('in', `[${topic}] ${msg.body}`);
+      }
+    });
+    log('sys', 'Subscribed → ' + topic);
+    renderSubs();
+  }
+
+  function unsubscribeAll() {
+    Object.entries(subs).forEach(([topic, sub]) => { sub.unsubscribe(); delete subs[topic]; });
+    renderSubs();
+    log('sys', 'Unsubscribed from all topics');
+  }
+
+  function renderSubs() {
+    const el = document.getElementById('subscriptions');
+    const keys = Object.keys(subs);
+    el.innerHTML = keys.length
+      ? '<strong>Active:</strong> ' + keys.map(k => `<code>${k}</code>`).join(', ')
+      : '';
+  }
+
+  async function sendBroadcast() {
+    const apiBase  = document.getElementById('apiBase').value;
+    const scope    = document.getElementById('scope').value;
+    const receiverId = document.getElementById('receiverId').value.trim();
+    const type     = document.getElementById('type').value;
+    const status   = document.getElementById('status').value;
+    const ttl      = document.getElementById('ttl').value;
+    const dataRaw  = document.getElementById('data').value.trim();
+
+    if (!receiverId) { alert('Enter a target ID'); return; }
+
+    let data = {};
+    if (dataRaw) {
+      try { data = JSON.parse(dataRaw); }
+      catch { alert('Invalid JSON in Data field'); return; }
+    }
+
+    const body = { scope, receiverId, type, status, data };
+    if (ttl) body.ttlMinutes = parseInt(ttl);
+
+    log('out', 'POST ' + apiBase + '\n' + JSON.stringify(body, null, 2));
+    try {
+      const res = await fetch(apiBase, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      log(res.ok ? 'sys' : 'err', `Response ${res.status}: ${text}`);
+      if (res.ok) {
+        try { document.getElementById('clearId').value = JSON.parse(text).id || ''; } catch {}
+      }
+    } catch (e) { log('err', 'Fetch error: ' + e.message); }
+  }
+
+  async function clearBroadcast() {
+    const apiBase = document.getElementById('apiBase').value;
+    const id = document.getElementById('clearId').value.trim();
+    if (!id) { alert('Enter a broadcastId'); return; }
+    log('out', 'DELETE ' + apiBase + '/' + id);
+    try {
+      const res = await fetch(`${apiBase}/${id}`, { method: 'DELETE' });
+      log(res.ok ? 'sys' : 'err', `Response ${res.status}`);
+    } catch (e) { log('err', 'Fetch error: ' + e.message); }
+  }
+
+  function setBadge(connected) {
+    const el = document.getElementById('statusBadge');
+    el.textContent   = connected ? 'Connected' : 'Disconnected';
+    el.className     = 'status ' + (connected ? 'connected' : 'disconnected');
+  }
+
+  function log(type, message) {
+    const el   = document.getElementById('log');
+    const ts   = new Date().toLocaleTimeString();
+    const tags = { in: 'tag-in', out: 'tag-out', sys: 'tag-sys', err: 'tag-err' };
+    const labels = { in: '← IN', out: '→ OUT', sys: 'SYS', err: 'ERR' };
+    const pre  = document.createElement('div');
+    pre.className = 'log-entry';
+    pre.innerHTML = `<span class="ts">${ts}</span> <span class="tag ${tags[type]}">${labels[type]}</span><pre style="display:inline;white-space:pre-wrap;">${escHtml(message)}</pre>`;
+    el.appendChild(pre);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearLog() { document.getElementById('log').innerHTML = ''; }
+  function clearData() { document.getElementById('data').value = ''; }
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // init preset on load
+  window.onload = () => applyPreset();
+</script>
+</body>
+</html>

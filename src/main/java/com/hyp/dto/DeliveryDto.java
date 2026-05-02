@@ -31,6 +31,7 @@ public class DeliveryDto extends BaseDto {
     private String fulfillmentType;
     private LocalDateTime fulfillmentAt;
     private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
+    private String trackingUrl;
 
     @Data
     @NoArgsConstructor

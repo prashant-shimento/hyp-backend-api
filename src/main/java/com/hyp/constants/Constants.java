@@ -30,7 +30,8 @@ public interface Constants {
             "orderType",
             "orderTime",
             "restaurantId",
-            "partnerId");
+            "partnerId",
+            "offerCode");
     List<String> ITEM_API_PARAMS = Arrays.asList(
             "id",
             "itemName",
@@ -98,6 +99,12 @@ public interface Constants {
     String REFUND_REASON = "Token of Apology";
 
     String ONE_SIGNAL_ORDER_PLACED_TEMPLATE = "9d435490-203b-4062-9e4b-faea4fb786e5";
+
+    // Rider availability monitor — format with restaurantId
+    String REDIS_RIDER_SEARCH_COUNT = "restaurant:%s:searching_rider:count";
+    String REDIS_RIDER_SEARCH_STATE = "restaurant:%s:searching_rider:state";
+    // Broadcast auto-expiry — format with broadcastId
+    String REDIS_BROADCAST_EXPIRY = "broadcast:expiry:%s";
 
     String REDIS_KEY_PIDGE_TOKEN = "pidgeToken";
     String REDIS_KEY_FULFILL = "fulfill";

@@ -2,6 +2,7 @@ package com.hyp.entity;
 
 import com.hyp.annotation.GenerateId;
 import com.hyp.enums.CaseStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderPlatform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
@@ -26,7 +27,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "orders")
-public class Order {
+public class Order implements CustomerScoped {
 
     @Id
     @Field("id")
@@ -161,6 +162,12 @@ public class Order {
 
     @Field("offer_id")
     private String offerCode;
+
+    @Field("discount_value")
+    private Double discountValue;
+
+    @Field("fulfilled_by")
+    private DeliveryPartner fulfilledBy;
 
     @Data
     @NoArgsConstructor

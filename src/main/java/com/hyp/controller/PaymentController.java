@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/payment")
+@RequestMapping(path = {"/api/v2/payment", "/api/v3/payment"})
 public class PaymentController extends BaseListController<PaymentDto, Payment, String> {
 
     @Autowired
@@ -53,17 +53,6 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
         Order order = orderService.findById(orderId);
         if (order == null) {
             throw new EntityNotFoundException("Order", orderId);
-        }
-
-        // Check if payment already exists (may have been created by async consumer)
-        Payment existingPayment = paymentService.findByOrderId(orderId);
-        if (existingPayment != null) {
-            log.info("Payment already created for orderId={}, returning existing", orderId);
-            return ResponseEntity.ok(Response.builder()
-                    .data(Collections.singletonList(existingPayment))
-                    .error(false)
-                    .message("Payment Order Created")
-                    .build());
         }
 
         // Create payment synchronously
@@ -115,11 +104,14 @@ public class PaymentController extends BaseListController<PaymentDto, Payment, S
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
         Payment payment = Optional.ofNullable(paymentService.findByOrderId(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Payment", orderId));
-        if (paymentService.verifySignature(razorPayDto, orderId)) {
+        if (paymentService.verifySignature(razorPayDto, order.getRestaurantId())) {
             payment.setPaymentId(razorPayDto.getRazorpayPaymentId());
             payment.setSignature(razorPayDto.getRazorpaySignature());
+            String paymentStatus = paymentService.fetchPaymentOrderStatus(orderId);
+            payment.setStatus(paymentStatus);
+            paymentService.save(payment);
             log.info("Payment Verification via Verify API");
-            paymentService.processPayment(order, payment, paymentService.fetchPaymentOrderStatus(orderId));
+            orderEventPublisher.publishPaymentSuccessEvent(order, payment, paymentStatus);
         }
         return ResponseEntity.ok(Response.builder()
                 .data(Collections.singletonList(order))

@@ -4,11 +4,16 @@ import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
 import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.*;
+import com.hyp.enums.DeliveryFulfillStatusType;
+import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.OrderStatusType;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.BadRequestException;
 import com.hyp.exception.DeliveryException;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.model.DeliveryOrderStatus;
+import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryRiderLocation;
@@ -29,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/delivery")
+@RequestMapping(path = {"/api/v2/delivery", "/api/v3/delivery"})
 public class DeliveryController extends BaseController<DeliveryDto, Delivery, String> {
 
     @Autowired
@@ -65,9 +71,23 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     @PostMapping("/callback")
     public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
             throws EntityNotFoundException, DeliveryException {
-        Delivery delivery = Optional.ofNullable(
-                        deliveryService.findByOrderIdIncludingDeleted(deliveryOrderData.getReferenceId()))
-                .orElseThrow(() -> new EntityNotFoundException("Delivery", deliveryOrderData.getId()));
+        Delivery delivery;
+
+        if (deliveryOrderData.getId() != null && !deliveryOrderData.getId().isBlank()) {
+            delivery = deliveryService.findByDeliveryOrderIdIncludingDeleted(deliveryOrderData.getId());
+            if (delivery == null) {
+                throw new EntityNotFoundException("Delivery", deliveryOrderData.getId());
+            }
+        } else if (deliveryOrderData.getReferenceId() != null
+                && !deliveryOrderData.getReferenceId().isBlank()) {
+            delivery = deliveryService.findByOrderIdIncludingDeleted(deliveryOrderData.getReferenceId());
+            if (delivery == null) {
+                throw new EntityNotFoundException("Delivery", deliveryOrderData.getReferenceId());
+            }
+        } else {
+            throw new EntityNotFoundException("Delivery", "no identifiers in callback payload");
+        }
+
         deliveryService.processDeliveryCallback(delivery, deliveryOrderData);
         return ResponseEntity.ok(new Response(null, false, "Success"));
     }
@@ -150,7 +170,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         if (delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
                 || delivery.getService().equalsIgnoreCase("porter")) {
             log.info("Getting Porter Rider location of the order {}", orderId);
-            riderLocation = deliveryService.getPorterRiderLocation(delivery.getDeliveryOrderId());
+            riderLocation = deliveryService.getPorterRiderLocation(delivery);
         } else {
             log.info("Getting Rider location of the order {}", orderId);
             riderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
@@ -160,16 +180,45 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     }
 
     @PostMapping("/create/{orderId}")
-    public ResponseEntity<Response> createDeliveryOrder(@PathVariable String orderId)
+    public ResponseEntity<Response> createDeliveryOrder(
+            @PathVariable String orderId, @RequestParam(defaultValue = "PIDGE", required = false) String partner)
             throws EntityNotFoundException, DeliveryException {
         Order order = Optional.ofNullable(orderService.findById(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
-        if (Optional.ofNullable(deliveryService.findByOrderId(orderId)).isPresent()) {
-            throw new DeliveryException("Delivery order already exists for Order ID: " + orderId);
+
+        DeliveryPartner deliveryPartner = DeliveryPartner.valueOf(partner.toUpperCase());
+        Delivery existingDelivery = deliveryService.findByOrderId(orderId);
+
+        if (existingDelivery != null) {
+            if (deliveryPartner == DeliveryPartner.PIDGE) {
+                throw new DeliveryException("Delivery order already exists for Order ID: " + orderId);
+            }
+            DeliveryFulfillment existingFulfillment = existingDelivery.getFulfillment();
+            boolean hasActiveRider = existingFulfillment != null
+                    && existingFulfillment.getStatus() != null
+                    && isActiveRiderStatus(existingFulfillment.getStatus());
+            if (hasActiveRider) {
+                throw new DeliveryException(
+                        "Active rider already assigned — cancel the existing delivery before booking manual");
+            }
+            if (existingDelivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
+                throw new DeliveryException("Delivery already completed for this order");
+            }
+            deliveryService.cancelDeliveryOrder(existingDelivery);
         }
-        orderEventPublisher.publishDeliveryOrderEvent(order);
-        Response response = new Response(null, false, "Delivery Order Created");
-        return ResponseEntity.ok(response);
+
+        if (deliveryPartner == DeliveryPartner.PIDGE) {
+            orderEventPublisher.publishDeliveryOrderEvent(order);
+            return ResponseEntity.ok(new Response(null, false, "Delivery Order Created"));
+        }
+
+        Delivery delivery = deliveryService.createManualDelivery(order, deliveryPartner);
+        order.setFulfilledBy(deliveryPartner);
+        orderService.save(order);
+        orderService.updateOrderStatus(orderId, OrderStatusType.MANUAL_DELIVERY_BOOKED);
+
+        return ResponseEntity.ok(new Response(
+                Collections.singletonList(deliveryTranslation.getDto(delivery)), false, "Delivery Order Created"));
     }
 
     @PostMapping("/fulfill/{orderId}")
@@ -205,15 +254,14 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     }
 
     @PostMapping("/unallocate/{orderId}")
-    public ResponseEntity<Response> unallocate(@PathVariable String orderId)
-            throws DeliveryException, EntityNotFoundException {
+    public ResponseEntity<Response> unallocate(@PathVariable String orderId) throws EntityNotFoundException {
         Order order = Optional.ofNullable(orderService.findById(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
 
         Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
 
-        deliveryService.unallocateDeliveryOrder(delivery.getDeliveryOrderId());
+        deliveryService.unallocateDeliveryOrder(delivery);
         Response response = new Response(null, false, "Order Unallocated Successfully");
         return ResponseEntity.ok(response);
     }
@@ -228,7 +276,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
 
-        deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+        deliveryService.cancelDeliveryOrder(delivery);
         response = new Response(null, false, "Delivery Order Cancelled");
         return ResponseEntity.ok(response);
     }
@@ -246,5 +294,38 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         Response response = new Response(
                 Collections.singletonList(deliveryOrderStatus.getData()), false, "Delivery Order Status Fetched");
         return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @PatchMapping("/{id}")
+    public ResponseEntity<Response> update(@PathVariable String id, @RequestBody DeliveryDto dto) {
+        Delivery delivery = Optional.ofNullable(deliveryService.findById(id))
+                .orElseThrow(() -> new RuntimeException(new EntityNotFoundException("Delivery", id)));
+
+        deliveryTranslation.updateEntityFromDto(dto, delivery);
+
+        if (DeliveryPartner.MANUAL.name().equalsIgnoreCase(delivery.getChannel())
+                && delivery.getFulfillment() != null
+                && delivery.getFulfillment().getStatus() != null) {
+
+            Order order = Optional.ofNullable(orderService.findById(delivery.getOrderId()))
+                    .orElseThrow(
+                            () -> new RuntimeException(new EntityNotFoundException("Order", delivery.getOrderId())));
+
+            Delivery updated = deliveryService.updateManualDeliveryStatus(delivery, order);
+            return ResponseEntity.ok(new Response(
+                    Collections.singletonList(deliveryTranslation.getDto(updated)), false, "Delivery Updated"));
+        }
+
+        Delivery updated = deliveryService.save(delivery);
+        return ResponseEntity.ok(new Response(
+                Collections.singletonList(deliveryTranslation.getDto(updated)), false, "Delivery Updated"));
+    }
+
+    private boolean isActiveRiderStatus(DeliveryFulfillStatusType status) {
+        return switch (status) {
+            case OUT_FOR_PICKUP, REACHED_PICKUP, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, REACHED_DELIVERY -> true;
+            default -> false;
+        };
     }
 }

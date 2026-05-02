@@ -47,8 +47,20 @@ public class PartnerService extends BaseServiceImpl<Partner, String> {
         return partnerRepository.findByType(type);
     }
 
+    public Partner findByDomain(String domain) {
+        return cacheService()
+                .getOrLoad("partners", "domain:" + domain, Partner.class, () -> partnerRepository.findByDomain(domain));
+    }
+
     public Partner findPartnersByRestaurantId(String restaurantId, PartnerType type) {
-        return partnerRepository.findByRestaurantsContainingAndType(restaurantId, type);
+        if (restaurantId == null) return null;
+        String cacheKey = "restaurant:" + restaurantId + ":" + type.name();
+        return cacheService()
+                .getOrLoad(
+                        "partners",
+                        cacheKey,
+                        Partner.class,
+                        () -> partnerRepository.findByRestaurantsContainingAndType(restaurantId, type));
     }
 
     public void uploadAndSavePartnerImages(String partnerId, MultiValueMap<String, MultipartFile> filesByField) {

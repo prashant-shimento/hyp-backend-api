@@ -6,6 +6,7 @@ import com.hyp.exception.EntityNotFoundException;
 import com.hyp.request.SettlementRequest;
 import com.hyp.request.SubscriptionRequest;
 import com.hyp.response.Response;
+import com.hyp.security.principal.RestaurantContext;
 import com.hyp.service.RestaurantService;
 import com.hyp.service.SettlementService;
 import com.hyp.translation.RestaurantTranslation;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/restaurant")
+@RequestMapping(path = {"/api/v2/restaurant", "/api/v3/restaurant"})
 public class RestaurantController extends BaseListController<RestaurantDto, Restaurant, String> {
 
     @Autowired
@@ -36,6 +37,23 @@ public class RestaurantController extends BaseListController<RestaurantDto, Rest
 
     @Autowired
     SettlementService settlementService;
+
+    /**
+     * Restaurant-scoped storefront endpoint — requires X-Restaurant-Id header.
+     * Returns customer-facing restaurant details only.
+     * Safe fields only: no payment routing, revenue shares, subscription, or internal config.
+     */
+    @GetMapping("/storefront")
+    public ResponseEntity<Response> getRestaurantStorefront() {
+        String restaurantId = RestaurantContext.getRestaurantId();
+        Restaurant restaurant = restaurantService.findById(restaurantId);
+        if (restaurant == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new Response(null, true, "Restaurant not found with ID: " + restaurantId));
+        }
+        return ResponseEntity.ok(
+                new Response(Collections.singletonList(restaurantTranslation.getDto(restaurant)), false, "success"));
+    }
 
     @PatchMapping("/{restaurantId}")
     public ResponseEntity<Response> updateRestaurant(

@@ -18,8 +18,24 @@ import com.hyp.util.CommonUtils;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class DeliveryRequestTranslation {
+
+    private static String platformSupportContact;
+    private static String restaurantSupportContact;
+
+    @Value("${platform.support.contact}")
+    public void setPlatformSupportContact(String value) {
+        platformSupportContact = value;
+    }
+
+    @Value("${restaurant.support.contact}")
+    public void setRestaurantSupportContact(String value) {
+        restaurantSupportContact = value;
+    }
 
     public static DeliveryFulfillRequest getOrderFulfillRequest(Delivery delivery) {
         List<String> orderIds = new ArrayList<>();
@@ -79,13 +95,13 @@ public class DeliveryRequestTranslation {
         senderAddress.setLatitude(restaurant.getLocation().getLatitude());
         senderAddress.setLongitude(restaurant.getLocation().getLongitude());
         senderDetail.setAddress(senderAddress);
-        senderDetail.setMobile("7801057583");
+        senderDetail.setMobile(restaurantSupportContact);
         senderDetail.setName(restaurant.getRestaurantName());
         orderRequest.setSenderDetail(senderDetail);
 
         ContactDetail pocDetail = new ContactDetail();
         pocDetail.setName("Hyperapps");
-        pocDetail.setMobile("8754556606");
+        pocDetail.setMobile(platformSupportContact);
         orderRequest.setPocDetail(pocDetail);
 
         ContactDetail receiverDetail = new ContactDetail();

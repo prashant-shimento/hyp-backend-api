@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/referral/token")
+@RequestMapping(path = {"/api/v2/referral/token", "/api/v3/referral/token"})
 public class ReferralTokenController extends BaseListController<ReferralTokenDto, ReferralToken, String> {
 
     @Autowired

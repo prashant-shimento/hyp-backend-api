@@ -14,6 +14,8 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -86,10 +88,20 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
                                     request.getRestaurantId());
                             return;
                         }
-                        // Process orders sequentially or parallel
+
+                        // Batch pre-fetch: settlements and deliveries for all orders (avoids N+1)
+                        List<String> orderIds =
+                                orders.stream().map(Order::getId).toList();
+                        Map<String, Settlement> settlementMap = settlementRepository.findByOrderIdIn(orderIds).stream()
+                                .collect(Collectors.toMap(Settlement::getOrderId, Function.identity()));
+                        Map<String, Delivery> deliveryMap = deliveryService.findByOrderIds(orderIds).stream()
+                                .collect(Collectors.toMap(Delivery::getOrderId, Function.identity()));
+
                         orders.forEach(order -> {
                             try {
-                                computeSettlement(order, restaurant, feeConfig, partner);
+                                Settlement existing = settlementMap.get(order.getId());
+                                Delivery delivery = deliveryMap.get(order.getId());
+                                computeSettlement(order, restaurant, feeConfig, partner, existing, delivery);
                             } catch (Exception e) {
                                 log.error(
                                         "Failed to process settlement for order {}: {}", order.getId(), e.getMessage());
@@ -135,6 +147,24 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
     }
 
     private Settlement computeSettlement(Order order, Restaurant restaurant, Fee feeConfig, Partner partner) {
+        return computeSettlement(
+                order,
+                restaurant,
+                feeConfig,
+                partner,
+                this.findByOrderId(order.getId()),
+                OrderType.H == OrderType.fromCode(order.getOrderType())
+                        ? deliveryService.findByOrderId(order.getId())
+                        : null);
+    }
+
+    private Settlement computeSettlement(
+            Order order,
+            Restaurant restaurant,
+            Fee feeConfig,
+            Partner partner,
+            Settlement existingSettlement,
+            Delivery delivery) {
         String orderId = order.getId();
         String restaurantId = order.getRestaurantId();
         String partnerId = order.getPartnerId();
@@ -144,8 +174,8 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
             partnerId = partner.getId();
         }
 
-        // Fetch existing settlement
-        Settlement settlement = this.findByOrderId(orderId);
+        // Use pre-fetched settlement or create new
+        Settlement settlement = existingSettlement;
         if (settlement == null) {
             settlement = new Settlement();
             settlement.setOrderId(orderId);
@@ -177,7 +207,6 @@ public class SettlementService extends BaseServiceImpl<Settlement, String> {
         // Compute delivery charge
         double deliveryCharge = 0;
         if (OrderType.H == OrderType.fromCode(order.getOrderType())) {
-            Delivery delivery = deliveryService.findByOrderId(orderId);
             if (delivery != null) {
                 deliveryCharge = Optional.of(delivery.getFulfillment().getDeliveryCharge())
                         .orElse(0.0);

@@ -2,11 +2,11 @@ package com.hyp.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.hyp.enums.RoleType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,17 +27,17 @@ public class UserDto extends BaseDto {
     @NotEmpty(message = "Email cannot be empty")
     private String email;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @NotEmpty(message = "Password cannot be empty")
     private String password;
 
-    @NotEmpty(message = "RestaurantId cannot be empty")
-    private String restaurantId;
+    @NotEmpty(message = "RestaurantIds cannot be empty")
+    private Set<String> restaurantIds;
 
     @NotEmpty(message = "PartnerIds cannot be empty")
     private String partnerId;
 
-    @NotNull(message = "roles cannot be null")
-    private RoleType role;
-
     private Boolean active;
+
+    private String role;
 }

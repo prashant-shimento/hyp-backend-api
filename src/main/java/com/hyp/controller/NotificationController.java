@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/notification")
+@RequestMapping(path = {"/api/v2/notification", "/api/v3/notification"})
 public class NotificationController {
 
     @Autowired

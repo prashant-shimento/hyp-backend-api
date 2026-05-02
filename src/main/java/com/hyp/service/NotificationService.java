@@ -62,11 +62,15 @@ public class NotificationService {
     @Autowired
     private ApplicationMetrics metrics;
 
+    @Value("${notification.enabled:true}")
+    private boolean notificationEnabled;
+
     @Value("${onesignal.partner.app.id}")
     private String partnerAppId;
 
     @Scheduled(cron = "0 10 12,18,23 * * ?")
     public void sendFeedbackMessageAndUpdateFlag() {
+        if (!notificationEnabled) return;
         log.info("Starting feedback message dispatch process");
         List<Partner> partners = partnerService.findByPartnerType(PartnerType.NOTIFICATION);
         log.info("Found {} partners with NOTIFICATION type", partners.size());
@@ -95,6 +99,7 @@ public class NotificationService {
     }
 
     public void sendFeedbackMessage(String mobileNumber, Partner partner) {
+        if (!notificationEnabled) return;
         log.info("Starting sendFeedbackMessage for partner: {} and mobile: {}", partner.getName(), mobileNumber);
         try {
             String apiUrl = constructFacebookGraphApiUrl(partner);
@@ -151,6 +156,7 @@ public class NotificationService {
 
     @Async
     public void sendNotification(String mobile, String templateName, List<String> parameters, String buttonParam) {
+        if (!notificationEnabled) return;
         log.info("Starting sendNotification for mobile: {} with template: {}", mobile, templateName);
         try {
             log.debug("Building parameters list from: {}", parameters);
@@ -191,11 +197,6 @@ public class NotificationService {
                             .build())
                     .build();
             log.info("Constructed FacebookMessageRequest: {}", messageRequest);
-            if (!redisService.isNotificationServiceEnabled()) {
-                log.info("Notification service is disabled.");
-                return;
-            }
-            log.info("Notification service enabled; sending messageRequest");
             metaService.sendMessage(messageRequest);
             metrics.count(
                     MetricsEvent.NOTIFICATION,
@@ -225,6 +226,7 @@ public class NotificationService {
 
     @Async
     public void sendInternalGroupNotification(String templateName, List<String> parameters) {
+        if (!notificationEnabled) return;
         log.info("Starting internal group notification for template: {} with parameters: {}", templateName, parameters);
         String alertMobileNum = redisService.getAlertUsers();
         log.debug("Retrieved alert users string: {}", alertMobileNum);
@@ -239,6 +241,7 @@ public class NotificationService {
 
     @Async
     public void sendNotification(String mobile, String templateName, List<String> parameters) {
+        if (!notificationEnabled) return;
         log.info("Initiating sendNotification for mobile: {} with template: {}", mobile, templateName);
         try {
             log.debug("Building message parameters from list: {}", parameters);
@@ -264,11 +267,6 @@ public class NotificationService {
                             .build())
                     .build();
             log.info("FacebookMessageRequest constructed for mobile: {}", mobile);
-            if (!redisService.isNotificationServiceEnabled()) {
-                log.info("Notification service is disabled for sendNotification.");
-                return;
-            }
-            log.info("Notification service enabled; sending message to mobile: {}", mobile);
             metaService.sendMessage(messageRequest);
             metrics.count(
                     MetricsEvent.NOTIFICATION,
@@ -298,6 +296,7 @@ public class NotificationService {
 
     public void sendOneSignalNotification(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
+        if (!notificationEnabled) return;
         try {
             oneSignalClient.sendNotification(oneSignalNotificationRequest);
             metrics.count(
@@ -323,6 +322,7 @@ public class NotificationService {
 
     public void sendOneSignalNotificationForPartner(OneSignalNotificationRequest oneSignalNotificationRequest)
             throws OneSignalException {
+        if (!notificationEnabled) return;
         try {
             oneSignalClient.sendNotificationForPartner(oneSignalNotificationRequest);
             metrics.count(
@@ -353,28 +353,28 @@ public class NotificationService {
     public void sendOneSignalNotification(
             OneSignalNotificationRequest oneSignalNotificationRequest, String restaurantId)
             throws EntityNotFoundException {
-        User user = userService.findByRestaurantId(restaurantId);
-        if (user == null) {
+        List<User> users = userService.findByRestaurantId(restaurantId);
+        if (users == null || users.isEmpty()) {
             throw new EntityNotFoundException("Restaurant", restaurantId);
         }
+        List<String> userIds = users.stream().map(User::getId).toList();
         if (oneSignalNotificationRequest == null) {
             oneSignalNotificationRequest = OneSignalNotificationRequest.builder()
                     .targetChannel("push")
                     .includeAliases(OneSignalNotificationAlias.builder()
-                            .externalId(List.of(user.getId()))
+                            .externalId(userIds)
                             .build())
                     .appId(partnerAppId)
                     .contents(Map.of("en", "OneSignal notification is working fine"))
                     .build();
         } else {
-            oneSignalNotificationRequest.setIncludeAliases(OneSignalNotificationAlias.builder()
-                    .externalId(List.of(user.getId()))
-                    .build());
+            oneSignalNotificationRequest.setIncludeAliases(
+                    OneSignalNotificationAlias.builder().externalId(userIds).build());
             oneSignalNotificationRequest.setAppId(partnerAppId);
         }
         try {
             sendOneSignalNotificationForPartner(oneSignalNotificationRequest);
-            log.info("Test notification sent to userId={} for restaurantId={}", user.getId(), restaurantId);
+            log.info("Test notification sent to userIds={} for restaurantId={}", userIds, restaurantId);
         } catch (OneSignalException e) {
             log.error("Error occurred in sending push notification {}", oneSignalNotificationRequest, e);
         }

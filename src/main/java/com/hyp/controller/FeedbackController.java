@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/feedback")
+@RequestMapping(path = {"/api/v2/feedback", "/api/v3/feedback"})
 public class FeedbackController extends BaseController<FeedbackDto, Feedback, String> {
 
     @Autowired

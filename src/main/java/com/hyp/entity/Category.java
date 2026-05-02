@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -15,9 +16,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @AllArgsConstructor
 @NoArgsConstructor
 @Document(collection = "categories")
+@CompoundIndex(name = "idx_restaurant_deleted", def = "{'restaurant_id': 1, 'is_deleted': 1}")
 public class Category extends BaseEntity {
-
-    private static final long serialVersionUID = 1L;
 
     @Field("parent_category_id")
     private String parentCategoryId;

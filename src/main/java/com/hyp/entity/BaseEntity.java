@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import com.hyp.annotation.GenerateId;
+import com.hyp.service.RestaurantScoped;
 import jakarta.persistence.MappedSuperclass;
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 @AllArgsConstructor
 @MappedSuperclass
-public abstract class BaseEntity implements Identifiable<String>, Serializable {
+public abstract class BaseEntity implements Identifiable<String>, Serializable, RestaurantScoped {
 
     @Id
     @Field("id")

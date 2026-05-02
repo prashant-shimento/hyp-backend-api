@@ -22,11 +22,24 @@ import org.springframework.stereotype.Service;
 @Service
 public class CategoryService extends BaseServiceImpl<Category, String> {
 
+    private static final String CACHE_NAME = "categories";
+    private static final String MENU_CACHE = "categoryMenu";
+
     @Autowired
     CategoryRepository categoryRepository;
 
     @Autowired
     MongoTemplate mongoTemplate;
+
+    @Override
+    protected String cacheName() {
+        return CACHE_NAME;
+    }
+
+    @Override
+    protected Class<Category> entityType() {
+        return Category.class;
+    }
 
     public List<Category> getCategoryItemsById(String categoryId) {
 
@@ -41,7 +54,14 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
                 .getMappedResults();
     }
 
+    @SuppressWarnings("unchecked")
     public List<Category> getAllCategoryItems(String restaurantId) {
+        return (List<Category>) cacheService()
+                .getOrLoad(
+                        MENU_CACHE, "restaurant:" + restaurantId, List.class, () -> loadAllCategoryItems(restaurantId));
+    }
+
+    private List<Category> loadAllCategoryItems(String restaurantId) {
         Criteria criteria = Criteria.where("restaurant_id")
                 .is(restaurantId)
                 .andOperator(Criteria.where("is_deleted").is(false));
@@ -51,9 +71,7 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
         List<Category> category = mongoTemplate
                 .aggregate(aggregation, "categories", Category.class)
                 .getMappedResults();
-        long endTime = System.currentTimeMillis();
-        long executionTime = endTime - startTime;
-        log.info("Query Execution Time for getAllCategoryItems: {} ms", executionTime);
+        log.info("Query Execution Time for getAllCategoryItems: {} ms", System.currentTimeMillis() - startTime);
         return category;
     }
 
@@ -88,6 +106,11 @@ public class CategoryService extends BaseServiceImpl<Category, String> {
         fieldsToUpdate.forEach(update::set);
 
         UpdateResult result = mongoTemplate.updateMulti(query, update, "items");
+
+        // Evict menu cache for affected restaurants
+        items.stream().map(Item::getRestaurantId).distinct().forEach(rId -> cacheService()
+                .evict(MENU_CACHE, "restaurant:" + rId));
+
         return (int) result.getModifiedCount();
     }
 }

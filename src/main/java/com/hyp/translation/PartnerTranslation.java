@@ -1,6 +1,7 @@
 package com.hyp.translation;
 
 import com.hyp.dto.PartnerDto;
+import com.hyp.dto.PartnerPublicDto;
 import com.hyp.entity.Partner;
 import com.hyp.model.ApiConfig;
 import com.hyp.service.BaseTranslationServiceImpl;
@@ -32,6 +33,10 @@ public class PartnerTranslation extends BaseTranslationServiceImpl<PartnerDto, P
             if (config.getPassword() != null) config.setPassword(EncryptionUtils.decrypt(config.getPassword()));
         }
         return super.getDto(entity);
+    }
+
+    public PartnerPublicDto getPublicDto(Partner partner) {
+        return modelMapper.map(partner, PartnerPublicDto.class);
     }
 
     @Override

@@ -21,7 +21,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 @JsonInclude(Include.NON_NULL)
 @Builder
-public class Customer implements Identifiable<String> {
+public class Customer implements Identifiable<String>, SelfScoped, RestaurantSetScoped {
 
     @Id
     @GenerateId(sequenceName = "customer_sequence")

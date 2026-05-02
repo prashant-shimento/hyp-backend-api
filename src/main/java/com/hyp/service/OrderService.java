@@ -85,6 +85,9 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     @Autowired
     OrderValidator orderValidator;
 
+    @Autowired
+    RiderAvailabilityMonitor riderAvailabilityMonitor;
+
     public Order create(OrderDto orderDto) throws Exception {
 
         Timer.Sample timerSample = metrics.startTimer();
@@ -132,15 +135,13 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                         finalOrder.getId(),
                         finalOrder.getStatus(),
                         restaurant.getRestaurantName());
-                if (redisService.isNotificationServiceEnabled()) {
-                    notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
-                    oneSignalAlertService.notifyNewOrder(
-                            customer.getName(),
-                            customer.getMobile(),
-                            finalOrder.getId(),
-                            finalOrder.getStatus(),
-                            restaurant.getRestaurantName());
-                }
+                notificationService.sendInternalGroupNotification(Constants.META_ORDER_ALERT_TEMPLATE, parameters);
+                oneSignalAlertService.notifyNewOrder(
+                        customer.getName(),
+                        customer.getMobile(),
+                        finalOrder.getId(),
+                        finalOrder.getStatus(),
+                        restaurant.getRestaurantName());
 
                 metrics.stopTimer(timerSample, MetricsEvent.ORDER, MetricTag.ACTION, "create");
                 metrics.count(
@@ -175,10 +176,10 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             if (restaurant == null) {
                 throw new Exception("Restaurant not found " + posCallbackRequest.getRestaurantId());
             }
-            if (!this.isExistsById(orderId)) {
+            Order order = this.findById(orderId);
+            if (order == null) {
                 throw new Exception("Order not found " + orderId);
             }
-            Order order = this.findById(orderId);
 
             if (order.getPaymentType() != PaymentType.COD) {
                 if (paymentService.findByOrderId(orderId) == null) {
@@ -187,9 +188,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
 
             OrderStatusType newOrderStatus = OrderStatusType.getOrderStatusByPosStatus(posCallbackRequest.getStatus());
-            updateOrderStatus(orderId, newOrderStatus);
-
-            order = this.findById(orderId);
+            order = updateOrderStatus(orderId, newOrderStatus);
 
             if (newOrderStatus == OrderStatusType.ACCEPTED && !order.isPreOrder()) {
                 order.setMinDeliveryTime(posCallbackRequest.getMinDeliveryTime());
@@ -241,7 +240,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 if (delivery != null
                         && (delivery.getStatus().equals(DeliveryOrderStatusType.PENDING)
                                 || delivery.getStatus().equals(DeliveryOrderStatusType.FULFILLED))) {
-                    deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                    deliveryService.cancelDeliveryOrder(delivery);
                 }
             }
         } catch (DeliveryException e) {
@@ -303,6 +302,12 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             }
         } catch (Exception e) {
             log.error("Failed to publish event status={}", newStatus, e);
+        }
+
+        if (newStatus == OrderStatusType.SEARCHING_RIDER) {
+            riderAvailabilityMonitor.onSearchingRiderEntered(order.getRestaurantId());
+        } else if (oldStatus == OrderStatusType.SEARCHING_RIDER) {
+            riderAvailabilityMonitor.onSearchingRiderExited(order.getRestaurantId());
         }
 
         log.info("Status changed from={} to={}", oldStatus, newStatus);
@@ -436,7 +441,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {
             Delivery delivery = deliveryService.findByOrderId(order.getId());
             if (delivery != null) {
-                deliveryService.cancelDeliveryOrder(delivery.getDeliveryOrderId());
+                deliveryService.cancelDeliveryOrder(delivery);
             }
         }
 
@@ -450,7 +455,8 @@ public class OrderService extends BaseServiceImpl<Order, String> {
                 || status == OrderStatusType.DROPPED_OFF
                 || status == OrderStatusType.ERROR
                 || status == OrderStatusType.PAYMENT_FAILED
-                || status == OrderStatusType.REFUND_COMPLETED | status == OrderStatusType.REFUND_INITIATED;
+                || status == OrderStatusType.REFUND_COMPLETED
+                || status == OrderStatusType.REFUND_INITIATED;
     }
 
     private void consumeReferralTokenIfPaid(Order order, OrderStatusType newStatus) {

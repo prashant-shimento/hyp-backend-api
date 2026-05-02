@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/category")
+@RequestMapping(path = {"/api/v2/category", "/api/v3/category"})
 public class CategoryController extends BaseController<CategoryDto, Category, String> {
 
     @Autowired

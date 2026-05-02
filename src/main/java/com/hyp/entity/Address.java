@@ -19,7 +19,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @NoArgsConstructor
 @Document(collection = "address")
 @JsonInclude(Include.NON_NULL)
-public class Address implements Identifiable<String> {
+public class Address implements Identifiable<String>, CustomerScoped {
 
     @Id
     @GenerateId(sequenceName = "address_sequence")
