@@ -74,7 +74,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     PosOrderRequestTranslation posOrderRequestTranslation;
 
     @Autowired
-    PosService posService;
+    PosServiceFactory posServiceFactory;
 
     @Autowired
     ApplicationMetrics metrics;
@@ -424,7 +424,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
     private void handleDelivered(Order order) {
         Delivery delivery = deliveryService.findByOrderId(order.getId());
-        posService.updatePosRiderStatus(delivery, order);
+        posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosRiderStatus(delivery, order);
     }
 
     private void handleCancelled(Order order, Restaurant restaurant, OrderStatusType oldStatus)
@@ -435,7 +435,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
             PosOrderUpdateRequest req =
                     posOrderRequestTranslation.getPosOrderUpdateRequest(restaurant, order, "Cancellation");
-            posService.updatePosOrder(req);
+            posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosOrder(req);
         }
 
         if (OrderType.fromCode(order.getOrderType()) == OrderType.H) {

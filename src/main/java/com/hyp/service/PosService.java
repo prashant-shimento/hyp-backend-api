@@ -13,21 +13,21 @@ import com.hyp.request.PosStockRequest;
 
 public interface PosService {
 
-    public void processPosOrder(Order order);
+    void processPosOrder(Order order);
 
-    public boolean savePosData(PosDataRequest posDataRequest);
+    boolean savePosData(PosDataRequest posDataRequest);
 
-    public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
+    void createPosOrder(PosOrderRequest posOrderRequest) throws PosException;
 
-    public void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
+    void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException;
 
-    public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
+    String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 
-    public void updateRestaurant(PosStatusRequest updateStatus);
+    void updateRestaurant(PosStatusRequest updateStatus);
 
-    public boolean updateStock(PosStockRequest stockRequest);
+    boolean updateStock(PosStockRequest stockRequest);
 
-    public boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus);
+    boolean isPosUpdateRequired(DeliveryFulfillStatusType fullFillStatus);
 
-    public void updatePosRiderStatus(Delivery delivery, Order order);
+    void updatePosRiderStatus(Delivery delivery, Order order);
 }
