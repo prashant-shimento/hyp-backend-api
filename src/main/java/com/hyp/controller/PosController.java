@@ -14,6 +14,7 @@ import com.hyp.service.RestaurantService;
 import io.swagger.v3.oas.annotations.Hidden;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PosController {
 
     @Autowired
+    @Qualifier("petPooja")
     PosService posDataService;
 
     @Autowired

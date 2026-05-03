@@ -57,7 +57,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     RestaurantService restaurantService;
 
     @Autowired
-    PosService posService;
+    PosServiceFactory posServiceFactory;
 
     @Autowired
     OrderService orderService;
@@ -379,8 +379,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             OrderStatusType orderStatus = OrderStatusType.getOrderStatusByDeliveryStatus(fulfillStatus);
             orderService.updateOrderStatus(order.getId(), orderStatus);
 
-            if (posService.isPosUpdateRequired(fulfillStatus)) {
-                posService.updatePosRiderStatus(delivery, order);
+            if (posServiceFactory.forRestaurant(order.getRestaurantId()).isPosUpdateRequired(fulfillStatus)) {
+                posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosRiderStatus(delivery, order);
             }
         }
         return delivery;
@@ -548,8 +548,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         // Async: POS rider status update and fraud check are non-critical side effects
         CompletableFuture.runAsync(() -> {
                     try {
-                        if (posService.isPosUpdateRequired(fullFillStatus)) {
-                            posService.updatePosRiderStatus(delivery, order);
+                        if (posServiceFactory.forRestaurant(order.getRestaurantId()).isPosUpdateRequired(fullFillStatus)) {
+                            posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosRiderStatus(delivery, order);
                         }
                     } catch (Exception e) {
                         log.error("Async POS rider status update failed for order {}", order.getId(), e);

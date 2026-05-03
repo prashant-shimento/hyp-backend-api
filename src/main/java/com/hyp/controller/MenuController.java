@@ -8,14 +8,17 @@ import com.hyp.request.UpdateItemsRequest;
 import com.hyp.response.Response;
 import com.hyp.service.CategoryService;
 import com.hyp.service.MenuService;
-import com.hyp.service.PosService;
+import com.hyp.service.PosServiceFactory;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @Data
 @RestController
 @RequestMapping("/menu")
@@ -25,7 +28,7 @@ public class MenuController {
     CategoryService categoryService;
 
     @Autowired
-    PosService posService;
+    PosServiceFactory posServiceFactory;
 
     @Autowired
     MenuService menuService;
@@ -37,6 +40,24 @@ public class MenuController {
 
     @PostMapping("/import")
     public ResponseEntity<Response> save(@RequestBody PosDataRequest posDataRequest) {
+        var allRestaurantIds = posDataRequest.getRestaurants()
+                .stream()
+                .map(it -> it.getRestaurantid())
+                .toList();
+
+        if (allRestaurantIds == null || allRestaurantIds.isEmpty()) {
+            var response = Response.builder()
+                    .error(true)
+                    .message("At least one restaurant id needed")
+                    .build();
+
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        var posService = posServiceFactory.forRestaurant(allRestaurantIds.get(0));
+
+        log.info("Import all restaurants {}", allRestaurantIds);
+
         posService.savePosData(posDataRequest);
         Response response = new Response(null, false, "Menu Imported");
         return ResponseEntity.ok(response);

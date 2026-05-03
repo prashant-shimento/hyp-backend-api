@@ -1,8 +1,6 @@
 package com.hyp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderRequest;
-import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderTransformer;
 import com.hyp.constants.Constants;
 import com.hyp.entity.*;
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -40,27 +38,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Slf4j
-@Service
-public class PosServiceImpl implements PosService {
-
-    @Value("${pos.petpooja.url}")
-    private String baseUrl;
-
-    @Value("${pos.urbanpiper.url:https://api.urbanpiper.com/external/api/v1/}")
-    private String upBaseUrl;
-
-    @Value("${pos.urbanpiper.username:}")
-    private String upUsername;
-
-    @Value("${pos.urbanpiper.apikey:}")
-    private String upApiKey;
+public abstract class PosServiceImpl implements PosService {
 
     @Autowired
     ObjectMapper objectMapper;
@@ -88,26 +71,23 @@ public class PosServiceImpl implements PosService {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
-    private final RestaurantService restaurantService;
-    private final TaxService taxService;
-    private final OrderTypeService orderTypeService;
-    private final AttributeService attributeService;
-    private final DiscountService discountService;
-    private final VariationService variationService;
-    private final AddonItemService addonItemService;
-    private final AddonGroupService addonGroupService;
-    private final CategoryService categoryService;
-    private final ItemService itemService;
-    private final BucketService bucketService;
+    protected final RestaurantService restaurantService;
+    protected final TaxService taxService;
+    protected final OrderTypeService orderTypeService;
+    protected final AttributeService attributeService;
+    protected final DiscountService discountService;
+    protected final VariationService variationService;
+    protected final AddonItemService addonItemService;
+    protected final AddonGroupService addonGroupService;
+    protected final CategoryService categoryService;
+    protected final ItemService itemService;
+    protected final BucketService bucketService;
 
     @Autowired
     PosOrderRequestTranslation posOrderRequestTranslation;
 
     @Autowired
     ApplicationMetrics metrics;
-
-    @Autowired
-    UrbanPiperOrderTransformer urbanPiperOrderTransformer;
 
     public PosServiceImpl(
             AttributeService attributeService,
@@ -135,112 +115,12 @@ public class PosServiceImpl implements PosService {
     }
 
     @Override
-    public void processPosOrder(Order order) {
-        Customer customer = customerService.findById(order.getCustomerId());
-        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-        
-        // Check if this is an UrbanPiper order (using PosPartner enum)
-        if (restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name())) {
-            log.info("Processing UrbanPiper order - Order ID: {}, Restaurant ID: {}, Restaurant Name: {}", 
-                    order.getId(), restaurant.getId(), restaurant.getRestaurantName());
-            processUrbanPiperOrder(order, customer, restaurant);
-            return;
-        }
-        
-        try {
-            PosOrderRequest posOrderRequest =
-                    posOrderRequestTranslation.getPosOrderRequest(restaurant, order, customer);
-            if (partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.THEATRE) != null) {
-                String name = String.format(
-                        "%s-%s-%s",
-                        Optional.ofNullable(order.getScreen()).orElse("N/A"),
-                        Optional.ofNullable(order.getSeat()).orElse("N/A"),
-                        customer.getName());
-                posOrderRequest
-                        .getOrderInfo()
-                        .getOrderInfoDetails()
-                        .getCustomer()
-                        .getCustomerDetails()
-                        .setName(name);
-            }
-            createPosOrder(posOrderRequest);
-        } catch (RequestTranslationException e) {
-            log.error(
-                    "Error occurred on RequestTranslationException for order {} cause: {}",
-                    order.getId(),
-                    e.getMessage());
-        } catch (PosException e) {
-            log.error("Error occurred on PosException for order {} cause: {}", order.getId(), e.getMessage());
-        }
-    }
+    public abstract void processPosOrder(Order order);
 
-    private void processUrbanPiperOrder(Order order, Customer customer, Restaurant restaurant) {
-        try {
-            log.info("=== UrbanPiper Order Processing ===");
-            log.info("Order ID: {}", order.getId());
-            log.info("Customer ID: {}, Customer Name: {}", customer.getId(), customer.getName());
-            log.info("Restaurant ID: {}, Restaurant Name: {}", restaurant.getId(), restaurant.getRestaurantName());
-            
-            UrbanPiperOrderRequest urbanPiperRequest = urbanPiperOrderTransformer.transform(order, customer, restaurant);
-            
-            log.info("Transformed UrbanPiper Order Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
-            
-            createUrbanPiperOrder(urbanPiperRequest);
-            
-            log.info("UrbanPiper order created successfully for order: {}", order.getId());
-            log.info("===================================");
-            
-        } catch (Exception e) {
-            log.error("Error processing UrbanPiper order {}: {}", order.getId(), e.getMessage(), e);
-            throw new RuntimeException("Failed to process UrbanPiper order: " + e.getMessage(), e);
-        }
-    }
+    @Override
+    public abstract String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
 
-    private void createUrbanPiperOrder(UrbanPiperOrderRequest urbanPiperRequest) throws PosException {
-        try {
-            log.info("Creating UrbanPiper order - Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
-            
-            WebClient webClient = WebClient.builder()
-                    .baseUrl(upBaseUrl)
-                    .defaultHeader("Authorization", "apikey " + upUsername + ":" + upApiKey)
-                    .build();
-            
-            String endpoint = "orders/";
-            
-            String response = webClient
-                    .post()
-                    .uri(endpoint)
-                    .body(BodyInserters.fromValue(urbanPiperRequest))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            
-            log.info("UrbanPiper Order Creation Response: {}", response);
-            
-            metrics.count(
-                    MetricsEvent.POS,
-                    MetricTag.PARTNER,
-                    "URBANPIPER",
-                    MetricTag.ACTION,
-                    "create",
-                    MetricTag.RESULT,
-                    "success");
-            
-        } catch (Exception e) {
-            log.error("Error occurred during createUrbanPiperOrder: {}", e.getMessage(), e);
-            
-            metrics.count(
-                    MetricsEvent.POS,
-                    MetricTag.PARTNER,
-                    "URBANPIPER",
-                    MetricTag.ACTION,
-                    "create",
-                    MetricTag.RESULT,
-                    "failed");
-            
-            throw new PosException("UrbanPiper Order Creation failed: " + e.getMessage());
-        }
-    }
+    protected abstract String posBaseUrl();
 
     @Override
     @Transactional
@@ -398,7 +278,7 @@ public class PosServiceImpl implements PosService {
     public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
         try {
             log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
+            WebClient webClient = WebClient.builder().baseUrl(posBaseUrl()).build();
             String endpoint = "/save_order";
             String response = webClient
                     .post()
@@ -436,7 +316,7 @@ public class PosServiceImpl implements PosService {
     public void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
         try {
             log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posOrderUpdateRequest));
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
+            WebClient webClient = WebClient.builder().baseUrl(posBaseUrl()).build();
             String endpoint = "/update_order_status";
             String updateOrderResponse = webClient
                     .post()
@@ -449,83 +329,6 @@ public class PosServiceImpl implements PosService {
         } catch (Exception e) {
             log.error("Error occurred during updatePosOrder {}", e.getMessage());
             throw new PosException("POS Order Update failed " + e.getMessage());
-        }
-    }
-
-    @Override
-    public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
-        try {
-            log.info("updatePosRiderStatus Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
-            Restaurant restaurant = restaurantService.findById(posRiderUpdateRequest.getRestaurantId());
-
-            if (restaurant != null && 
-                    restaurant.getPosPartner().equalsIgnoreCase(com.hyp.enums.PosPartner.URBAN_PIPER.name())) {
-                log.info("Updating rider status for UrbanPiper");
-                return updateUrbanPiperRiderStatus(posRiderUpdateRequest);
-            }
-
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
-            String endpoint = "/rider_status_update";
-            String riderUpdateResponse = webClient
-                    .post()
-                    .uri(endpoint)
-                    .body(BodyInserters.fromValue(posRiderUpdateRequest))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            log.info("updatePosRiderStatus Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
-            return riderUpdateResponse;
-        } catch (Exception e) {
-            log.error("Error occurred during updatePosRiderStatus {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private String updateUrbanPiperRiderStatus(PosRiderUpdateRequest request) {
-        try {
-            String externalOrderId = request.getExternalOrderId();
-            if (externalOrderId == null || externalOrderId.isEmpty() || "0".equals(externalOrderId)) {
-                // If external_order_id is not provided, use our internal order_id
-                externalOrderId = request.getOrderId();
-            }
-
-            String endpoint = String.format("orders/%s/rider-status/", externalOrderId);
-            Map<String, Object> payload = new HashMap<>();
-            if (request.getRiderData() != null) {
-                payload.put("rider_name", request.getRiderData().getRiderName());
-                payload.put("rider_phone", request.getRiderData().getRiderContact());
-            }
-
-            // Map internal status to UrbanPiper status
-            String status = request.getStatus();
-            String upStatus = switch (status) {
-                case "rider-assigned", "rider_assigned" -> "rider_assigned";
-                case "rider-arrived", "rider_arrived" -> "rider_arrived";
-                case "pickedup", "picked_up" -> "picked_up";
-                case "delivered" -> "delivered";
-                default -> status;
-            };
-            payload.put("status", upStatus);
-
-            log.info("UrbanPiper Rider Status Update Payload: {}", objectMapper.writeValueAsString(payload));
-
-            WebClient webClient = WebClient.builder()
-                    .baseUrl(upBaseUrl)
-                    .defaultHeader("Authorization", "apikey " + upUsername + ":" + upApiKey)
-                    .build();
-
-            String response = webClient.post()
-                    .uri(endpoint)
-                    .body(BodyInserters.fromValue(payload))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            log.info("UrbanPiper Rider Status Update Response: {}", response);
-            return response;
-        } catch (Exception e) {
-            log.error("Error updating UrbanPiper rider status: {}", e.getMessage());
-            return null;
         }
     }
 
