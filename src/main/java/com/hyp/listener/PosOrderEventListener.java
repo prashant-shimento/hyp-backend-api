@@ -22,7 +22,11 @@ public class PosOrderEventListener {
     public void handleProcessPosOrder(PosOrderEvent event) {
         Order order = event.getOrder();
         PosService posService = posServiceFactory.forRestaurant(order.getRestaurantId());
-        log.info("PosOrderEvent received for order {} restaurant {} handler {}", order.getId(), order.getRestaurantId(), posService.getClass().getSimpleName());
+        log.info(
+                "PosOrderEvent received for order {} restaurant {} handler {}",
+                order.getId(),
+                order.getRestaurantId(),
+                posService.getClass().getSimpleName());
         posService.processPosOrder(order);
     }
 }

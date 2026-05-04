@@ -12,7 +12,7 @@ public class OrderStatusTransformer {
         if (urbanPiperStatus == null) {
             return OrderStatusType.PROCESSING;
         }
-        
+
         return switch (urbanPiperStatus.toLowerCase()) {
             case "placed", "created" -> OrderStatusType.PLACED;
             case "acknowledged" -> OrderStatusType.ACKNOWLEDGED;

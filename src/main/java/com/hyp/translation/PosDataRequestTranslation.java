@@ -1,6 +1,5 @@
 package com.hyp.translation;
 
-import com.hyp.constants.Constants;
 import com.hyp.entity.AddonGroup;
 import com.hyp.entity.AddonItem;
 import com.hyp.entity.Attribute;
@@ -367,7 +366,7 @@ public class PosDataRequestTranslation {
             // Default to PET_POOJA for backward compatibility
             restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
         }
-        
+
         String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;
         if (existingCharge != null && !existingCharge.isEmpty()) {
             restaurant.setPackagingCharge(existingCharge);

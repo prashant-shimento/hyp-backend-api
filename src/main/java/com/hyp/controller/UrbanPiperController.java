@@ -1,19 +1,17 @@
 package com.hyp.controller;
 
 import com.hyp.adapter.UrbanPiperAdapter;
+import com.hyp.adapter.urbanpiper.inventory.InventoryTransformer;
 import com.hyp.adapter.urbanpiper.order.OrderStatusTransformer;
 import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderStatusRequest;
-import com.hyp.entity.Order;
-import com.hyp.enums.OrderStatusType;
+import com.hyp.entity.Restaurant;
 import com.hyp.request.OrderStatusUpdateRequest;
+import com.hyp.request.PosDataRequest;
 import com.hyp.request.PosStatusRequest;
+import com.hyp.request.PosStockRequest;
 import com.hyp.request.urbanpiper.InventoryRequest;
 import com.hyp.request.urbanpiper.StoreStatusRequest;
 import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
-import com.hyp.adapter.urbanpiper.inventory.InventoryTransformer;
-import com.hyp.entity.Restaurant;
-import com.hyp.request.PosDataRequest;
-import com.hyp.request.PosStockRequest;
 import com.hyp.response.PosResponse;
 import com.hyp.service.OrderService;
 import com.hyp.service.PosService;
@@ -124,9 +122,12 @@ public class UrbanPiperController {
 
     @PostMapping("/order/status")
     public ResponseEntity<PosResponse> receiveOrderStatus(@RequestBody UrbanPiperOrderStatusRequest request) {
-        log.info("UrbanPiper order status update received for order: {}, status: {}", 
-                request.getExternalOrderId(), request.getStatus());
-        
+        log.info(
+                "UrbanPiper order status update received for order: {}, status: {}",
+                request.getExternalOrderId(),
+                request.getStatus());
+
+
         try {
             // Translate UrbanPiper request to PosCallbackRequest
             com.hyp.request.PosCallbackRequest posCallbackRequest = 
@@ -156,9 +157,12 @@ public class UrbanPiperController {
 
     @PostMapping("/store/status")
     public ResponseEntity<PosResponse> receiveStoreStatus(@RequestBody StoreStatusRequest request) {
-        log.info("UrbanPiper store status update received: location_ref_id={}, ordering_enabled={}", 
-                request.getLocationRefId(), request.getOrderingEnabled());
-        
+        log.info(
+                "UrbanPiper store status update received: location_ref_id={}, ordering_enabled={}",
+                request.getLocationRefId(),
+                request.getOrderingEnabled());
+
+
         try {
             if (request.getLocationRefId() == null || request.getLocationRefId().isEmpty()) {
                 return ResponseEntity.ok(PosResponse.builder()
@@ -208,9 +212,12 @@ public class UrbanPiperController {
 
     @PostMapping("/order/status/exchange")
     public ResponseEntity<PosResponse> updateOrderStatusExchange(@RequestBody OrderStatusUpdateRequest request) {
-        log.info("Order status exchange request received for order: {}, status: {}", 
-                request.getOrderNo(), request.getNewStatus());
-        
+        log.info(
+                "Order status exchange request received for order: {}, status: {}",
+                request.getOrderNo(),
+                request.getNewStatus());
+
+
         try {
             // Validate the request
             if (request.getOrderNo() == null || request.getOrderNo().isEmpty()) {
@@ -245,8 +252,11 @@ public class UrbanPiperController {
             
             // Log reason if provided
             if (request.getReason() != null && !request.getReason().isEmpty()) {
-                log.info("Order {} status changing to {} with reason: {}", 
-                        request.getOrderNo(), request.getNewStatus(), request.getReason());
+                log.info(
+                        "Order {} status changing to {} with reason: {}",
+                        request.getOrderNo(),
+                        request.getNewStatus(),
+                        request.getReason());
             }
             
             // Create PosCallbackRequest for translation

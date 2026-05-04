@@ -1,11 +1,10 @@
 package com.hyp.adapter.urbanpiper;
 
 import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -19,32 +18,34 @@ public class VariantPathTransformer {
         return allPaths;
     }
 
-    private void extractVariantPathsRecursive(List<UrbanPiperMenuRequest.VariantGroup> variantGroups, 
-                                              List<VariantInfo> currentPath, 
-                                              List<VariantPath> allPaths) {
+    private void extractVariantPathsRecursive(
+            List<UrbanPiperMenuRequest.VariantGroup> variantGroups,
+            List<VariantInfo> currentPath,
+            List<VariantPath> allPaths) {
         if (variantGroups == null || variantGroups.isEmpty()) {
             if (!currentPath.isEmpty()) {
                 allPaths.add(new VariantPath(new ArrayList<>(currentPath)));
             }
             return;
         }
-        
+
         for (UrbanPiperMenuRequest.VariantGroup variantGroup : variantGroups) {
             String groupName = variantGroup.getTitle();
             List<UrbanPiperMenuRequest.Variant> variants = variantGroup.getVariants();
-            
+
             if (variants != null) {
                 for (UrbanPiperMenuRequest.Variant variant : variants) {
                     VariantInfo variantInfo = createVariantInfo(variant, groupName);
-                    
+
                     currentPath.add(variantInfo);
-                    
-                    if (variant.getVariantGroups() != null && !variant.getVariantGroups().isEmpty()) {
+
+                    if (variant.getVariantGroups() != null
+                            && !variant.getVariantGroups().isEmpty()) {
                         extractVariantPathsRecursive(variant.getVariantGroups(), currentPath, allPaths);
                     } else {
                         allPaths.add(new VariantPath(new ArrayList<>(currentPath)));
                     }
-                    
+
                     currentPath.remove(currentPath.size() - 1);
                 }
             }
@@ -58,11 +59,11 @@ public class VariantPathTransformer {
         variantInfo.setGroupName(groupName);
         variantInfo.setPrice(variant.getPrice() != null ? variant.getPrice().doubleValue() : 0);
         variantInfo.setInStock(variant.getInStock() != null && variant.getInStock());
-        
+
         if (variant.getAddOnGroups() != null) {
             variantInfo.setAddonGroups(addonGroupTransformer.transform(variant.getAddOnGroups()));
         }
-        
+
         return variantInfo;
     }
 }

@@ -8,13 +8,12 @@ import com.hyp.exception.PosException;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosRiderUpdateRequest;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.Optional;
 
 @Slf4j
 @Service("petPooja")
@@ -35,8 +34,18 @@ public class PetPoojaServiceImpl extends PosServiceImpl {
             AddonItemService addonItemService,
             ItemService itemService,
             BucketService bucketService) {
-        super(attributeService, categoryService, taxService, orderTypeService, variationService,
-                restaurantService, discountService, addonGroupService, addonItemService, itemService, bucketService);
+        super(
+                attributeService,
+                categoryService,
+                taxService,
+                orderTypeService,
+                variationService,
+                restaurantService,
+                discountService,
+                addonGroupService,
+                addonItemService,
+                itemService,
+                bucketService);
     }
 
     @Override
@@ -66,8 +75,10 @@ public class PetPoojaServiceImpl extends PosServiceImpl {
             }
             createPosOrder(posOrderRequest);
         } catch (RequestTranslationException e) {
-            log.error("Error occurred on RequestTranslationException for order {} cause: {}",
-                    order.getId(), e.getMessage());
+            log.error(
+                    "Error occurred on RequestTranslationException for order {} cause: {}",
+                    order.getId(),
+                    e.getMessage());
         } catch (PosException e) {
             log.error("Error occurred on PosException for order {} cause: {}", order.getId(), e.getMessage());
         }

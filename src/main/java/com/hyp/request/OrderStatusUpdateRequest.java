@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderStatusUpdateRequest {
-    
+
     @NotBlank(message = "order_no is required")
     @JsonProperty("order_no")
     private String orderNo;
-    
+
     @NotBlank(message = "new_status is required")
     @JsonProperty("new_status")
     private String newStatus;
-    
+
     @JsonProperty("reason")
     private String reason;
 }

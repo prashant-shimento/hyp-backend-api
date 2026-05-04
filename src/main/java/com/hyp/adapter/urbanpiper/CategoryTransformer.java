@@ -1,12 +1,11 @@
 package com.hyp.adapter.urbanpiper;
 
-import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import com.hyp.request.PosDataRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
+import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -19,13 +18,13 @@ public class CategoryTransformer {
         List<PosDataRequest.ItemRequest> itemList = new ArrayList<>();
         List<PosDataRequest.VariationRequest> variationList = new ArrayList<>();
         List<PosDataRequest.AddonGroupRequest> addonGroupList = new ArrayList<>();
-        
+
         int categoryRank = 0;
-        
+
         for (UrbanPiperMenuRequest.Category categoryNode : categories) {
             String categoryRefId = categoryNode.getRefId();
             String categoryTitle = categoryNode.getTitle();
-            
+
             PosDataRequest.CategoryRequest category = new PosDataRequest.CategoryRequest();
             category.setCategoryid(categoryRefId);
             category.setCategoryname(categoryTitle);
@@ -35,7 +34,7 @@ public class CategoryTransformer {
             category.setCategorytimings(categoryNode.getTimings());
             category.setSourceId("urbanpiper");
             categoryList.add(category);
-            
+
             if (categoryNode.getItems() != null) {
                 for (UrbanPiperMenuRequest.Item item : categoryNode.getItems()) {
                     ItemExtractionResult itemResult = itemTransformer.transform(item, categoryRefId, null);
@@ -44,12 +43,12 @@ public class CategoryTransformer {
                     addonGroupList.addAll(itemResult.getAddonGroups());
                 }
             }
-            
+
             if (categoryNode.getSubcategories() != null) {
                 for (UrbanPiperMenuRequest.SubCategory subCategory : categoryNode.getSubcategories()) {
                     String subCategoryRefId = subCategory.getRefId();
                     String subCategoryTitle = subCategory.getTitle();
-                    
+
                     PosDataRequest.CategoryRequest subCat = new PosDataRequest.CategoryRequest();
                     subCat.setCategoryid(subCategoryRefId);
                     subCat.setCategoryname(subCategoryTitle);
@@ -59,10 +58,11 @@ public class CategoryTransformer {
                     subCat.setCategory_image_url(subCategory.getImageUrl());
                     subCat.setSourceId("urbanpiper");
                     categoryList.add(subCat);
-                    
+
                     if (subCategory.getItems() != null) {
                         for (UrbanPiperMenuRequest.Item item : subCategory.getItems()) {
-                            ItemExtractionResult itemResult = itemTransformer.transform(item, categoryRefId, subCategoryRefId);
+                            ItemExtractionResult itemResult =
+                                    itemTransformer.transform(item, categoryRefId, subCategoryRefId);
                             itemList.addAll(itemResult.getItems());
                             variationList.addAll(itemResult.getVariations());
                             addonGroupList.addAll(itemResult.getAddonGroups());
@@ -71,12 +71,12 @@ public class CategoryTransformer {
                 }
             }
         }
-        
+
         return MenuExtractionResult.builder()
-            .categories(categoryList)
-            .items(itemList)
-            .variations(variationList)
-            .addonGroups(addonGroupList)
-            .build();
+                .categories(categoryList)
+                .items(itemList)
+                .variations(variationList)
+                .addonGroups(addonGroupList)
+                .build();
     }
 }

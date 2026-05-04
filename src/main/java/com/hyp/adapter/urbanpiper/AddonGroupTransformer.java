@@ -1,13 +1,12 @@
 package com.hyp.adapter.urbanpiper;
 
-import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import com.hyp.request.PosDataRequest;
-import org.springframework.stereotype.Component;
-
+import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 @Component
 public class AddonGroupTransformer {
@@ -17,7 +16,7 @@ public class AddonGroupTransformer {
 
     public List<PosDataRequest.AddonGroupRequest> transform(List<UrbanPiperMenuRequest.AddOnGroup> addonGroups) {
         List<PosDataRequest.AddonGroupRequest> result = new ArrayList<>();
-        
+
         if (addonGroups != null) {
             for (UrbanPiperMenuRequest.AddOnGroup addonGroup : addonGroups) {
                 PosDataRequest.AddonGroupRequest transformed = processAddonGroup(addonGroup);
@@ -26,7 +25,7 @@ public class AddonGroupTransformer {
                 }
             }
         }
-        
+
         return result;
     }
 
@@ -41,7 +40,7 @@ public class AddonGroupTransformer {
 
     private PosDataRequest.AddonGroupRequest processAddonGroup(UrbanPiperMenuRequest.AddOnGroup addonGroup) {
         String addonGroupRefId = addonGroup.getRefId();
-        
+
         if (processedAddonGroupIds.contains(addonGroupRefId)) {
             for (PosDataRequest.AddonGroupRequest existing : allAddonGroups) {
                 if (addonGroupRefId.equals(existing.getAddongroupid())) {
@@ -49,17 +48,19 @@ public class AddonGroupTransformer {
                 }
             }
         }
-        
+
         PosDataRequest.AddonGroupRequest request = new PosDataRequest.AddonGroupRequest();
         request.setAddongroupid(addonGroupRefId);
         request.setAddon_group_id(addonGroupRefId);
         request.setAddongroup_name(addonGroup.getTitle());
-        request.setAddon_item_selection_min(addonGroup.getMinimumNeeded() != null ? String.valueOf(addonGroup.getMinimumNeeded()) : null);
-        request.setAddon_item_selection_max(addonGroup.getMaximumAllowed() != null ? String.valueOf(addonGroup.getMaximumAllowed()) : null);
+        request.setAddon_item_selection_min(
+                addonGroup.getMinimumNeeded() != null ? String.valueOf(addonGroup.getMinimumNeeded()) : null);
+        request.setAddon_item_selection_max(
+                addonGroup.getMaximumAllowed() != null ? String.valueOf(addonGroup.getMaximumAllowed()) : null);
         request.setActive("1");
         request.setAddongroup_rank("0");
         request.setSourceId("urbanpiper");
-        
+
         List<PosDataRequest.AddonItemRequest> addonItems = new ArrayList<>();
         if (addonGroup.getAddons() != null) {
             for (UrbanPiperMenuRequest.AddOn addon : addonGroup.getAddons()) {
@@ -70,16 +71,16 @@ public class AddonGroupTransformer {
                 addonItem.setActive(addon.getInStock() != null && addon.getInStock() ? "1" : "0");
                 addonItem.setAddonitem_rank("0");
                 addonItem.setSourceId("urbanpiper");
-                
+
                 addonItems.add(addonItem);
             }
         }
-        
+
         request.setAddongroupitems(addonItems);
-        
+
         processedAddonGroupIds.add(addonGroupRefId);
         allAddonGroups.add(request);
-        
+
         return request;
     }
 }

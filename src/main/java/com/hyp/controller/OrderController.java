@@ -101,7 +101,9 @@ public class OrderController extends BaseListController<OrderDto, Order, String>
                     new RiderDetails("Hyperapps Rider", "9985938706"),
                     RiderStatusType.getRiderStatusByOrderStatusType(order.getStatus())
                             .name());
-            String posResponse = posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosRiderStatus(posRiderUpdateRequest);
+            String posResponse = posServiceFactory
+                    .forRestaurant(order.getRestaurantId())
+                    .updatePosRiderStatus(posRiderUpdateRequest);
             response = new Response(Collections.singletonList(posResponse), false, "Rider Status Updated");
             return ResponseEntity.ok(response);
         } catch (Exception e) {

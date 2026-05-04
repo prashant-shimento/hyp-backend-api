@@ -7,14 +7,13 @@ import com.hyp.observability.ApplicationMetrics;
 import com.hyp.observability.MetricTag;
 import com.hyp.observability.MetricsEvent;
 import jakarta.annotation.PostConstruct;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -46,29 +45,45 @@ public class UrbanPiperClient {
     public String createOrder(UrbanPiperOrderRequest request) throws PosException {
         try {
             log.info("UrbanPiper createOrder request: {}", objectMapper.writeValueAsString(request));
-            String response = webClient.post()
+            String response = webClient
+                    .post()
                     .uri("orders/")
                     .body(BodyInserters.fromValue(request))
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
             log.info("UrbanPiper createOrder response: {}", response);
-            metrics.count(MetricsEvent.POS, MetricTag.PARTNER, "URBANPIPER",
-                    MetricTag.ACTION, "create", MetricTag.RESULT, "success");
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    "URBANPIPER",
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "success");
             return response;
         } catch (Exception e) {
             log.error("UrbanPiper createOrder failed: {}", e.getMessage(), e);
-            metrics.count(MetricsEvent.POS, MetricTag.PARTNER, "URBANPIPER",
-                    MetricTag.ACTION, "create", MetricTag.RESULT, "failed");
+            metrics.count(
+                    MetricsEvent.POS,
+                    MetricTag.PARTNER,
+                    "URBANPIPER",
+                    MetricTag.ACTION,
+                    "create",
+                    MetricTag.RESULT,
+                    "failed");
             throw new PosException("UrbanPiper order creation failed: " + e.getMessage());
         }
     }
 
     public String updateRiderStatus(String externalOrderId, Map<String, Object> payload) {
         try {
-            log.info("UrbanPiper updateRiderStatus orderId={} payload={}",
-                    externalOrderId, objectMapper.writeValueAsString(payload));
-            String response = webClient.post()
+            log.info(
+                    "UrbanPiper updateRiderStatus orderId={} payload={}",
+                    externalOrderId,
+                    objectMapper.writeValueAsString(payload));
+            String response = webClient
+                    .post()
                     .uri("orders/{id}/rider-status/", externalOrderId)
                     .body(BodyInserters.fromValue(payload))
                     .retrieve()
