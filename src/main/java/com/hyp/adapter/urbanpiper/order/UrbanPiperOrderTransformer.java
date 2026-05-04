@@ -5,14 +5,13 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.service.AddressService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -215,9 +214,8 @@ public class UrbanPiperOrderTransformer {
     }
 
     private UrbanPiperOrderRequest.Payment buildPayment(Order order) {
-        String paymentMode = order.getPaymentType() != null
-                ? order.getPaymentType().name().toLowerCase()
-                : "online";
+        String paymentMode =
+                order.getPaymentType() != null ? order.getPaymentType().name().toLowerCase() : "online";
 
         return UrbanPiperOrderRequest.Payment.builder()
                 .amountPaid(order.getGrandTotalAmount())

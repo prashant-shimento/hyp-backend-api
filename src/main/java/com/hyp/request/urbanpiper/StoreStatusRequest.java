@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreStatusRequest {
-    
+
     @JsonProperty("location_ref_id")
     private String locationRefId;
-    
+
     @JsonProperty("ordering_enabled")
     private Boolean orderingEnabled;
 }

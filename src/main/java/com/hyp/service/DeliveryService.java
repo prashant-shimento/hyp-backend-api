@@ -370,8 +370,12 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         // Async: POS rider status update and fraud check are non-critical side effects
         CompletableFuture.runAsync(() -> {
                     try {
-                        if (posServiceFactory.forRestaurant(order.getRestaurantId()).isPosUpdateRequired(fullFillStatus)) {
-                            posServiceFactory.forRestaurant(order.getRestaurantId()).updatePosRiderStatus(delivery, order);
+                        if (posServiceFactory
+                                .forRestaurant(order.getRestaurantId())
+                                .isPosUpdateRequired(fullFillStatus)) {
+                            posServiceFactory
+                                    .forRestaurant(order.getRestaurantId())
+                                    .updatePosRiderStatus(delivery, order);
                         }
                     } catch (Exception e) {
                         log.error("Async POS rider status update failed for order {}", order.getId(), e);

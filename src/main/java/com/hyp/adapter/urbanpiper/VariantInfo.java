@@ -1,10 +1,9 @@
 package com.hyp.adapter.urbanpiper;
 
 import com.hyp.request.PosDataRequest;
-import lombok.Data;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
 
 @Data
 public class VariantInfo {

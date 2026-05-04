@@ -62,8 +62,7 @@ public class MenuController {
 
     @PostMapping("/import")
     public ResponseEntity<Response> save(@RequestBody PosDataRequest posDataRequest) {
-        var allRestaurantIds = posDataRequest.getRestaurants()
-                .stream()
+        var allRestaurantIds = posDataRequest.getRestaurants().stream()
                 .map(it -> it.getRestaurantid())
                 .toList();
 

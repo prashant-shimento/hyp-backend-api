@@ -7,13 +7,12 @@ import com.hyp.entity.Customer;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.request.PosRiderUpdateRequest;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Service("urbanPiper")
@@ -46,8 +45,18 @@ public class UrbanPiperPosServiceImpl extends PosServiceImpl {
             AddonItemService addonItemService,
             ItemService itemService,
             BucketService bucketService) {
-        super(attributeService, categoryService, taxService, orderTypeService, variationService,
-                restaurantService, discountService, addonGroupService, addonItemService, itemService, bucketService);
+        super(
+                attributeService,
+                categoryService,
+                taxService,
+                orderTypeService,
+                variationService,
+                restaurantService,
+                discountService,
+                addonGroupService,
+                addonItemService,
+                itemService,
+                bucketService);
     }
 
     @Override
@@ -65,7 +74,8 @@ public class UrbanPiperPosServiceImpl extends PosServiceImpl {
             log.info("Customer ID: {}, Customer Name: {}", customer.getId(), customer.getName());
             log.info("Restaurant ID: {}, Restaurant Name: {}", restaurant.getId(), restaurant.getRestaurantName());
 
-            UrbanPiperOrderRequest urbanPiperRequest = urbanPiperOrderTransformer.transform(order, customer, restaurant);
+            UrbanPiperOrderRequest urbanPiperRequest =
+                    urbanPiperOrderTransformer.transform(order, customer, restaurant);
             log.info("Transformed UrbanPiper Order Request: {}", objectMapper.writeValueAsString(urbanPiperRequest));
 
             urbanPiperClient.createOrder(urbanPiperRequest);
@@ -93,13 +103,14 @@ public class UrbanPiperPosServiceImpl extends PosServiceImpl {
             }
 
             String status = request.getStatus();
-            String upStatus = switch (status) {
-                case "rider-assigned", "rider_assigned" -> "rider_assigned";
-                case "rider-arrived", "rider_arrived" -> "rider_arrived";
-                case "pickedup", "picked_up" -> "picked_up";
-                case "delivered" -> "delivered";
-                default -> status;
-            };
+            String upStatus =
+                    switch (status) {
+                        case "rider-assigned", "rider_assigned" -> "rider_assigned";
+                        case "rider-arrived", "rider_arrived" -> "rider_arrived";
+                        case "pickedup", "picked_up" -> "picked_up";
+                        case "delivered" -> "delivered";
+                        default -> status;
+                    };
             payload.put("status", upStatus);
 
             log.info("UrbanPiper Rider Status Update Payload: {}", objectMapper.writeValueAsString(payload));

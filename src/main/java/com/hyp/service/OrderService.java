@@ -479,23 +479,23 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         }
     }
 
-    public Order updateOrderStatusWithReason(String orderId, String newStatusStr, String reason) 
+    public Order updateOrderStatusWithReason(String orderId, String newStatusStr, String reason)
             throws OrderNotFoundException {
-        
+
         Order order = findById(orderId);
         if (order == null) {
             throw new OrderNotFoundException("Order not found: " + orderId);
         }
 
         OrderStatusType newStatus = mapExternalStatusToInternal(newStatusStr);
-        
+
         // Log the reason if provided
         if (reason != null && !reason.isBlank()) {
             log.info("Order {} status changing to {} with reason: {}", orderId, newStatus, reason);
             // Add reason to order logs
             order.getOrderLogs().add(new Order.OrderLog(newStatus.name() + " - Reason: " + reason));
         }
-        
+
         return updateOrderStatus(orderId, newStatus);
     }
 
@@ -506,7 +506,7 @@ public class OrderService extends BaseServiceImpl<Order, String> {
         if (externalStatus == null || externalStatus.isBlank()) {
             throw new IllegalArgumentException("Status cannot be null or empty");
         }
-        
+
         return switch (externalStatus.toLowerCase()) {
             case "placed" -> OrderStatusType.PLACED;
             case "acknowledged" -> OrderStatusType.ACKNOWLEDGED;
