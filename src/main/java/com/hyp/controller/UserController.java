@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(path = {"/api/v2/user", "/api/v3/user"})
-public class UserController extends BaseController<UserDto, User, String> {
+public class UserController extends BaseListController<UserDto, User, String> {
 
     @Autowired
     public UserTranslation userTranslation;

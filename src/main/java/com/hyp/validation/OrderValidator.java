@@ -593,13 +593,26 @@ public class OrderValidator {
 
             if (isVariation) {
                 Variation v = variationMap.get(oi.getId());
-                if (v == null) throw new ValidationException("Variation not found: " + oi.getId());
-                basePrice = roundToTwoDecimal(Double.parseDouble(v.getPrice()));
+
+                if (v == null) {
+                    throw new ValidationException("Variation not found: " + oi.getId());
+                }
+                if ("1".equals(v.getActive())) {
+                    basePrice = roundToTwoDecimal(Double.parseDouble(v.getPrice()));
+                } else {
+                    throw new ValidationException("Variation is not active: " + oi.getVariationName());
+                }
             } else {
                 item = itemMap.get(oi.getId());
-                if (item == null) throw new ValidationException("Item not found: " + oi.getId());
-                basePrice = roundToTwoDecimal(Double.parseDouble(item.getPrice()));
-                oi.setItemAttribute(item.getItemAttributeId());
+                if (item == null) {
+                    throw new ValidationException("Item not found: " + oi.getId());
+                }
+                if ("1".equals(item.getActive())) {
+                    basePrice = roundToTwoDecimal(Double.parseDouble(item.getPrice()));
+                    oi.setItemAttribute(item.getItemAttributeId());
+                } else {
+                    throw new ValidationException("Item is not active or not in stock: " + oi.getName());
+                }
             }
             if (roundToTwoDecimal(oi.getPrice()) != basePrice) {
                 warnings.add(new PriceWarning(
@@ -614,6 +627,9 @@ public class OrderValidator {
                 for (OrderDto.OrderAddonItem addon : oi.getOrderAddonItems()) {
                     AddonItem dbAddon = addonMap.get(addon.getAddonItemId());
                     if (dbAddon == null) throw new ValidationException("Addon not found: " + addon.getAddonItemId());
+                    if (!"1".equals(dbAddon.getActive())) {
+                        throw new ValidationException("Addon is not active: " + addon.getAddonItemName());
+                    }
                     double addonPrice = roundToTwoDecimal(Double.parseDouble(dbAddon.getAddonItemPrice()));
                     if (roundToTwoDecimal(addon.getPrice()) != addonPrice) {
                         warnings.add(new PriceWarning(
