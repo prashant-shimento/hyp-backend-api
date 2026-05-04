@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hyp.constants.Constants;
 import com.hyp.entity.*;
 import com.hyp.enums.DeliveryFulfillStatusType;
-import com.hyp.enums.PartnerType;
 import com.hyp.enums.RiderStatusType;
 import com.hyp.exception.EntityNotFoundException;
 import com.hyp.exception.PosException;
-import com.hyp.exception.RequestTranslationException;
 import com.hyp.model.DeliveryOrderStatus.Rider;
 import com.hyp.model.PosData;
 import com.hyp.observability.ApplicationMetrics;
@@ -30,9 +28,7 @@ import com.hyp.translation.PosOrderRequestTranslation;
 import com.hyp.util.CommonUtils;
 import io.micrometer.core.instrument.Timer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,18 +36,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Slf4j
-@Service
-public class PosServiceImpl implements PosService {
-
-    @Value("${pos.petpooja.url}")
-    private String baseUrl;
+public abstract class PosServiceImpl implements PosService {
 
     @Autowired
     ObjectMapper objectMapper;
@@ -79,17 +69,17 @@ public class PosServiceImpl implements PosService {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(8);
 
-    private final RestaurantService restaurantService;
-    private final TaxService taxService;
-    private final OrderTypeService orderTypeService;
-    private final AttributeService attributeService;
-    private final DiscountService discountService;
-    private final VariationService variationService;
-    private final AddonItemService addonItemService;
-    private final AddonGroupService addonGroupService;
-    private final CategoryService categoryService;
-    private final ItemService itemService;
-    private final BucketService bucketService;
+    protected final RestaurantService restaurantService;
+    protected final TaxService taxService;
+    protected final OrderTypeService orderTypeService;
+    protected final AttributeService attributeService;
+    protected final DiscountService discountService;
+    protected final VariationService variationService;
+    protected final AddonItemService addonItemService;
+    protected final AddonGroupService addonGroupService;
+    protected final CategoryService categoryService;
+    protected final ItemService itemService;
+    protected final BucketService bucketService;
 
     @Autowired
     PosOrderRequestTranslation posOrderRequestTranslation;
@@ -123,35 +113,12 @@ public class PosServiceImpl implements PosService {
     }
 
     @Override
-    public void processPosOrder(Order order) {
-        Customer customer = customerService.findById(order.getCustomerId());
-        Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
-        try {
-            PosOrderRequest posOrderRequest =
-                    posOrderRequestTranslation.getPosOrderRequest(restaurant, order, customer);
-            if (partnerService.findPartnersByRestaurantId(order.getRestaurantId(), PartnerType.THEATRE) != null) {
-                String name = String.format(
-                        "%s-%s-%s",
-                        Optional.ofNullable(order.getScreen()).orElse("N/A"),
-                        Optional.ofNullable(order.getSeat()).orElse("N/A"),
-                        customer.getName());
-                posOrderRequest
-                        .getOrderInfo()
-                        .getOrderInfoDetails()
-                        .getCustomer()
-                        .getCustomerDetails()
-                        .setName(name);
-            }
-            createPosOrder(posOrderRequest);
-        } catch (RequestTranslationException e) {
-            log.error(
-                    "Error occurred on RequestTranslationException for order {} cause: {}",
-                    order.getId(),
-                    e.getMessage());
-        } catch (PosException e) {
-            log.error("Error occurred on PosException for order {} cause: {}", order.getId(), e.getMessage());
-        }
-    }
+    public abstract void processPosOrder(Order order);
+
+    @Override
+    public abstract String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest);
+
+    protected abstract String posBaseUrl();
 
     @Override
     @Transactional
@@ -309,7 +276,7 @@ public class PosServiceImpl implements PosService {
     public void createPosOrder(PosOrderRequest posOrderRequest) throws PosException {
         try {
             log.info("createPosOrder Request {}", objectMapper.writeValueAsString(posOrderRequest));
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
+            WebClient webClient = WebClient.builder().baseUrl(posBaseUrl()).build();
             String endpoint = "/save_order";
             String response = webClient
                     .post()
@@ -347,7 +314,7 @@ public class PosServiceImpl implements PosService {
     public void updatePosOrder(PosOrderUpdateRequest posOrderUpdateRequest) throws PosException {
         try {
             log.info("updatePosOrder Request {}", objectMapper.writeValueAsString(posOrderUpdateRequest));
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
+            WebClient webClient = WebClient.builder().baseUrl(posBaseUrl()).build();
             String endpoint = "/update_order_status";
             String updateOrderResponse = webClient
                     .post()
@@ -360,27 +327,6 @@ public class PosServiceImpl implements PosService {
         } catch (Exception e) {
             log.error("Error occurred during updatePosOrder {}", e.getMessage());
             throw new PosException("POS Order Update failed " + e.getMessage());
-        }
-    }
-
-    @Override
-    public String updatePosRiderStatus(PosRiderUpdateRequest posRiderUpdateRequest) {
-        try {
-            log.info("updatePosRiderStatus Request {}", objectMapper.writeValueAsString(posRiderUpdateRequest));
-            WebClient webClient = WebClient.builder().baseUrl(baseUrl).build();
-            String endpoint = "/rider_status_update";
-            String riderUpdateResponse = webClient
-                    .post()
-                    .uri(endpoint)
-                    .body(BodyInserters.fromValue(posRiderUpdateRequest))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-            log.info("updatePosRiderStatus Response {}", objectMapper.writeValueAsString(riderUpdateResponse));
-            return riderUpdateResponse;
-        } catch (Exception e) {
-            log.error("Error occurred during updatePosRiderStatus {}", e.getMessage());
-            return null;
         }
     }
 

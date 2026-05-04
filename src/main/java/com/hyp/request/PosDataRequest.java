@@ -36,6 +36,7 @@ public class PosDataRequest {
         private RestaurantDetails details;
         private String sourceId;
         private String ingestionSource;
+        private String posPartner;
     }
 
     @Getter
