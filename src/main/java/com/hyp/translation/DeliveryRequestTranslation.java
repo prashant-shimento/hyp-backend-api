@@ -95,13 +95,13 @@ public class DeliveryRequestTranslation {
         senderAddress.setLatitude(restaurant.getLocation().getLatitude());
         senderAddress.setLongitude(restaurant.getLocation().getLongitude());
         senderDetail.setAddress(senderAddress);
-        senderDetail.setMobile(restaurantSupportContact);
+        senderDetail.setMobile("7801057583");
         senderDetail.setName(restaurant.getRestaurantName());
         orderRequest.setSenderDetail(senderDetail);
 
         ContactDetail pocDetail = new ContactDetail();
         pocDetail.setName("Hyperapps");
-        pocDetail.setMobile(platformSupportContact);
+        pocDetail.setMobile("9985938706");
         orderRequest.setPocDetail(pocDetail);
 
         ContactDetail receiverDetail = new ContactDetail();
