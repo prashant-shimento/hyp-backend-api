@@ -4,6 +4,7 @@ import com.hyp.constants.Constants;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
 import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.exception.DeliveryException;
 import com.hyp.temporal.activities.OrderFulfillmentActivities;
@@ -43,13 +44,21 @@ public class OrderFulfillmentWorkflowImpl implements OrderFulfillmentWorkflow {
             }
 
             Delivery delivery = activities.fetchDelivery(orderId);
-            if (delivery == null && order.isPreOrder()) {
-                log.info("No existing delivery for pre-order {}. Creating delivery.", orderId);
+            if (delivery == null) {
+                // Pre-orders only: delivery is created here (1h before scheduled time).
+                // Regular orders have delivery created at POS ACCEPTED, before this workflow fires.
+                log.info("No delivery for pre-order {} — creating now", orderId);
                 delivery = activities.createDelivery(order);
             }
 
             if (delivery == null) {
-                log.warn("Delivery not found for order ID: {}", orderId);
+                log.warn("Delivery creation failed for orderId={}", orderId);
+                return;
+            }
+
+            // Adloggs auto-assigns rider on creation — no explicit fulfill step.
+            if (delivery.getProvider() == DeliveryPartner.ADLOGGS) {
+                log.info("Adloggs order — rider auto-assigned, no fulfill step for orderId={}", orderId);
                 return;
             }
 

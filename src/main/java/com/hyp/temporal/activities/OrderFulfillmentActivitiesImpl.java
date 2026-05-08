@@ -123,7 +123,7 @@ public class OrderFulfillmentActivitiesImpl implements OrderFulfillmentActivitie
     public Delivery createDelivery(Order order) {
         ObservabilityContext.setOrderId(order.getId());
         try {
-            deliveryService.processDeliveryOrder(order);
+            deliveryService.createDeliveryForOrder(order);
             return deliveryService.findByOrderId(order.getId());
         } finally {
             ObservabilityContext.clear();

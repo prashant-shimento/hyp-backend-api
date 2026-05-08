@@ -13,7 +13,7 @@ import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.entity.Tax;
 import com.hyp.entity.Variation;
-import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.DeliveryModel;
 import com.hyp.model.Location;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
@@ -321,10 +321,10 @@ public class PosDataRequestTranslation {
             restaurant.setPincode(
                     CommonUtils.extractPincode(restaurantRequest.getDetails().getAddress()));
         }
-        if (existingRestaurant != null && existingRestaurant.getDeliveryPartner() != null) {
-            restaurant.setDeliveryPartner(existingRestaurant.getDeliveryPartner());
+        if (existingRestaurant != null && existingRestaurant.getDeliveryModel() != null) {
+            restaurant.setDeliveryModel(existingRestaurant.getDeliveryModel());
         } else {
-            restaurant.setDeliveryPartner(DeliveryPartner.PIDGE);
+            restaurant.setDeliveryModel(DeliveryModel.PARTNER);
         }
         if (existingRestaurant != null && existingRestaurant.getContact() != null) {
             restaurant.setContact(existingRestaurant.getContact());

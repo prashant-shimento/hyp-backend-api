@@ -1,6 +1,7 @@
 package com.hyp.entity;
 
 import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.DeliveryOrderStatus;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import java.time.LocalDateTime;
@@ -71,6 +72,21 @@ public class Delivery extends BaseEntity {
 
     @Field("tracking_url")
     private String trackingUrl;
+
+    private DeliveryPartner provider;
+
+    /**
+     * Get the delivery partner provider. Fallback if the provider is null.
+     * @return
+     */
+    public DeliveryPartner getProvider() {
+        return provider == null ? DeliveryPartner.PIDGE : provider;
+    }
+
+    @Field("estimated_distance")
+    private Double estimatedDistance;
+
+    private boolean switchable = true;
 
     @Data
     @NoArgsConstructor

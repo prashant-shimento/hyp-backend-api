@@ -197,36 +197,29 @@ public class OrderService extends BaseServiceImpl<Order, String> {
 
                 int fulfillmentDelay =
                         Optional.ofNullable(restaurant.getFulfillmentDelay()).orElse(2);
+                DeliveryPartner primaryPartner = restaurant.getEffectivePrimaryPartner();
 
-                if (fulfillmentDelay > 0) {
-                    boolean isWorkflowEnabled = redisService
-                            .getRedisData(Constants.FULFILLMENT_WORKFLOW_ENABLED)
-                            .map(Boolean::parseBoolean)
-                            .orElse(false);
-                    log.info(
-                            "Scheduling fulfillment delayMinutes={} workflowEnabled={}",
-                            fulfillmentDelay,
-                            isWorkflowEnabled);
-
-                    if (isWorkflowEnabled) {
-                        startOrderFulfillmentWorkflow(order.getId(), fulfillmentDelay);
-
-                    } else {
-                        deliveryService.setFulfillExpiry(order.getId(), fulfillmentDelay);
-                    }
-                    return;
+                // Pidge: create order now (registers with provider), fulfill after delay (triggers rider search).
+                // Adloggs: defer creation to delay expiry — pickup time will be now + prepTime when it fires.
+                if (primaryPartner != DeliveryPartner.ADLOGGS) {
+                    deliveryService.createDeliveryForOrder(order);
                 }
 
-                Delivery delivery = deliveryService.findByOrderId(order.getId());
+                boolean isWorkflowEnabled = redisService
+                        .getRedisData(Constants.FULFILLMENT_WORKFLOW_ENABLED)
+                        .map(Boolean::parseBoolean)
+                        .orElse(false);
+                log.info(
+                        "Scheduling delivery fulfillment/creation delayMinutes={} provider={} workflowEnabled={}",
+                        fulfillmentDelay,
+                        primaryPartner,
+                        isWorkflowEnabled);
 
-                if (delivery == null || !DeliveryOrderStatusType.PENDING.equals(delivery.getStatus())) {
-                    log.warn("Skipping fulfillment - no pending delivery found");
-                    return;
+                if (isWorkflowEnabled) {
+                    startOrderFulfillmentWorkflow(order.getId(), fulfillmentDelay);
+                } else {
+                    deliveryService.setFulfillExpiry(order.getId(), fulfillmentDelay);
                 }
-
-                String fulfillmentMode =
-                        redisService.getRedisData(Constants.KEY_FULFILL).orElse(Constants.KEY_SMART);
-                deliveryService.processDeliveryOrderFulfill(delivery, Constants.PET_POOJA, fulfillmentMode);
                 return;
             }
 
@@ -409,12 +402,23 @@ public class OrderService extends BaseServiceImpl<Order, String> {
     private void handleAccepted(Order order, Restaurant restaurant) throws DeliveryException {
         if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) return;
 
-        String fulfillMode =
-                redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
-        Delivery delivery = deliveryService.findByOrderId(order.getId());
+        if (order.getMinPrepTime() == null) {
+            order.setMinPrepTime(String.valueOf(15));
+        }
 
+        DeliveryPartner primaryPartner = restaurant.getEffectivePrimaryPartner();
+
+        // Pidge: create now + fulfill immediately (ops manual accept — no scheduled delay).
+        // Adloggs: create now — rider auto-assigned on creation, assignment watch started inside.
+        deliveryService.createDeliveryForOrder(order);
+
+        if (primaryPartner != DeliveryPartner.PIDGE) return;
+
+        Delivery delivery = deliveryService.findByOrderId(order.getId());
         if (delivery == null || delivery.getStatus() != DeliveryOrderStatusType.PENDING) return;
 
+        String fulfillMode =
+                redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
         if (fulfillMode.equalsIgnoreCase("smart")) {
             deliveryService.processDeliverySmartFulfill(delivery, Constants.PET_POOJA);
         } else {

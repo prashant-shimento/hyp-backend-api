@@ -6,7 +6,7 @@ import com.hyp.entity.Restaurant;
 import com.hyp.entity.Restaurant.DeliveryHours;
 import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.entity.Restaurant.Subscription;
-import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.DeliveryModel;
 import com.hyp.model.Location;
 import com.hyp.model.PaymentRoute;
 import com.hyp.model.PlatformFee;
@@ -38,7 +38,7 @@ public class RestaurantDto extends BaseDto {
     private String minimumDeliveryTime;
     private String deliveryCharge;
     private List<DeliveryHours> deliveryHours;
-    private DeliveryPartner deliveryPartner;
+    private DeliveryModel deliveryModel;
     private Double deliveryRadius;
     private RestaurantTax tax;
     private Integer calculateTaxOnDelivery;
@@ -88,4 +88,5 @@ public class RestaurantDto extends BaseDto {
     private Subscription subscription;
     private List<Restaurant.DeliveryOption> deliveryOptions;
     private Restaurant.Discount discount;
+    private Restaurant.DeliveryConfig deliveryConfig;
 }

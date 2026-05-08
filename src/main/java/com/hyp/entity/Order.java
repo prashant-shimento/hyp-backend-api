@@ -2,7 +2,6 @@ package com.hyp.entity;
 
 import com.hyp.annotation.GenerateId;
 import com.hyp.enums.CaseStatusType;
-import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OrderPlatform;
 import com.hyp.enums.OrderStatusType;
 import com.hyp.enums.PaymentType;
@@ -124,6 +123,9 @@ public class Order {
     @Field("delivery_tracking_link")
     private String deliveryTrackingLink;
 
+    @Field("delivery_switch_count")
+    private int deliverySwitchCount = 0;
+
     @Field("screen")
     private String screen;
 
@@ -167,7 +169,7 @@ public class Order {
     private Double discountValue;
 
     @Field("fulfilled_by")
-    private DeliveryPartner fulfilledBy;
+    private String deliveryPartner;
 
     @Data
     @NoArgsConstructor

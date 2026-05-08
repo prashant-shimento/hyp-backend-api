@@ -3,8 +3,8 @@ package com.hyp.listener;
 import com.hyp.constants.Constants;
 import com.hyp.entity.Delivery;
 import com.hyp.entity.Order;
-import com.hyp.event.DeliveryEvent;
-import com.hyp.event.DeliveryOrderEvent;
+import com.hyp.event.CreateDeliveryOrderEvent;
+import com.hyp.event.DeliveryFulfillEvent;
 import com.hyp.exception.DeliveryException;
 import com.hyp.service.DeliveryService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,15 +22,15 @@ public class DeliveryOrderEventListener {
 
     @Async
     @EventListener
-    public void handleProcessDeliveryOrder(DeliveryOrderEvent event) {
+    public void handleCreateDeliveryOrderEvent(CreateDeliveryOrderEvent event) {
         log.info("Delivery Order Event listener handleProcessDeliveryOrder");
         Order order = event.getOrder();
-        deliveryService.processDeliveryOrder(order);
+        deliveryService.createDeliveryForOrder(order);
     }
 
     @Async
     @EventListener
-    public void handleDeliveryEvent(DeliveryEvent event) {
+    public void handleDeliveryFulfillEvent(DeliveryFulfillEvent event) {
         log.info("Delivery Order Event listener handleDeliveryEvent for fulfilling");
         Delivery delivery = event.getDelivery();
         try {

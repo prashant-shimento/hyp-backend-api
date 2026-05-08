@@ -169,7 +169,7 @@ public class DeliveryListener implements MessageListener {
                         .findFirst();
 
                 // Fetch current rider location from live tracking API
-                RiderLocation currentRiderLocation = null;
+                RiderLocation currentRiderLocation;
                 if (delivery.getFulfillment().getChannel().getName().equalsIgnoreCase("porter")
                         || delivery.getService().equalsIgnoreCase("porter")) {
                     log.info("Getting Porter Rider location of the order {}", orderId);
@@ -178,11 +178,26 @@ public class DeliveryListener implements MessageListener {
                     log.info("Getting Rider location of the order {}", orderId);
                     currentRiderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
                 }
+                if (currentRiderLocation == null) {
+                    log.warn(
+                            "Rider location unavailable (rate-limited) for orderId={} — rescheduling poll in 2 min",
+                            orderId);
+                    String locationKey = "rider_location:" + orderId + ":" + currentStatus;
+                    redisService.setRedisData(
+                            locationKey, currentStatus, Duration.ofMinutes(2).toSeconds());
+                    return;
+                }
+
                 log.info(
                         "Current Rider location of the order {}, status {},Location: {}",
                         orderId,
                         lastStatus,
-                        currentRiderLocation.toString());
+                        currentRiderLocation.getData() != null
+                                ? String.format(
+                                        "Lat: %s, Long: %s",
+                                        currentRiderLocation.getData().getLatitude(),
+                                        currentRiderLocation.getData().getLongitude())
+                                : "No location data");
 
                 boolean isLocationMissing = currentRiderLocation.getData() == null
                         || currentRiderLocation.getData().getLatitude() == null

@@ -2,6 +2,7 @@ package com.hyp.dto;
 
 import com.hyp.enums.DeliveryFulfillStatusType;
 import com.hyp.enums.DeliveryOrderStatusType;
+import com.hyp.enums.DeliveryPartner;
 import com.hyp.model.DeliveryOrderStatus;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ public class DeliveryDto extends BaseDto {
     private LocalDateTime fulfillmentAt;
     private List<DeliveryOrderStatus.FulfillmentHistory> fulfillmentHistory;
     private String trackingUrl;
+    private DeliveryPartner provider;
 
     @Data
     @NoArgsConstructor

@@ -9,7 +9,6 @@ import com.hyp.entity.Payment;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.User;
 import com.hyp.enums.OrderStatusType;
-import com.hyp.enums.OrderType;
 import com.hyp.enums.PartnerType;
 import com.hyp.enums.PosPartner;
 import com.hyp.event.OrderEvent;
@@ -80,9 +79,7 @@ public class OrderEventListener {
         log.info("Order Event listener handleProcessOrder");
         Order order = event.getOrder();
         log.info("Order Type {}", order.getOrderType());
-        if (OrderType.fromCode(order.getOrderType()) == OrderType.H && !order.isPreOrder()) {
-            orderEventPublisher.publishDeliveryOrderEvent(order);
-        }
+
         if (restaurantService
                 .findById(order.getRestaurantId())
                 .getPosPartner()

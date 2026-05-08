@@ -12,10 +12,7 @@ import com.hyp.entity.Order.OrderItem;
 import com.hyp.entity.Order.OrderItemTax;
 import com.hyp.entity.Order.OrderTax;
 import com.hyp.entity.Restaurant;
-import com.hyp.enums.DeliveryPartner;
-import com.hyp.enums.DiscountType;
-import com.hyp.enums.OrderType;
-import com.hyp.enums.TaxType;
+import com.hyp.enums.*;
 import com.hyp.exception.RequestTranslationException;
 import com.hyp.request.PosOrderRequest;
 import com.hyp.request.PosOrderRequest.AddonItemDetails;
@@ -229,7 +226,7 @@ public class PosOrderRequestTranslation {
         orderDetails.setTotal(CommonUtils.emptyIfNullOrZeroToString(order.getTotalAmount()));
         orderDetails.setDescription(order.getSpecialInstructions());
         orderDetails.setEnableDelivery(
-                restaurant.getDeliveryPartner() == DeliveryPartner.SELF
+                restaurant.getDeliveryModel() == DeliveryModel.SELF
                         ? Constants.RESTAURANT_HANDLE_DELIVERY
                         : Constants.VENDOR_HANDLE_DELIVERY);
         orderDetails.setDeliveryCharges(CommonUtils.emptyIfNullOrZeroToString(

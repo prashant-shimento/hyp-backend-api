@@ -28,13 +28,13 @@ public class OrderEventPublisher {
         applicationEventPublisher.publishEvent(event);
     }
 
-    public void publishDeliveryOrderEvent(Order order) {
-        DeliveryOrderEvent event = new DeliveryOrderEvent(this, order);
+    public void publishCreateDeliveryOrderEvent(Order order) {
+        CreateDeliveryOrderEvent event = new CreateDeliveryOrderEvent(this, order);
         applicationEventPublisher.publishEvent(event);
     }
 
-    public void publishDeliveryEvent(Delivery delivery) {
-        DeliveryEvent event = new DeliveryEvent(this, delivery);
+    public void publishDeliveryFulfillEvent(Delivery delivery) {
+        DeliveryFulfillEvent event = new DeliveryFulfillEvent(this, delivery);
         applicationEventPublisher.publishEvent(event);
     }
 

@@ -1,5 +1,6 @@
 package com.hyp.entity;
 
+import com.hyp.enums.DeliveryModel;
 import com.hyp.enums.DeliveryPartner;
 import com.hyp.enums.OfferType;
 import com.hyp.enums.OrderType;
@@ -128,8 +129,8 @@ public class Restaurant implements Identifiable<String> {
     @Field("delivery_radius")
     private Double deliveryRadius;
 
-    @Field("delivery_partner")
-    private DeliveryPartner deliveryPartner;
+    @Field("delivery_model")
+    private DeliveryModel deliveryModel;
 
     @Field("support_contact")
     private String supportContact;
@@ -227,6 +228,15 @@ public class Restaurant implements Identifiable<String> {
     @Field("rider_availability_config")
     private RiderAvailabilityConfig riderAvailabilityConfig;
 
+    @Field("delivery_config")
+    private DeliveryConfig deliveryConfig;
+
+    public DeliveryPartner getEffectivePrimaryPartner() {
+        return deliveryConfig != null && deliveryConfig.getPrimaryPartner() != null
+                ? deliveryConfig.getPrimaryPartner()
+                : DeliveryPartner.PIDGE;
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor
@@ -301,6 +311,31 @@ public class Restaurant implements Identifiable<String> {
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class DeliveryConfig {
+
+        @Field("primary_partner")
+        private DeliveryPartner primaryPartner;
+
+        @Field("secondary_partner")
+        private DeliveryPartner secondaryPartner;
+
+        @Field("assign_sla")
+        private int assignSla; // minutes, 0 = use default (8)
+
+        @Field("pickup_sla")
+        private int pickupSla; // minutes, 0 = use default (25)
+
+        @Field("delivery_sla")
+        private int deliverySla; // minutes, 0 = use default (45)
+
+        @Field("auto_fallback")
+        private boolean autoFallback = true;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class Discount {
         private boolean enabled;
 
@@ -311,9 +346,9 @@ public class Restaurant implements Identifiable<String> {
         private Double offerValue;
 
         @Field("min_cart_value")
-        private Double minCartValue; // null = no minimum threshold
+        private Double minCartValue;
 
         @Field("max_cap")
-        private Double maxCap; // null = no cap on discount amount
+        private Double maxCap;
     }
 }

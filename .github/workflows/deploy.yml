@@ -64,7 +64,9 @@ jobs:
         TEMPORAL_HOST: ${{ secrets.PRODUCTION_TEMPORAL_HOST }}
         TEMPORAL_PORT: ${{ secrets.PRODUCTION_TEMPORAL_PORT }}
         PORTER_RIDER_LOCATION_API_URL: https://porter.in/api/public/orders/order_details?order_id={orderId}&customer_uuid={customerUuid}
-
+        DELIVERY_ADLOGGS_URL: ${{ secrets.PRODUCTION_DELIVERY_ADLOGGS_URL }}
+        DELIVERY_ADLOGGS_API_KEY: ${{ secrets.PRODUCTION_DELIVERY_ADLOGGS_API_KEY }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
     - name: Create .env file
       run: |
         echo "GOOGLE_KEY=${{ secrets.GOOGLE_KEY }}" >> .env
@@ -100,6 +102,9 @@ jobs:
         echo "TEMPORAL_HOST=${{ secrets.PRODUCTION_TEMPORAL_HOST }}" >> .env
         echo "TEMPORAL_PORT=${{ secrets.PRODUCTION_TEMPORAL_PORT }}" >> .env
         echo "PORTER_RIDER_LOCATION_API_URL=https://porter.in/api/public/orders/order_details?order_id={orderId}&customer_uuid={customerUuid}" >> .env
+        echo "DELIVERY_ADLOGGS_URL=${{ secrets.PRODUCTION_DELIVERY_ADLOGGS_URL }}" >> .env
+        echo "DELIVERY_ADLOGGS_API_KEY=${{ secrets.PRODUCTION_DELIVERY_ADLOGGS_API_KEY }}" >> .env
+        echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1

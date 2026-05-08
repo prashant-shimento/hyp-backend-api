@@ -5,13 +5,13 @@ import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
 @Getter
-public class DeliveryOrderEvent extends ApplicationEvent {
+public class CreateDeliveryOrderEvent extends ApplicationEvent {
 
     private static final long serialVersionUID = 1L;
 
     private final Order order;
 
-    public DeliveryOrderEvent(Object source, Order order) {
+    public CreateDeliveryOrderEvent(Object source, Order order) {
         super(source);
         this.order = order;
     }

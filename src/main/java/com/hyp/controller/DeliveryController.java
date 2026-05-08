@@ -1,7 +1,9 @@
 package com.hyp.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.hyp.constants.Constants;
 import com.hyp.constants.ErrorConstants;
+import com.hyp.delivery.adloggs.AdloggsWebhookPayload;
 import com.hyp.dto.DeliveryDto;
 import com.hyp.entity.*;
 import com.hyp.enums.DeliveryFulfillStatusType;
@@ -68,6 +70,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     @Autowired
     private OrderEventPublisher orderEventPublisher;
 
+    @Autowired
+    private DeliveryRequestTranslation deliveryRequestTranslation;
+
     @PostMapping("/callback")
     public ResponseEntity<Response> updateDeliveryOrderStatus(@RequestBody DeliveryOrderData deliveryOrderData)
             throws EntityNotFoundException, DeliveryException {
@@ -93,7 +98,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
     }
 
     @GetMapping("/quote/{restaurantId}")
-    public ResponseEntity<Response> getDeliveryQuote(@PathVariable String restaurantId, String addressId)
+    public ResponseEntity<Response> getDeliveryQuote(@PathVariable String restaurantId, @RequestParam String addressId)
             throws EntityNotFoundException, BadRequestException, DeliveryException {
 
         Restaurant restaurant = Optional.ofNullable(restaurantService.findById(restaurantId))
@@ -121,7 +126,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
         log.info("Requesting Delivery quote for addressId {} and restaurantId {}", addressId, restaurantId);
         DeliveryQuote deliveryQuote =
-                deliveryService.getDeliveryQuote(DeliveryRequestTranslation.getQuoteRequest(restaurant, address));
+                deliveryService.getDeliveryQuote(deliveryRequestTranslation.getQuoteRequest(restaurant, address));
 
         if (deliveryQuote.getData() == null
                 || deliveryQuote.getData().getItems() == null
@@ -136,11 +141,37 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", ErrorConstants.DELIVERY_OPTION_NOT_FOUND));
 
         DeliveryQuoteRecord quoteRecord = deliveryService.saveDeliveryQuote(restaurantId, addressId, selectedQuote);
-
         selectedQuote.setDeliveryQuoteId(quoteRecord.getId());
 
         return ResponseEntity.ok(
                 new Response(Collections.singletonList(selectedQuote), false, "Delivery Quotes Fetched"));
+    }
+
+    /** Adloggs webhook callback. */
+    @PostMapping("/adloggs/callback")
+    public ResponseEntity<Response> adloggsCallback(@RequestBody AdloggsWebhookPayload payload)
+            throws EntityNotFoundException, DeliveryException, JsonProcessingException {
+        log.info("Received Adloggs callback: {}", payload);
+        log.info(
+                "Adloggs callback received orderId={} orderUuid={} statusId={}",
+                payload.getPartnerOrderId(),
+                payload.getOrderUuid(),
+                payload.getOrderStatusId());
+        Delivery delivery = Optional.ofNullable(deliveryService.findByDeliveryOrderId(payload.getOrderUuid()))
+                .orElseThrow(() -> new EntityNotFoundException("Delivery", payload.getOrderUuid()));
+        deliveryService.processAdloggsCallback(delivery, payload);
+        return ResponseEntity.ok(new Response(null, false, "Success"));
+    }
+
+    /** Manually switch the active delivery to the alternate provider (ops endpoint). */
+    @PostMapping("/switch/{orderId}")
+    public ResponseEntity<Response> switchDeliveryProvider(@PathVariable String orderId)
+            throws EntityNotFoundException, DeliveryException {
+        Optional.ofNullable(orderService.findById(orderId))
+                .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
+        // forceOverride=true — ops explicitly switching, bypasses FIXED strategy restriction
+        deliveryService.switchDeliveryProvider(orderId, null, true);
+        return ResponseEntity.ok(new Response(null, false, "Provider switch initiated"));
     }
 
     @Hidden
@@ -171,6 +202,11 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
                 || delivery.getService().equalsIgnoreCase("porter")) {
             log.info("Getting Porter Rider location of the order {}", orderId);
             riderLocation = deliveryService.getPorterRiderLocation(delivery);
+            if (riderLocation == null) {
+                return ResponseEntity.status(503)
+                        .body(new Response(
+                                null, true, "Rider location temporarily unavailable — please retry shortly"));
+            }
         } else {
             log.info("Getting Rider location of the order {}", orderId);
             riderLocation = deliveryService.getRiderLocation(delivery.getDeliveryOrderId());
@@ -181,25 +217,33 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
 
     @PostMapping("/create/{orderId}")
     public ResponseEntity<Response> createDeliveryOrder(
-            @PathVariable String orderId, @RequestParam(defaultValue = "PIDGE", required = false) String partner)
-            throws EntityNotFoundException, DeliveryException {
+            @PathVariable String orderId, @RequestParam(required = false) String partner)
+            throws EntityNotFoundException, DeliveryException, BadRequestException {
+
         Order order = Optional.ofNullable(orderService.findById(orderId))
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
 
-        DeliveryPartner deliveryPartner = DeliveryPartner.valueOf(partner.toUpperCase());
-        Delivery existingDelivery = deliveryService.findByOrderId(orderId);
-
-        if (existingDelivery != null) {
-            if (deliveryPartner == DeliveryPartner.PIDGE) {
-                throw new DeliveryException("Delivery order already exists for Order ID: " + orderId);
+        DeliveryPartner requestedPartner = null;
+        if (partner != null && !partner.isBlank()) {
+            try {
+                requestedPartner = DeliveryPartner.valueOf(partner.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException(
+                        "mode",
+                        "Unknown delivery partner: " + partner + ". Valid values: "
+                                + java.util.Arrays.toString(DeliveryPartner.values()));
             }
+        }
+
+        Delivery existingDelivery = deliveryService.findByOrderId(orderId);
+        if (existingDelivery != null) {
             DeliveryFulfillment existingFulfillment = existingDelivery.getFulfillment();
             boolean hasActiveRider = existingFulfillment != null
                     && existingFulfillment.getStatus() != null
                     && isActiveRiderStatus(existingFulfillment.getStatus());
             if (hasActiveRider) {
                 throw new DeliveryException(
-                        "Active rider already assigned — cancel the existing delivery before booking manual");
+                        "Active rider already assigned — cancel the existing delivery before switching");
             }
             if (existingDelivery.getStatus() == DeliveryOrderStatusType.COMPLETED) {
                 throw new DeliveryException("Delivery already completed for this order");
@@ -207,18 +251,17 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
             deliveryService.cancelDeliveryOrder(existingDelivery);
         }
 
-        if (deliveryPartner == DeliveryPartner.PIDGE) {
-            orderEventPublisher.publishDeliveryOrderEvent(order);
-            return ResponseEntity.ok(new Response(null, false, "Delivery Order Created"));
+        // MANUAL — ops tracks manually (Ola, Uber, Rapido etc.)
+        if (requestedPartner == DeliveryPartner.MANUAL) {
+            Delivery delivery = deliveryService.createManualDelivery(order, DeliveryPartner.MANUAL);
+            orderService.updateOrderStatus(orderId, OrderStatusType.MANUAL_DELIVERY_BOOKED);
+            return ResponseEntity.ok(new Response(
+                    Collections.singletonList(deliveryTranslation.getDto(delivery)), false, "Manual delivery created"));
         }
 
-        Delivery delivery = deliveryService.createManualDelivery(order, deliveryPartner);
-        order.setFulfilledBy(deliveryPartner);
-        orderService.save(order);
-        orderService.updateOrderStatus(orderId, OrderStatusType.MANUAL_DELIVERY_BOOKED);
-
-        return ResponseEntity.ok(new Response(
-                Collections.singletonList(deliveryTranslation.getDto(delivery)), false, "Delivery Order Created"));
+        // Default — external API partner (Pidge/Adloggs) via DeliveryRouter
+        orderEventPublisher.publishCreateDeliveryOrderEvent(order);
+        return ResponseEntity.ok(new Response(null, false, "Delivery order created"));
     }
 
     @PostMapping("/fulfill/{orderId}")
@@ -246,7 +289,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
 
-        DeliveryOrderStatus deliverOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+        DeliveryOrderStatus deliverOrderStatus = deliveryService.getDeliveryOrderStatus(delivery);
         deliveryService.processDeliveryCallback(delivery, deliverOrderStatus.getData());
         Response response = new Response(
                 Collections.singletonList(deliveryTranslation.getDto(delivery)), false, "Delivery Processed Consumed");
@@ -290,7 +333,7 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         Delivery delivery = Optional.ofNullable(deliveryService.findByOrderId(order.getId()))
                 .orElseThrow(() -> new EntityNotFoundException("Delivery", orderId));
 
-        DeliveryOrderStatus deliveryOrderStatus = deliveryService.getDeliveryOrderStatus(delivery.getDeliveryOrderId());
+        DeliveryOrderStatus deliveryOrderStatus = deliveryService.getDeliveryOrderStatus(delivery);
         Response response = new Response(
                 Collections.singletonList(deliveryOrderStatus.getData()), false, "Delivery Order Status Fetched");
         return ResponseEntity.ok(response);
@@ -307,11 +350,9 @@ public class DeliveryController extends BaseController<DeliveryDto, Delivery, St
         if (DeliveryPartner.MANUAL.name().equalsIgnoreCase(delivery.getChannel())
                 && delivery.getFulfillment() != null
                 && delivery.getFulfillment().getStatus() != null) {
-
             Order order = Optional.ofNullable(orderService.findById(delivery.getOrderId()))
                     .orElseThrow(
                             () -> new RuntimeException(new EntityNotFoundException("Order", delivery.getOrderId())));
-
             Delivery updated = deliveryService.updateManualDeliveryStatus(delivery, order);
             return ResponseEntity.ok(new Response(
                     Collections.singletonList(deliveryTranslation.getDto(updated)), false, "Delivery Updated"));

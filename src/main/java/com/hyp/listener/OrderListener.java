@@ -19,6 +19,7 @@ import com.hyp.service.OrderService;
 import com.hyp.service.PaymentService;
 import com.hyp.service.RedisService;
 import com.hyp.service.RestaurantService;
+import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.util.CommonUtils;
 import java.util.EnumSet;
 import java.util.List;
@@ -58,6 +59,9 @@ public class OrderListener implements MessageListener {
 
     @Autowired
     private OneSignalAlertService oneSignalAlertService;
+
+    @Autowired
+    private OrderTrackWorkflowService orderTrackWorkflowService;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -125,6 +129,9 @@ public class OrderListener implements MessageListener {
                             payment.setStatus(paymentStatus);
                             paymentService.save(payment);
                             orderEventPublisher.publishProcessOrderEvent(order);
+                            if (!order.isPreOrder()) {
+                                orderTrackWorkflowService.startOrderTrackWorkflow(orderId);
+                            }
                             log.info("Order processed via expiry for {}", orderId);
                         }
                     }
@@ -138,15 +145,22 @@ public class OrderListener implements MessageListener {
                     if (order.getStatus().equals(OrderStatusType.ACCEPTED)
                             || order.getStatus().equals(OrderStatusType.READY_FOR_DELIVERY)) {
                         Delivery delivery = deliveryService.findByOrderId(order.getId());
-                        String fulfillType =
-                                redisService.getRedisData("fulfill").orElse(Constants.KEY_SMART);
                         try {
-                            deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
+                            if (delivery == null) {
+                                // Adloggs: creation deferred to fulfillmentDelay expiry.
+                                // Pickup time = now + minPrepTime (already persisted on order at ACCEPTED).
+                                deliveryService.createDeliveryForOrder(order);
+                            } else {
+                                // Pidge: delivery was created at ACCEPTED, now trigger rider search.
+                                String fulfillType =
+                                        redisService.getRedisData("fulfill").orElse(Constants.KEY_SMART);
+                                deliveryService.processDeliveryOrderFulfill(delivery, Constants.SYSTEM, fulfillType);
+                            }
                         } catch (DeliveryException e) {
-                            log.error("Exception occurred on redis expiry delivery fulfill");
+                            log.error("Exception on redis expiry delivery fulfill/creation for {}", orderId);
                             orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
                         }
-                        log.info("Order is fulfilled on redis expiry for {}", orderId);
+                        log.info("Delivery fulfillment/creation handled on redis expiry for {}", orderId);
                     }
                 }
             }

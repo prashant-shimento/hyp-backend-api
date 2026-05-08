@@ -44,7 +44,15 @@ public interface Constants {
             "restaurantId");
     List<String> ADDRESS_API_PARAMS = Arrays.asList("id", "customerId", "addressType", "restaurantId");
     List<String> DELIVERY_API_PARAMS = Arrays.asList(
-            "id", "networkId", "status", "orderId", "service", "deliveryOrderId", "channel", "restaurantId");
+            "id",
+            "networkId",
+            "status",
+            "orderId",
+            "service",
+            "deliveryOrderId",
+            "channel",
+            "restaurantId",
+            "isDeleted");
     List<String> CONTENT_API_PARAMS = Arrays.asList("id", "type", "restaurantId");
     List<String> VARIATIONS_API_PARAMS =
             Arrays.asList("id", "name", "variationId", "variationAllowAddon", "restaurantId");
@@ -108,7 +116,10 @@ public interface Constants {
 
     String REDIS_KEY_PIDGE_TOKEN = "pidgeToken";
     String REDIS_KEY_FULFILL = "fulfill";
+    String REDIS_KEY_MAX_DELIVERY_SWITCHES = "maxDeliverySwitches";
     String REDIS_KEY_TRIGGER_FULFILL_ON_RIDER_DELAY = "triggerFulfillOnRiderDelay";
+    String REDIS_KEY_ASSIGNMENT_TIMEOUT_MINUTES = "assignmentTimeoutMinutes";
+    String REDIS_KEY_ASSIGNMENT_TIMEOUT_MINUTES_PROVIDER = "assignmentTimeoutMinutes.%s";
     String REDIS_KEY_RIDER_LOCATION_PICKUP_STAGE = "riderLocationPickupStage";
     String REDIS_KEY_RIDER_LOCATION_OFD_STAGE = "riderLocationOfdStage";
     String REDIS_KEY_DELAY_ALERT_TIME = "delayAlertTime";

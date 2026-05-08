@@ -2,6 +2,9 @@ package com.hyp.service;
 
 import com.hyp.client.PidgeClient;
 import com.hyp.constants.Constants;
+import com.hyp.delivery.DeliveryOrchestrator;
+import com.hyp.delivery.adloggs.AdloggsStatusMapper;
+import com.hyp.delivery.adloggs.AdloggsWebhookPayload;
 import com.hyp.entity.Address;
 import com.hyp.entity.Customer;
 import com.hyp.entity.Delivery;
@@ -9,20 +12,14 @@ import com.hyp.entity.DeliveryQuoteRecord;
 import com.hyp.entity.Order;
 import com.hyp.entity.Restaurant;
 import com.hyp.entity.RiderRecord;
-import com.hyp.enums.DeliveryFulfillStatusType;
-import com.hyp.enums.DeliveryOrderStatusType;
-import com.hyp.enums.DeliveryPartner;
-import com.hyp.enums.OrderStatusType;
+import com.hyp.enums.*;
 import com.hyp.event.OrderEventPublisher;
 import com.hyp.exception.DeliveryException;
-import com.hyp.model.DeliveryOrderStatus;
+import com.hyp.model.*;
 import com.hyp.model.DeliveryOrderStatus.DeliveryFulfillment;
 import com.hyp.model.DeliveryOrderStatus.DeliveryOrderData;
 import com.hyp.model.DeliveryOrderStatus.Rider;
-import com.hyp.model.DeliveryQuote;
 import com.hyp.model.DeliveryQuote.DeliveryNetworks;
-import com.hyp.model.DeliveryRiderLocation;
-import com.hyp.model.RiderLocation;
 import com.hyp.observability.*;
 import com.hyp.repository.DeliveryQuoteRepository;
 import com.hyp.repository.DeliveryRepository;
@@ -30,6 +27,7 @@ import com.hyp.repository.RiderRecordRepository;
 import com.hyp.request.DeliveryOrderRequest;
 import com.hyp.request.DeliveryQuoteRequest;
 import com.hyp.request.PosRiderUpdateRequest.RiderDetails;
+import com.hyp.temporal.service.DeliveryWorkflowService;
 import com.hyp.translation.DeliveryRequestTranslation;
 import com.hyp.util.CommonUtils;
 import java.time.Duration;
@@ -44,7 +42,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 @Service
 @Slf4j
@@ -87,10 +84,31 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     OneSignalAlertService oneSignalAlertService;
 
     @Autowired
+    NotificationService notificationService;
+
+    @Autowired
     ApplicationMetrics metrics;
 
     @Value("${app.domain}")
     private String appDomain;
+
+    @Autowired
+    DeliveryOrchestrator deliveryOrchestrator;
+
+    @Autowired
+    DeliveryWorkflowService deliveryWorkflowService;
+
+    @Autowired
+    com.hyp.delivery.DeliveryLifecycleService deliveryLifecycleService;
+
+    @Autowired
+    com.hyp.delivery.DeliveryPartnerEvaluator partnerEvaluator;
+
+    @Autowired
+    com.hyp.delivery.PartnerScoreTracker scoreTracker;
+
+    @Autowired
+    DeliveryRequestTranslation deliveryRequestTranslation;
 
     public Delivery findByOrderId(String orderId) {
         return deliveryRepository.findFirstByOrderIdAndIsDeletedFalseOrderByCreatedAtDesc(orderId);
@@ -112,54 +130,200 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         return deliveryRepository.findByDeliveryOrderId(deliveryOrderId);
     }
 
-    public void processDeliveryOrder(Order order) {
+    public void createDeliveryForOrder(Order order) {
         ObservabilityContext.setOrderContext(order.getId(), order.getRestaurantId());
         try {
+            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+
+            if (restaurant.getDeliveryModel() == DeliveryModel.SELF) {
+                log.info("Restaurant {} handles own delivery — skipping provider routing", order.getRestaurantId());
+                return;
+            }
+
+            if (restaurant.getDeliveryModel() == DeliveryModel.DEDICATED) {
+                log.info("Dedicated rider flow not yet implemented for orderId={}", order.getId());
+                return;
+            }
+
             CompletableFuture<Customer> customerFuture =
                     CompletableFuture.supplyAsync(() -> customerService.findById(order.getCustomerId()));
-            CompletableFuture<Restaurant> restaurantFuture =
-                    CompletableFuture.supplyAsync(() -> restaurantService.findById(order.getRestaurantId()));
             CompletableFuture<Address> addressFuture = CompletableFuture.supplyAsync(
                     () -> addressService.findById(order.getDeliveryDetails().getAddressId()));
-
-            CompletableFuture.allOf(customerFuture, restaurantFuture, addressFuture)
-                    .join();
+            CompletableFuture.allOf(customerFuture, addressFuture).join();
 
             Customer customer = customerFuture.join();
-            Restaurant restaurant = restaurantFuture.join();
             Address address = addressFuture.join();
-            DeliveryOrderRequest deliveryOrderRequest =
-                    DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant, address, customer, order);
-            log.info("Creating Delivery for OrderId {}", order.getId());
-            createOrder(deliveryOrderRequest, order);
+
+            Delivery delivery = deliveryOrchestrator.createDelivery(order, restaurant, address, customer);
+            save(delivery);
+
+            // Adloggs starts rider search immediately on creation — start assignment watch now.
+            // Pidge watch starts after the explicit fulfill step (triggered at ACCEPTED).
+            if (delivery.getProvider() == DeliveryPartner.ADLOGGS) {
+                deliveryWorkflowService.startAssignmentWatch(
+                        order.getId(), delivery.getId(), delivery.getProvider().name());
+            }
+
             metrics.count(MetricsEvent.DELIVERY, MetricTag.ACTION, "create", MetricTag.RESULT, "success");
-            // Track pending deliveries gauge
             metrics.incrementGauge("delivery_pending");
         } catch (DeliveryException e) {
-            log.error("Delivery creation failed", e);
+            log.error("Delivery creation failed orderId={}", order.getId(), e);
             metrics.count(MetricsEvent.DELIVERY, MetricTag.ACTION, "create", MetricTag.RESULT, "failed");
+            orderService.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_ERROR);
+            oneSignalAlertService.notifyErrorResponseAlert(
+                    order.getId(), "Delivery creation failed: " + e.getMessage(), "DELIVERY");
         } finally {
             ObservabilityContext.clear();
         }
     }
 
-    public void createOrder(DeliveryOrderRequest deliveryOrderRequest, Order order) throws DeliveryException {
-        if (findByOrderId(order.getId()) != null) {
-            throw new DeliveryException("Active delivery already exists for order: " + order.getId());
+    /**
+     * Switch the active delivery to the alternate provider.
+     * Called by DeliveryAssignmentActivitiesImpl on timeout or manually via API.
+     */
+    public void switchDeliveryProvider(String orderId, String deliveryId) {
+        switchDeliveryProvider(orderId, deliveryId, false);
+    }
+
+    public void switchDeliveryProvider(String orderId, String deliveryId, boolean forceOverride) {
+        ObservabilityContext.setOrderId(orderId);
+        try {
+            Delivery activeDelivery = deliveryId != null ? findById(deliveryId) : findByOrderId(orderId);
+
+            if (activeDelivery == null) {
+                log.warn("switchDeliveryProvider: no active delivery for orderId={}", orderId);
+                return;
+            }
+
+            if (!activeDelivery.isSwitchable()) {
+                log.info("switchDeliveryProvider: delivery {} not switchable (post-pickup)", activeDelivery.getId());
+                return;
+            }
+
+            Order order = orderService.findById(orderId);
+
+            int maxSwitches = redisService
+                    .getRedisData(Constants.REDIS_KEY_MAX_DELIVERY_SWITCHES)
+                    .map(Integer::parseInt)
+                    .orElse(2);
+
+            if (order.getDeliverySwitchCount() >= maxSwitches) {
+                log.warn("Max delivery switches ({}) reached for orderId={}", maxSwitches, orderId);
+                orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
+                notificationService.sendInternalGroupNotification(
+                        Constants.META_GENERIC_ALERT_TEMPLATE,
+                        List.of(
+                                "Delivery switch limit reached",
+                                orderId,
+                                "Switched " + order.getDeliverySwitchCount()
+                                        + " times — manual intervention required"));
+                oneSignalAlertService.notifyErrorResponseAlert(
+                        orderId, "Max delivery switches reached (" + maxSwitches + ")", "DELIVERY");
+                return;
+            }
+
+            Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
+
+            // autoFallback=false — automatic switch not allowed; alert ops for manual intervention
+            Restaurant.DeliveryConfig deliveryConfig = restaurant.getDeliveryConfig();
+            if (!forceOverride && deliveryConfig != null && !deliveryConfig.isAutoFallback()) {
+                log.warn("autoFallback disabled — switch blocked for orderId={}, alerting ops", orderId);
+                oneSignalAlertService.notifyErrorResponseAlert(
+                        orderId,
+                        "Rider not assigned — autoFallback is disabled for this restaurant. Manual intervention required.",
+                        "DELIVERY");
+                return;
+            }
+
+            Address address = addressService.findById(order.getDeliveryDetails().getAddressId());
+            Customer customer = customerService.findById(order.getCustomerId());
+
+            Delivery newDelivery =
+                    deliveryOrchestrator.switchDelivery(activeDelivery, order, restaurant, address, customer);
+
+            activeDelivery.setDeleted(true);
+            save(activeDelivery);
+            save(newDelivery);
+
+            order.setDeliverySwitchCount(order.getDeliverySwitchCount() + 1);
+            orderService.save(order);
+
+            // Pidge requires a separate fulfillment step after order creation
+            if (newDelivery.getProvider() == DeliveryPartner.PIDGE) {
+                String fulfillMode =
+                        redisService.getRedisData(Constants.REDIS_KEY_FULFILL).orElse("smart");
+                if (fulfillMode.equalsIgnoreCase("smart")) {
+                    processDeliverySmartFulfill(newDelivery, Constants.API);
+                } else {
+                    processDeliveryStandardFulfill(newDelivery, Constants.API);
+                }
+            }
+
+            deliveryWorkflowService.startAssignmentWatch(
+                    orderId,
+                    newDelivery.getId(),
+                    newDelivery.getProvider() != null
+                            ? newDelivery.getProvider().name()
+                            : null);
+            log.info(
+                    "Provider switched orderId={} from {} to {}",
+                    orderId,
+                    activeDelivery.getProvider(),
+                    newDelivery.getProvider());
+        } catch (Exception e) {
+            log.error("switchDeliveryProvider failed for orderId={}: {}", orderId, e.getMessage(), e);
+            orderService.updateOrderStatus(orderId, OrderStatusType.DELIVERY_ERROR);
+        } finally {
+            ObservabilityContext.clear();
         }
-        pidgeClient
-                .createDeliveryOrder(deliveryOrderRequest)
-                .flatMap(deliveryOrderId -> {
-                    Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
-                    delivery.setId(CommonUtils.genId());
-                    delivery.setDeliveryOrderId(deliveryOrderId);
-                    delivery.setStatus(DeliveryOrderStatusType.PENDING);
-                    delivery.setService(order.getDeliveryDetails().getService());
-                    delivery.setNetworkId(order.getDeliveryDetails().getNetworkId());
-                    delivery.setPickupNow(order.getDeliveryDetails().isPickupNow());
-                    return Mono.fromRunnable(() -> save(delivery));
-                })
-                .block(Duration.ofSeconds(10));
+    }
+
+    public DeliveryQuoteRecord fetchAndSaveEstimates(
+            String restaurantId, String addressId, Restaurant restaurant, Address address) throws DeliveryException {
+
+        Restaurant.DeliveryConfig config = restaurant.getDeliveryConfig();
+        DeliveryPartner primary = restaurant.getEffectivePrimaryPartner();
+        DeliveryPartner secondary = config != null ? config.getSecondaryPartner() : null;
+
+        CompletableFuture<DeliveryEstimate> primaryFuture = CompletableFuture.supplyAsync(
+                () -> deliveryOrchestrator.getProvider(primary).getEstimate(restaurant, address));
+        CompletableFuture<DeliveryEstimate> secondaryFuture = secondary != null && secondary != primary
+                ? CompletableFuture.supplyAsync(
+                        () -> deliveryOrchestrator.getProvider(secondary).getEstimate(restaurant, address))
+                : CompletableFuture.completedFuture(null);
+
+        CompletableFuture.allOf(primaryFuture, secondaryFuture).join();
+
+        List<DeliveryEstimate> available = new ArrayList<>();
+        DeliveryEstimate primaryEst = primaryFuture.join();
+        if (primaryEst != null && primaryEst.isAvailable()) available.add(primaryEst);
+        DeliveryEstimate secondaryEst = secondaryFuture.join();
+        if (secondaryEst != null && secondaryEst.isAvailable()) available.add(secondaryEst);
+
+        if (available.isEmpty()) {
+            throw new DeliveryException("fetchEstimates", "No delivery provider available for this location");
+        }
+
+        DeliveryQuoteRecord record = new DeliveryQuoteRecord();
+        record.setAddressId(addressId);
+        record.setEstimates(available);
+        record.setPrimary(available.get(0).getProvider());
+        record.setSecondary(available.size() > 1 ? available.get(1).getProvider() : null);
+        record.setExpiresAt(LocalDateTime.now().plusMinutes(30));
+
+        // Backward compat: keep Pidge network token in legacy field
+        available.stream()
+                .filter(e -> e.getProvider() == DeliveryPartner.PIDGE
+                        && e.getRawData() instanceof DeliveryQuote.DeliveryNetworks)
+                .findFirst()
+                .ifPresent(e -> record.setNetwork((DeliveryQuote.DeliveryNetworks) e.getRawData()));
+
+        log.info(
+                "Saved delivery estimates restaurantId={} primary={} secondary={}",
+                restaurantId,
+                record.getPrimary(),
+                record.getSecondary());
+        return deliveryQuoteRepository.save(record);
     }
 
     public Delivery createManualDelivery(Order order, DeliveryPartner partner) throws DeliveryException {
@@ -178,9 +342,9 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     "Address not found: " + order.getDeliveryDetails().getAddressId());
 
         DeliveryOrderRequest deliveryOrderRequest =
-                DeliveryRequestTranslation.getDeliveryOrderRequest(restaurant, address, customer, order);
+                deliveryRequestTranslation.getDeliveryOrderRequest(restaurant, address, customer, order);
 
-        Delivery delivery = DeliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
+        Delivery delivery = deliveryRequestTranslation.getDeliveryEntity(deliveryOrderRequest);
         delivery.setId(CommonUtils.genId());
         delivery.setDeliveryOrderId(order.getId());
         delivery.setChannel(DeliveryPartner.MANUAL.name());
@@ -270,6 +434,14 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                 handleFulfillmentStatus(delivery, deliveryOrderData, order);
             }
 
+            if (deliveryOrderData.getFulfillment() != null
+                    && deliveryOrderData.getFulfillment().getStatus() != null) {
+                recordFulfillmentEvent(
+                        delivery,
+                        order.getRestaurantId(),
+                        deliveryOrderData.getFulfillment().getStatus());
+            }
+
             delivery.setFulfillmentHistory(deliveryOrderData.getFulfillmentHistory());
             save(delivery);
         } catch (Exception e) {
@@ -293,7 +465,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             if (!targetStatus.equals(order.getStatus())) {
                 log.info("Rider cancelled delivery");
                 orderService.updateOrderStatus(order.getId(), targetStatus);
-                orderEventPublisher.publishDeliveryEvent(delivery);
+                orderEventPublisher.publishDeliveryFulfillEvent(delivery);
             }
         }
     }
@@ -334,6 +506,8 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                     locationKey,
                     fullFillStatus,
                     Duration.ofMinutes(Long.parseLong(riderDelay)).toSeconds());
+            // Signal assignment workflow — rider is confirmed assigned
+            deliveryWorkflowService.signalRiderAssigned(delivery.getId());
         }
 
         if (deliveryFulfill.getChannel() != null) {
@@ -361,7 +535,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
             order.setDeliveryTrackingLink(appDomain + "/api/v2/order/track/" + order.getId());
         }
         if (fullFillStatus.equals(DeliveryFulfillStatusType.DELIVERED)) {
-            order.setFulfilledBy(DeliveryPartner.PIDGE);
+            order.setDeliveryPartner(delivery.getProvider().name());
         }
         orderService.save(order);
         orderService.updateOrderStatus(order.getId(), OrderStatusType.getOrderStatusByDeliveryStatus(fullFillStatus));
@@ -458,7 +632,105 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         }
     }
 
-    public void processDeliveryOrderFulfill(Delivery delivery, String fulfilledBy, String fulfillType)
+    /**
+     * Process Adloggs webhook callback.
+     * Maps integer status → DeliveryFulfillStatusType and re-uses existing fulfillment logic.
+     */
+    public void processAdloggsCallback(Delivery delivery, AdloggsWebhookPayload payload) throws DeliveryException {
+        ObservabilityContext.setOrderId(delivery.getOrderId());
+        log.info("Adloggs callback orderId={} statusId={}", delivery.getOrderId(), payload.getOrderStatusId());
+        try {
+            DeliveryFulfillStatusType fulfillStatus = AdloggsStatusMapper.map(payload.getOrderStatusId());
+
+            Order order = orderService.findById(delivery.getOrderId());
+
+            if (fulfillStatus == DeliveryFulfillStatusType.CANCELLED) {
+                delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
+                delivery.setDeleted(true);
+                save(delivery);
+                orderService.updateOrderStatus(order.getId(), OrderStatusType.DELIVERY_CANCELLED);
+                return;
+            }
+
+            DeliveryFulfillment fulfillment =
+                    delivery.getFulfillment() != null ? delivery.getFulfillment() : new DeliveryFulfillment();
+            fulfillment.setStatus(fulfillStatus);
+
+            if (payload.getDeliveryStaffDetails() != null) {
+                DeliveryOrderStatus.Rider rider = new DeliveryOrderStatus.Rider();
+                rider.setName(payload.getDeliveryStaffDetails().getName());
+                rider.setMobile(payload.getDeliveryStaffDetails().getPhone());
+                fulfillment.setRider(rider);
+            }
+
+            // Append fulfillment log entry with location and rider
+            DeliveryOrderStatus.Log logEntry = new DeliveryOrderStatus.Log();
+            logEntry.setTimestamp(java.time.Instant.now().toString());
+            logEntry.setStatus(fulfillStatus.name());
+            logEntry.setAttemptType("FORWARD");
+            if (payload.getDeliveryStaffDetails() != null
+                    && payload.getDeliveryStaffDetails().getCurrentLocation() != null) {
+                AdloggsWebhookPayload.CurrentLocation loc =
+                        payload.getDeliveryStaffDetails().getCurrentLocation();
+                try {
+                    Location location = Location.builder()
+                            .latitude(Double.parseDouble(loc.getLat()))
+                            .longitude(Double.parseDouble(loc.getLng()))
+                            .build();
+                    logEntry.setLocation(location);
+                } catch (NumberFormatException ignored) {
+                    log.warn("Invalid location in Adloggs callback orderId={}", delivery.getOrderId());
+                }
+            }
+            if (fulfillment.getRider() != null) {
+                logEntry.setRider(fulfillment.getRider());
+            }
+            if (fulfillment.getLogs() == null) {
+                fulfillment.setLogs(new ArrayList<>());
+            }
+            fulfillment.getLogs().add(logEntry);
+
+            // Save rider platform as fulfillment channel
+            if (payload.getRiderPlatform() != null) {
+                DeliveryOrderStatus.Channel channel = new DeliveryOrderStatus.Channel();
+                channel.setName(payload.getRiderPlatform().getName());
+                channel.setId(payload.getRiderPlatform().getLspUniqId());
+                fulfillment.setChannel(channel);
+            }
+
+            DeliveryOrderStatusType deliveryStatus = fulfillStatus.equals(DeliveryFulfillStatusType.DELIVERED)
+                    ? DeliveryOrderStatusType.COMPLETED
+                    : DeliveryOrderStatusType.FULFILLED;
+            delivery.setStatus(deliveryStatus);
+            delivery.setSwitchable(!isDeliveryTerminalStatus(fulfillStatus)
+                    && fulfillStatus != DeliveryFulfillStatusType.PICKED_UP
+                    && fulfillStatus != DeliveryFulfillStatusType.IN_TRANSIT
+                    && fulfillStatus != DeliveryFulfillStatusType.OUT_FOR_DELIVERY);
+            delivery.setFulfillment(fulfillment);
+
+            DeliveryOrderData deliveryOrderData = new DeliveryOrderData();
+            deliveryOrderData.setStatus(deliveryStatus.name());
+            deliveryOrderData.setReferenceId(delivery.getOrderId());
+            deliveryOrderData.setFulfillment(fulfillment);
+
+            handleFulfillmentStatus(delivery, deliveryOrderData, order);
+
+            recordFulfillmentEvent(delivery, order.getRestaurantId(), fulfillStatus);
+
+            // Signal assignment workflow on first rider assignment
+            if (fulfillStatus == DeliveryFulfillStatusType.OUT_FOR_PICKUP) {
+                deliveryWorkflowService.signalRiderAssigned(delivery.getId());
+            }
+
+            save(delivery);
+        } catch (Exception e) {
+            handleDeliveryError("processAdloggsCallback", delivery, e);
+        } finally {
+            ObservabilityContext.clear();
+        }
+    }
+
+    public void processDeliveryOrderFulfill(Delivery delivery, String triggeredBy, String fulfillType)
             throws DeliveryException {
         try {
             if (delivery == null) {
@@ -471,19 +743,24 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                         delivery.getId());
                 return;
             }
+            // Adloggs assigns riders automatically on order creation — fulfillment is a no-op
+            if (delivery.getProvider() == DeliveryPartner.ADLOGGS) {
+                log.info("Adloggs delivery {} — skipping manual fulfillment (auto-assigned)", delivery.getId());
+                return;
+            }
             if ("smart".equalsIgnoreCase(fulfillType)) {
                 log.info("Processing fulfillment type=smart");
-                processDeliverySmartFulfill(delivery, fulfilledBy);
+                processDeliverySmartFulfill(delivery, triggeredBy);
             } else {
                 log.info("Processing fulfillment type=standard");
-                processDeliveryStandardFulfill(delivery, fulfilledBy);
+                processDeliveryStandardFulfill(delivery, triggeredBy);
             }
         } catch (Exception e) {
             handleDeliveryError("processDeliveryOrderFulfill", delivery, e);
         }
     }
 
-    public void processDeliveryStandardFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
+    public void processDeliveryStandardFulfill(Delivery delivery, String triggeredBy) throws DeliveryException {
         DeliveryNetworks selectedNetwork = getServiceabilityToken(delivery);
         if (selectedNetwork != null) {
             try {
@@ -493,12 +770,17 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
                 delivery.setNetworkId(selectedNetwork.getNetworkId());
                 delivery.setService(selectedNetwork.getService());
                 delivery.setPickupNow(selectedNetwork.isPickupNow());
-                delivery.setFulfillmentType(fulfilledBy);
+                delivery.setFulfillmentType(triggeredBy);
                 delivery.setFulfillmentAt(LocalDateTime.now());
                 save(delivery);
                 pidgeClient
-                        .fulfillDeliveryOrder(DeliveryRequestTranslation.getOrderFulfillRequest(delivery))
+                        .fulfillDeliveryOrder(deliveryRequestTranslation.getOrderFulfillRequest(delivery))
                         .subscribe();
+                // Rider search starts now — begin assignment timeout watch
+                deliveryWorkflowService.startAssignmentWatch(
+                        delivery.getOrderId(),
+                        delivery.getId(),
+                        delivery.getProvider() != null ? delivery.getProvider().name() : null);
                 metrics.count(
                         MetricsEvent.DELIVERY_FULFILLMENT,
                         MetricTag.ACTION,
@@ -526,7 +808,7 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         } else {
             log.info(
                     "No matching network found with the specified networkId or minimum price network - Started smart fulfillment");
-            processDeliverySmartFulfill(delivery, fulfilledBy);
+            processDeliverySmartFulfill(delivery, triggeredBy);
         }
     }
 
@@ -567,14 +849,19 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         return selectedNetwork;
     }
 
-    public void processDeliverySmartFulfill(Delivery delivery, String fulfilledBy) throws DeliveryException {
+    public void processDeliverySmartFulfill(Delivery delivery, String triggeredBy) throws DeliveryException {
         pidgeClient
-                .smartFulfillDeliveryOrder(DeliveryRequestTranslation.getSmartFulfillRequest(delivery))
+                .smartFulfillDeliveryOrder(deliveryRequestTranslation.getSmartFulfillRequest(delivery))
                 .subscribe();
         delivery.setStatus(DeliveryOrderStatusType.FULFILLED);
-        delivery.setFulfillmentType(fulfilledBy);
+        delivery.setFulfillmentType(triggeredBy);
         delivery.setFulfillmentAt(LocalDateTime.now());
         save(delivery);
+        // Rider search starts now — begin assignment timeout watch
+        deliveryWorkflowService.startAssignmentWatch(
+                delivery.getOrderId(),
+                delivery.getId(),
+                delivery.getProvider() != null ? delivery.getProvider().name() : null);
         metrics.count(
                 MetricsEvent.DELIVERY_FULFILLMENT,
                 MetricTag.ACTION,
@@ -590,17 +877,28 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
 
     public void cancelDeliveryOrder(Delivery delivery) throws DeliveryException {
         if (delivery == null) {
-            log.error("Cannot cancel delivery order: Delivery object is null.");
+            log.error("Cannot cancel delivery: Delivery object is null.");
             return;
         }
-        if (!DeliveryPartner.MANUAL.name().equalsIgnoreCase(delivery.getChannel())) {
-            pidgeClient.cancelDeliveryOrder(delivery.getDeliveryOrderId()).subscribe();
+        if (delivery.getProvider() != null) {
+            deliveryOrchestrator.getProvider(delivery.getProvider()).cancelOrder(delivery);
+        } else {
+            // legacy/manual delivery — no external API call needed
+            log.info("Skipping external cancel for delivery without provider orderId={}", delivery.getOrderId());
         }
         DeliveryOrderStatusType previousStatus = delivery.getStatus();
         delivery.setDeleted(true);
         delivery.setStatus(DeliveryOrderStatusType.CANCELLED);
         save(delivery);
+
+        Order cancelledOrder = orderService.findById(delivery.getOrderId());
+        recordFulfillmentEvent(
+                delivery,
+                cancelledOrder != null ? cancelledOrder.getRestaurantId() : null,
+                DeliveryFulfillStatusType.CANCELLED);
+
         metrics.count(MetricsEvent.DELIVERY_FULFILLMENT, MetricTag.ACTION, "cancel", MetricTag.RESULT, "success");
+        // Decrement appropriate gauge based on previous status
         if (previousStatus == DeliveryOrderStatusType.PENDING) {
             metrics.decrementGauge("delivery_pending");
         } else if (previousStatus == DeliveryOrderStatusType.FULFILLED) {
@@ -612,8 +910,11 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
         return pidgeClient.getDeliveryRiderLocation(deliveryOrderId);
     }
 
-    public DeliveryOrderStatus getDeliveryOrderStatus(String deliveryOrderId) throws DeliveryException {
-        return pidgeClient.getDeliveryOrderStatus(deliveryOrderId);
+    public DeliveryOrderStatus getDeliveryOrderStatus(Delivery delivery) throws DeliveryException {
+        if (delivery.getProvider() == null) {
+            throw new DeliveryException("getOrderStatus", "No provider set on delivery " + delivery.getId());
+        }
+        return deliveryOrchestrator.getProvider(delivery.getProvider()).getOrderStatus(delivery);
     }
 
     public void unallocateDeliveryOrder(Delivery delivery) {
@@ -652,6 +953,45 @@ public class DeliveryService extends BaseServiceImpl<Delivery, String> {
     public RiderLocation getPorterRiderLocation(Delivery delivery) throws DeliveryException {
         String porterId = delivery.getFulfillment().getChannel().getOrderId();
         return pidgeClient.getPorterRiderLocation(porterId);
+    }
+
+    /**
+     * Maps a fulfillment status update to a DeliveryLifecycleEvent, records it in both
+     * DeliveryLifecycleService (MongoDB history) and DeliveryPartnerEvaluator (Redis health).
+     * No-op for statuses that don't map to a trackable event.
+     */
+    private void recordFulfillmentEvent(
+            Delivery delivery, String restaurantId, DeliveryFulfillStatusType fulfillStatus) {
+        if (delivery.getProvider() == null || restaurantId == null) return;
+
+        DeliveryLifecycleEvent event =
+                switch (fulfillStatus) {
+                    case OUT_FOR_PICKUP -> DeliveryLifecycleEvent.RIDER_ASSIGNED;
+                    case REACHED_PICKUP -> DeliveryLifecycleEvent.RIDER_REACHED_PICKUP;
+                    case PICKED_UP -> DeliveryLifecycleEvent.RIDER_PICKED_UP;
+                    case DELIVERED -> DeliveryLifecycleEvent.RIDER_DELIVERED;
+                    case CANCELLED -> DeliveryLifecycleEvent.CANCELLED;
+                    default -> null;
+                };
+
+        if (event == null) return;
+
+        boolean success = event != com.hyp.enums.DeliveryLifecycleEvent.CANCELLED;
+
+        // Calculate time since previous event for this delivery
+        Long durationMs = scoreTracker.computeAndUpdateTiming(delivery.getId(), event);
+
+        deliveryLifecycleService.record(
+                delivery.getOrderId(),
+                delivery.getId(),
+                restaurantId,
+                delivery.getProvider(),
+                event,
+                success,
+                durationMs,
+                null);
+        partnerEvaluator.recordOutcome(
+                delivery.getProvider(), restaurantId, delivery.getId(), event, success, durationMs);
     }
 
     private boolean isDeliveryTerminalStatus(DeliveryFulfillStatusType status) {

@@ -24,20 +24,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class DeliveryRequestTranslation {
 
-    private static String platformSupportContact;
-    private static String restaurantSupportContact;
-
     @Value("${platform.support.contact}")
-    public void setPlatformSupportContact(String value) {
-        platformSupportContact = value;
-    }
+    private String platformSupportContact;
+
+    @Value("${platform.name:Directoo}")
+    private String platformName;
 
     @Value("${restaurant.support.contact}")
-    public void setRestaurantSupportContact(String value) {
-        restaurantSupportContact = value;
-    }
+    private String restaurantSupportContact;
 
-    public static DeliveryFulfillRequest getOrderFulfillRequest(Delivery delivery) {
+    public DeliveryFulfillRequest getOrderFulfillRequest(Delivery delivery) {
         List<String> orderIds = new ArrayList<>();
         orderIds.add(delivery.getDeliveryOrderId());
         return DeliveryFulfillRequest.builder()
@@ -49,13 +45,13 @@ public class DeliveryRequestTranslation {
                 .build();
     }
 
-    public static DeliveryFulfillRequest getSmartFulfillRequest(Delivery delivery) {
+    public DeliveryFulfillRequest getSmartFulfillRequest(Delivery delivery) {
         List<String> orderIds = new ArrayList<>();
         orderIds.add(delivery.getDeliveryOrderId());
         return DeliveryFulfillRequest.builder().ids(orderIds).build();
     }
 
-    public static DeliveryQuoteRequest getQuoteRequest(Restaurant restaurant, Address address) {
+    public DeliveryQuoteRequest getQuoteRequest(Restaurant restaurant, Address address) {
         DeliveryQuoteRequest quoteRequest = new DeliveryQuoteRequest();
 
         Pickup pickup = new Pickup();
@@ -81,7 +77,7 @@ public class DeliveryRequestTranslation {
         return quoteRequest;
     }
 
-    public static DeliveryOrderRequest getDeliveryOrderRequest(
+    public DeliveryOrderRequest getDeliveryOrderRequest(
             Restaurant restaurant, Address address, Customer customer, Order order) {
         DeliveryOrderRequest orderRequest = new DeliveryOrderRequest();
 
@@ -95,13 +91,13 @@ public class DeliveryRequestTranslation {
         senderAddress.setLatitude(restaurant.getLocation().getLatitude());
         senderAddress.setLongitude(restaurant.getLocation().getLongitude());
         senderDetail.setAddress(senderAddress);
-        senderDetail.setMobile("7801057583");
+        senderDetail.setMobile(restaurantSupportContact);
         senderDetail.setName(restaurant.getRestaurantName());
         orderRequest.setSenderDetail(senderDetail);
 
         ContactDetail pocDetail = new ContactDetail();
-        pocDetail.setName("Hyperapps");
-        pocDetail.setMobile("9985938706");
+        pocDetail.setName(platformName);
+        pocDetail.setMobile(platformSupportContact);
         orderRequest.setPocDetail(pocDetail);
 
         ContactDetail receiverDetail = new ContactDetail();
@@ -128,7 +124,7 @@ public class DeliveryRequestTranslation {
         return orderRequest;
     }
 
-    public static Delivery getDeliveryEntity(DeliveryOrderRequest deliveryOrderRequest) {
+    public Delivery getDeliveryEntity(DeliveryOrderRequest deliveryOrderRequest) {
         Delivery delivery = new Delivery();
         delivery.setChannel(deliveryOrderRequest.getChannel());
 

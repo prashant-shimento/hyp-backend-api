@@ -40,7 +40,7 @@ public class OrderPaymentWorkflowImpl implements OrderPaymentWorkflow {
 
             String paymentStatus = activities.fetchPaymentStatus(orderId);
 
-            if ("paid".equalsIgnoreCase(paymentStatus)) {
+            if ("paid".equalsIgnoreCase(paymentStatus) || "captured".equalsIgnoreCase(paymentStatus)) {
                 log.info("Payment detected at minute {} for order {}, processing", minute, orderId);
                 activities.processPayment(orderId, paymentStatus);
                 return;

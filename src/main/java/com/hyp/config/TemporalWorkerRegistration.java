@@ -1,5 +1,6 @@
 package com.hyp.config;
 
+import com.hyp.temporal.activities.DeliveryAssignmentActivitiesImpl;
 import com.hyp.temporal.activities.OrderFulfillmentActivitiesImpl;
 import com.hyp.temporal.activities.OrderPaymentActivitiesImpl;
 import com.hyp.temporal.activities.OrderTrackActivitiesImpl;
@@ -9,6 +10,7 @@ import com.hyp.temporal.service.OrderTrackWorkflowService;
 import com.hyp.temporal.service.OrderWorkflowService;
 import com.hyp.temporal.service.RestaurantWorkflowService;
 import com.hyp.temporal.service.StockWorkflowService;
+import com.hyp.temporal.workflow.DeliveryAssignmentWorkflowImpl;
 import com.hyp.temporal.workflow.OrderFulfillmentWorkflowImpl;
 import com.hyp.temporal.workflow.OrderPaymentWorkflowImpl;
 import com.hyp.temporal.workflow.OrderTrackWorkFlowImpl;
@@ -33,13 +35,17 @@ public class TemporalWorkerRegistration {
     private final RestaurantActivitiesImpl restaurantActivities;
     private final StockUpdateActivitiesImpl stockUpdateActivities;
     private final OrderTrackActivitiesImpl orderTrackActivitiesImpl;
+    private final DeliveryAssignmentActivitiesImpl deliveryAssignmentActivities;
 
     @PostConstruct
     public void registerWorkers() {
         Worker orderWorker = factory.newWorker(OrderWorkflowService.ORDER_TASK_QUEUE);
         orderWorker.registerWorkflowImplementationTypes(
-                OrderPaymentWorkflowImpl.class, OrderFulfillmentWorkflowImpl.class);
-        orderWorker.registerActivitiesImplementations(paymentActivities, orderFulfillmentActivities);
+                OrderPaymentWorkflowImpl.class,
+                OrderFulfillmentWorkflowImpl.class,
+                DeliveryAssignmentWorkflowImpl.class);
+        orderWorker.registerActivitiesImplementations(
+                paymentActivities, orderFulfillmentActivities, deliveryAssignmentActivities);
 
         Worker restaurantWorker = factory.newWorker(RestaurantWorkflowService.RESTAURANT_TASK_QUEUE);
         restaurantWorker.registerWorkflowImplementationTypes(RestaurantWorkflowImpl.class);
