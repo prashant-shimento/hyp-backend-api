@@ -16,6 +16,7 @@ public interface Constants {
     int RESTAURANT_HANDLE_DELIVERY = 1;
     String GST_RESTAURANT_LIABLE = "restaurant";
     String PET_POOJA = "PET_POOJA";
+    String URBAN_PIPER = "urbanpiper";
     String SYSTEM = "SYSTEM";
     String API = "API";
 

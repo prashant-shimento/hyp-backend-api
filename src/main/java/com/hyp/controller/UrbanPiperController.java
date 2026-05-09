@@ -3,6 +3,7 @@ package com.hyp.controller;
 import com.hyp.adapter.UrbanPiperAdapter;
 import com.hyp.adapter.urbanpiper.inventory.InventoryTransformer;
 import com.hyp.adapter.urbanpiper.order.OrderStatusTransformer;
+import com.hyp.adapter.urbanpiper.order.UrbanPiperCallbackTranslator;
 import com.hyp.adapter.urbanpiper.order.UrbanPiperOrderStatusRequest;
 import com.hyp.entity.Restaurant;
 import com.hyp.request.OrderStatusUpdateRequest;
@@ -44,7 +45,7 @@ public class UrbanPiperController {
     private OrderStatusTransformer orderStatusTransformer;
 
     @Autowired
-    private com.hyp.adapter.urbanpiper.order.UrbanPiperCallbackTranslator urbanPiperCallbackTranslator;
+    private UrbanPiperCallbackTranslator urbanPiperCallbackTranslator;
 
     @Autowired
     @Qualifier("urbanPiper")

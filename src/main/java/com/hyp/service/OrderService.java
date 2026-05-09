@@ -482,47 +482,4 @@ public class OrderService extends BaseServiceImpl<Order, String> {
             save(order);
         }
     }
-
-    public Order updateOrderStatusWithReason(String orderId, String newStatusStr, String reason)
-            throws OrderNotFoundException {
-
-        Order order = findById(orderId);
-        if (order == null) {
-            throw new OrderNotFoundException("Order not found: " + orderId);
-        }
-
-        OrderStatusType newStatus = mapExternalStatusToInternal(newStatusStr);
-
-        // Log the reason if provided
-        if (reason != null && !reason.isBlank()) {
-            log.info("Order {} status changing to {} with reason: {}", orderId, newStatus, reason);
-            // Add reason to order logs
-            order.getOrderLogs().add(new Order.OrderLog(newStatus.name() + " - Reason: " + reason));
-        }
-
-        return updateOrderStatus(orderId, newStatus);
-    }
-
-    /**
-     * Maps external status names (from API spec) to internal OrderStatusType enum
-     */
-    private OrderStatusType mapExternalStatusToInternal(String externalStatus) {
-        if (externalStatus == null || externalStatus.isBlank()) {
-            throw new IllegalArgumentException("Status cannot be null or empty");
-        }
-
-        return switch (externalStatus.toLowerCase()) {
-            case "placed" -> OrderStatusType.PLACED;
-            case "acknowledged" -> OrderStatusType.ACKNOWLEDGED;
-            case "accepted" -> OrderStatusType.ACCEPTED;
-            case "rejected" -> OrderStatusType.REJECTED;
-            case "cancelled" -> OrderStatusType.CANCELLED;
-            case "food_ready" -> OrderStatusType.FOOD_READY;
-            case "dispatched" -> OrderStatusType.DISPATCHED;
-            case "out_for_delivery" -> OrderStatusType.OUT_FOR_DELIVERY;
-            case "delivered" -> OrderStatusType.DELIVERED;
-            case "failed" -> OrderStatusType.FAILED;
-            default -> throw new IllegalArgumentException("Invalid status: " + externalStatus);
-        };
-    }
 }
