@@ -463,6 +463,7 @@ public class PosServiceImpl implements PosService {
         }
 
         variations.forEach(variation -> {
+            variation.setStatus(stockRequest.isInStock() ? "1" : "0");
             variation.setActive(stockRequest.isInStock() ? "1" : "0");
             variation.setAutoTurnOnTime(stockRequest.isInStock() ? null : autoTurnOn);
         });

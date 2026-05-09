@@ -106,7 +106,7 @@ public class VariationService extends BaseServiceImpl<Variation, String> {
 
         for (Variation variation : variations) {
             Bson filter = Filters.eq("_id", variation.getId());
-            if (inStock && "1".equals(variation.getActive())) {
+            if (inStock && "1".equals(variation.getActive()) && "1".equals(variation.getStatus())) {
                 log.info("Skipping workflow turn-on for variation {} as it is already active", variation.getId());
                 continue;
             }
@@ -121,8 +121,10 @@ public class VariationService extends BaseServiceImpl<Variation, String> {
                 continue;
             }
 
-            Document updateFields =
-                    new Document().append("active", inStock ? "1" : "0").append("updated_at", LocalDateTime.now());
+            Document updateFields = new Document()
+                    .append("active", inStock ? "1" : "0")
+                    .append("status", inStock ? "1" : "0")
+                    .append("updated_at", LocalDateTime.now());
 
             Bson update = new Document("$set", updateFields);
             writeModels.add(new UpdateOneModel<>(filter, update));

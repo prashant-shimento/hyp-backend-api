@@ -418,7 +418,7 @@ public class PidgeClient {
             if (newToken == null || newToken.isEmpty()) {
                 throw new DeliveryException("Failed to refresh token: Received empty token");
             }
-            redisService.setRedisData(Constants.REDIS_KEY_PIDGE_TOKEN, newToken, 0);
+            redisService.setRedisString(Constants.REDIS_KEY_PIDGE_TOKEN, newToken);
             cacheService.evict(TOKEN_CACHE, "token");
             lastRefreshEpoch = System.currentTimeMillis();
             log.info("Token refreshed successfully");

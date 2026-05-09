@@ -597,7 +597,9 @@ public class OrderValidator {
                 if (v == null) {
                     throw new ValidationException("Variation not found: " + oi.getId());
                 }
-                if ("1".equals(v.getActive())) {
+                String activeStatus = v.getActive() != null ? v.getActive() : v.getStatus();
+
+                if ("1".equals(activeStatus)) {
                     basePrice = roundToTwoDecimal(Double.parseDouble(v.getPrice()));
                 } else {
                     throw new ValidationException("Variation is not active: " + oi.getVariationName());

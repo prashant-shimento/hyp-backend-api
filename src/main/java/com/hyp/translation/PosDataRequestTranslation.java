@@ -203,6 +203,7 @@ public class PosDataRequestTranslation {
             for (VariationRequest variationRequest : variationRequestList) {
                 if (variationRequest.getVariationid().equals(itemVariationRequest.getVariationid())) {
                     itemVariationRequest.setStatus(variationRequest.getStatus());
+                    itemVariationRequest.setActive(variationRequest.getStatus());
                     break;
                 }
             }
