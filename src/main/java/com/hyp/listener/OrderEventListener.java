@@ -85,11 +85,7 @@ public class OrderEventListener {
         }
         Restaurant restaurant = restaurantService.findById(order.getRestaurantId());
 
-        if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.PET_POOJA.name())) {
-            orderEventPublisher.publishPosOrderEvent(order);
-        }
-
-        if (restaurant.getPosPartner().equalsIgnoreCase(PosPartner.URBAN_PIPER.name())) {
+        if (!restaurant.getPosPartner().equalsIgnoreCase(PosPartner.SELF.name())) {
             log.info("Publishing UrbanPiper POS order event for order: {}", order.getId());
             orderEventPublisher.publishPosOrderEvent(order);
         }

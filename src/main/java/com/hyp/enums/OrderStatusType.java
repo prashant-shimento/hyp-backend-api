@@ -1,18 +1,14 @@
 package com.hyp.enums;
 
 public enum OrderStatusType {
-    PLACED,
     CREATED,
     CONFIRMED,
-    ACKNOWLEDGED,
     PAYMENT_PENDING,
     PAID,
     PAYMENT_FAILED,
     PROCESSING,
     ACCEPTED,
-    REJECTED,
     DISPATCHED,
-    FOOD_READY,
     READY_FOR_DELIVERY,
     SEARCHING_RIDER,
     RIDER_ASSIGNED,
@@ -26,7 +22,6 @@ public enum OrderStatusType {
     CANCELLED,
     DELIVERY_CANCELLED,
     DROPPED_OFF,
-    FAILED,
     ERROR,
     POS_ERROR,
     DELIVERY_ERROR,

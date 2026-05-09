@@ -14,16 +14,13 @@ public class OrderStatusTransformer {
         }
 
         return switch (urbanPiperStatus.toLowerCase()) {
-            case "placed", "created" -> OrderStatusType.PLACED;
-            case "acknowledged" -> OrderStatusType.ACKNOWLEDGED;
+            case "acknowledged" -> OrderStatusType.ACCEPTED;
             case "accepted" -> OrderStatusType.ACCEPTED;
-            case "rejected" -> OrderStatusType.REJECTED;
-            case "food_ready", "ready" -> OrderStatusType.FOOD_READY;
+            case "food_ready", "ready" -> OrderStatusType.READY_FOR_DELIVERY;
             case "dispatched" -> OrderStatusType.DISPATCHED;
             case "out_for_delivery" -> OrderStatusType.OUT_FOR_DELIVERY;
             case "completed", "delivered" -> OrderStatusType.DELIVERED;
             case "cancelled" -> OrderStatusType.CANCELLED;
-            case "failed" -> OrderStatusType.FAILED;
             default -> {
                 log.warn("Unknown UrbanPiper status: {}, defaulting to PROCESSING", urbanPiperStatus);
                 yield OrderStatusType.PROCESSING;

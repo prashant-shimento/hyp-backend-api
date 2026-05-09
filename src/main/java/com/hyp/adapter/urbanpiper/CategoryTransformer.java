@@ -1,5 +1,6 @@
 package com.hyp.adapter.urbanpiper;
 
+import com.hyp.constants.Constants;
 import com.hyp.request.PosDataRequest;
 import com.hyp.request.urbanpiper.UrbanPiperMenuRequest;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class CategoryTransformer {
                     subCat.setParent_category_id(categoryRefId);
                     subCat.setActive("1");
                     subCat.setCategory_image_url(subCategory.getImageUrl());
-                    subCat.setSourceId("urbanpiper");
+                    subCat.setSourceId(Constants.URBAN_PIPER);
                     categoryList.add(subCat);
 
                     if (subCategory.getItems() != null) {

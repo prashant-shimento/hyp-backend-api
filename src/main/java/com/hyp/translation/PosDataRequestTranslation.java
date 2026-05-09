@@ -13,6 +13,7 @@ import com.hyp.entity.Restaurant.RestaurantTax;
 import com.hyp.entity.Tax;
 import com.hyp.entity.Variation;
 import com.hyp.enums.DeliveryPartner;
+import com.hyp.enums.PosPartner;
 import com.hyp.model.Location;
 import com.hyp.model.PosData;
 import com.hyp.request.PosDataRequest;
@@ -363,7 +364,7 @@ public class PosDataRequestTranslation {
             restaurant.setPosPartner(restaurantRequest.getPosPartner());
         } else {
             // Default to PET_POOJA for backward compatibility
-            restaurant.setPosPartner(com.hyp.enums.PosPartner.PET_POOJA.name());
+            restaurant.setPosPartner(PosPartner.PET_POOJA.name());
         }
 
         String existingCharge = existingRestaurant != null ? existingRestaurant.getPackagingCharge() : null;
